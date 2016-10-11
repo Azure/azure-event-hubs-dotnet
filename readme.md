@@ -43,7 +43,7 @@ right away. Your options for [getting support are enumerated here](https://azure
 you can file a support request from the "Help and support" menu in the upper right hand corner of the page.   
 
 If you find issues in this library or have suggestions for improvement of code or documentation, [you can file an issue in the project's 
-GitHub repository](https://github.com/Azure/azure-event-hubs/issues). Issues related to runtime behavior of the service, such as 
+GitHub repository](https://github.com/Azure/azure-event-hubs-dotnet/issues). Issues related to runtime behavior of the service, such as 
 sporadic exceptions or apparent service-side performance or reliability issues can not be handled here.
 
 Generally, if you want to discuss Azure Event Hubs or this client library with the community and the maintainers, you can turn to 
