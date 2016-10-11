@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="event-hubs.png" alt="Microsoft Azure Event Hubs" style="width: 100px;"/>
+</p>
+
 # Microsoft Azure Event Hubs Client for .NET
 
 This libary is built using .NET Standard 1.6. For more information on what platforms are supported see [.NET Platforms Support](https://docs.microsoft.com/en-us/dotnet/articles/standard/library#net-platforms-support).
