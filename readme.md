@@ -1,4 +1,6 @@
-![Microsoft Azure Event Hubs](event-hubs.png)
+<p align="center">
+  <img src="event-hubs.png" alt="Microsoft Azure Event Hubs" style="width: 100px;"/>
+</p>
 
 # Microsoft Azure Event Hubs Client for .NET
 
