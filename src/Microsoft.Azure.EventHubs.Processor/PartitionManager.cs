@@ -210,7 +210,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                     {
                         Lease possibleLease = await getLeastTask;
                         allLeases[possibleLease.PartitionId] = possibleLease;
-                        if (possibleLease.IsExpired())
+                        if (await possibleLease.IsExpired().ConfigureAwait(false))
                         {
                             ProcessorEventSource.Log.PartitionPumpInfo(this.host.Id, possibleLease.PartitionId, "Trying to acquire lease.");
                             if (await leaseManager.AcquireLeaseAsync(possibleLease))

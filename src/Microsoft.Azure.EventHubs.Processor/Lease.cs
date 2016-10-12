@@ -3,8 +3,7 @@
 
 namespace Microsoft.Azure.EventHubs.Processor
 {
-    using System;
-    using Newtonsoft.Json;
+    using System.Threading.Tasks;
 
     public class Lease
     {
@@ -35,15 +34,15 @@ namespace Microsoft.Azure.EventHubs.Processor
 
         public long Epoch { get; set; }
 
-        public virtual bool IsExpired() 
+        public virtual Task<bool> IsExpired() 
         {
     	    // this function is meaningless in the base class
-    	    return false;
+            return Task.FromResult(false);
         }
 
-        public virtual string GetStateDebug()
+        public virtual Task<string> GetStateDebug()
         {
-            return "N/A";
+            return Task.FromResult("N/A");
         }
 
         internal long IncrementEpoch()
