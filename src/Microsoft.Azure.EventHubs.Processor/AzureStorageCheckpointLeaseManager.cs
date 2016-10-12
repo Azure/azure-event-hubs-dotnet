@@ -43,7 +43,6 @@ namespace Microsoft.Azure.EventHubs.Processor
                 throw new ArgumentException(
                     "Lease container name is invalid. Please check naming conventions at https://msdn.microsoft.com/en-us/library/azure/dd135715.aspx",
                    nameof(leaseContainerName));
-                throw new Exception("Invalid container name");
             }
 
             this.storageConnectionString = storageConnectionString;
