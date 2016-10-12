@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="event-hubs.png" alt="Microsoft Azure Event Hubs" style="width: 100px;"/>
+  <img src="event-hubs.png" alt="Microsoft Azure Event Hubs" width="100"/>
 </p>
 
 # Microsoft Azure Event Hubs Client for .NET
