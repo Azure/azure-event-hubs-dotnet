@@ -1,5 +1,16 @@
 ﻿{
-  "version": "1.0.0-*",
+  "version": "0.0.1-preview",
+  "description": "Microsoft.Azure.EventHubs Class Library",
+  "authors": [ "microsoft" ],
+
+  "packOptions": {
+    "tags": [ "Azure", "Event Hubs", "EventHubs", ".NET", "AMQP", "IoT" ],
+    "projectUrl": "https://github.com/Azure/azure-event-hubs-dotnet",
+    "licenseUrl": "https://raw.githubusercontent.com/Azure/azure-event-hubs-dotnet/master/license.txt",
+    "iconUrl": "https://raw.githubusercontent.com/Azure/azure-event-hubs-dotnet/master/event-hubs.png",
+    "releaseNotes": "https://github.com/Azure/azure-event-hubs-dotnet/releases",
+    "requireLicenseAcceptance": true
+  },
 
   "dependencies": {
     "Microsoft.Azure.Amqp": "2.0.0"

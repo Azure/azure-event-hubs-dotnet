@@ -1,26 +1,26 @@
 {
-	"version": "1.0.0-*",
-	"buildOptions": {
-		"emitEntryPoint": true
-	},
+  "version": "0.0.1-preview",
+  "buildOptions": {
+    "emitEntryPoint": true
+  },
 
-	"dependencies": {
-		"Microsoft.Azure.EventHubs.Processor": "1.0.0-*",
-		"Microsoft.Azure.EventHubs": "1.0.0-*"
-	},
+  "dependencies": {
+    "Microsoft.Azure.EventHubs.Processor": "0.0.1-preview",
+    "Microsoft.Azure.EventHubs": "0.0.1-preview"
+  },
 
-	"frameworks": {
-		"netcoreapp1.0": {
-			"dependencies": {
-				"Microsoft.NETCore.App": {
-					"type": "platform",
-					"version": "1.0.0"
-				}
-			},
-			"imports": [
-				"dnxcore50",
-				"portable-net45+win8"
-			]
-		}
-	}
+  "frameworks": {
+    "netcoreapp1.0": {
+      "dependencies": {
+        "Microsoft.NETCore.App": {
+          "type": "platform",
+          "version": "1.0.0"
+        }
+      },
+      "imports": [
+        "dnxcore50",
+        "portable-net45+win8"
+      ]
+    }
+  }
 }
