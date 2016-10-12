@@ -1,7 +1,8 @@
 ﻿{
   "version": "0.0.1-preview",
+  "title": "Microsoft.Azure.EventHubs",
   "description": "Microsoft.Azure.EventHubs Class Library",
-  "authors": [ "microsoft" ],
+  "authors": [ "Microsoft" ],
 
   "packOptions": {
     "tags": [ "Azure", "Event Hubs", "EventHubs", ".NET", "AMQP", "IoT" ],
