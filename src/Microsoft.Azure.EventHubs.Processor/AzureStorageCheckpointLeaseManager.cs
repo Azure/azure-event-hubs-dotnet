@@ -41,7 +41,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             if (!Regex.IsMatch(leaseContainerName, @"^[a-z0-9](([a-z0-9\-[^\-])){1,61}[a-z0-9]$"))
             {
                 throw new ArgumentException(
-                    "Lease container name is invalid. Please check naming conventions at https://msdn.microsoft.com/en-us/library/azure/dd135715.aspx",
+                    "Azure Storage lease container name is invalid. Please check naming conventions at https://msdn.microsoft.com/en-us/library/azure/dd135715.aspx",
                    nameof(leaseContainerName));
             }
 
