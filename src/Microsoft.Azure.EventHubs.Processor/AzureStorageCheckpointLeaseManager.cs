@@ -6,12 +6,14 @@ namespace Microsoft.Azure.EventHubs.Processor
     using System;
     using System.Collections.Generic;
     using System.Diagnostics.Tracing;
+    using System.Text.RegularExpressions;
     using System.Threading.Tasks;
+
     using Newtonsoft.Json;
+
     using WindowsAzure.Storage;
     using WindowsAzure.Storage.Blob;
     using WindowsAzure.Storage.Blob.Protocol;
-    using System.Text.RegularExpressions;
 
     sealed class AzureStorageCheckpointLeaseManager : ICheckpointManager, ILeaseManager
     {
