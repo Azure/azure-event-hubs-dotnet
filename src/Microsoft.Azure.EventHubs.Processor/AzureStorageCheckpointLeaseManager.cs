@@ -6,8 +6,11 @@ namespace Microsoft.Azure.EventHubs.Processor
     using System;
     using System.Collections.Generic;
     using System.Diagnostics.Tracing;
+    using System.Text.RegularExpressions;
     using System.Threading.Tasks;
+
     using Newtonsoft.Json;
+
     using WindowsAzure.Storage;
     using WindowsAzure.Storage.Blob;
     using WindowsAzure.Storage.Blob.Protocol;
@@ -32,6 +35,14 @@ namespace Microsoft.Azure.EventHubs.Processor
             if (string.IsNullOrEmpty(storageConnectionString))
             {
                 throw new ArgumentNullException(nameof(storageConnectionString));
+            }
+
+            // Validate lease container name.
+            if (!Regex.IsMatch(leaseContainerName, @"^[a-z0-9](([a-z0-9\-[^\-])){1,61}[a-z0-9]$"))
+            {
+                throw new ArgumentException(
+                    "Lease container name is invalid. Please check naming conventions at https://msdn.microsoft.com/en-us/library/azure/dd135715.aspx",
+                   nameof(leaseContainerName));
             }
 
             this.storageConnectionString = storageConnectionString;

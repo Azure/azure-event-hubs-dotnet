@@ -38,7 +38,9 @@
             this.EventHubConnectionString = eventHubConnectionString;
 
             // Use entity name as lease container name.
-            this.LeaseContainerName = this.ConnectionStringBuilder.EntityPath;
+            // Convert to lowercase in case there is capital letter in the entity path.
+            // Uppercase is invalid for Azure Storage container names.
+            this.LeaseContainerName = this.ConnectionStringBuilder.EntityPath.ToLower();
 
             // Discover partition ids.
             PartitionIds = this.GetPartitionIdsAsync(this.ConnectionStringBuilder.ToString()).Result;
