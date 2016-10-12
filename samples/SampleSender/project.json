@@ -1,11 +1,11 @@
 {
-  "version": "1.0.0-*",
+  "version": "0.0.1-preview",
   "buildOptions": {
     "emitEntryPoint": true
   },
 
   "dependencies": {
-    "Microsoft.Azure.EventHubs": "1.0.0-*",
+    "Microsoft.Azure.EventHubs": "0.0.1-preview",
     "Microsoft.NETCore.App": {
       "type": "platform",
       "version": "1.0.1"
