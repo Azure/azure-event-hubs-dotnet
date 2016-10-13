@@ -40,11 +40,6 @@ namespace Microsoft.Azure.EventHubs.Processor
             return Task.FromResult(false);
         }
 
-        public virtual Task<string> GetStateDebug()
-        {
-            return Task.FromResult("N/A");
-        }
-
         internal long IncrementEpoch()
         {
             this.Epoch++;

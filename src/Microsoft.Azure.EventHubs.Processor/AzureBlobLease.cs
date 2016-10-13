@@ -3,24 +3,24 @@
 
 namespace Microsoft.Azure.EventHubs.Processor
 {
-	using System.Threading.Tasks;
+    using System.Threading.Tasks;
 	using Newtonsoft.Json;
-	using WindowsAzure.Storage;
 	using WindowsAzure.Storage.Blob;
 
 	class AzureBlobLease : Lease
 	{
-		// ctor needed for deserialization
-		internal AzureBlobLease()
+	    // ctor needed for deserialization
+
+	    internal AzureBlobLease()
 		{
 		}
 
-		internal AzureBlobLease(string partitionId, CloudBlockBlob blob) : base(partitionId)
+	    internal AzureBlobLease(string partitionId, CloudBlockBlob blob) : base(partitionId)
 		{
 			this.Blob = blob;
 		}
 
-		internal AzureBlobLease(AzureBlobLease source)
+	    internal AzureBlobLease(AzureBlobLease source)
 			: base(source)
 		{
 			this.Offset = source.Offset;
@@ -28,43 +28,27 @@ namespace Microsoft.Azure.EventHubs.Processor
 			this.Blob = source.Blob;
 		}
 
-		internal AzureBlobLease(AzureBlobLease source, CloudBlockBlob blob) : base(source)
+	    internal AzureBlobLease(AzureBlobLease source, CloudBlockBlob blob) : base(source)
 		{
 			this.Offset = source.Offset;
 			this.SequenceNumber = source.SequenceNumber;
 			this.Blob = blob;
 		}
 
-		// do not serialize
-		[JsonIgnore]
+	    // do not serialize
+
+	    [JsonIgnore]
 		public CloudBlockBlob Blob { get; }
 
-		public string Offset { get; set; }
+	    public string Offset { get; set; }
 
-		public long SequenceNumber { get; set; }
+	    public long SequenceNumber { get; set; }
 
-		public override async Task<bool> IsExpired()
+	    public override async Task<bool> IsExpired()
 		{
 			await this.Blob.FetchAttributesAsync().ConfigureAwait(false); // Get the latest metadata
 			var currentState = this.Blob.Properties.LeaseState;
 			return currentState != LeaseState.Leased;
-		}
-
-		public override async Task<string> GetStateDebug()
-		{
-			string retVal;
-			try
-			{
-				await this.Blob.FetchAttributesAsync().ConfigureAwait(false);
-				var props = this.Blob.Properties;
-				retVal = props.LeaseState + " " + props.LeaseStatus + " " + props.LeaseDuration;
-			}
-			catch (StorageException e)
-			{
-				retVal = "FetchAttributesAsync on the Blob caught " + e;
-			}
-
-			return retVal;
 		}
 	}
 }
