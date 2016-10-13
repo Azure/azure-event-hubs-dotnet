@@ -20,7 +20,7 @@
   },
 
   "frameworks": {
-    "net46": {
+    "net451": {
     },
     "netstandard1.3": {
       "imports": [

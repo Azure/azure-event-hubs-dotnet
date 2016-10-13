@@ -347,7 +347,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 }
             }
 
-            return processErrorTask ?? Task.CompletedTask;
+            return processErrorTask ?? Task.FromResult(0);
         }
 
         // Encapsulates taking the receivePumpLock, checking this.receiveHandler for null,
@@ -363,7 +363,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 }
             }
 
-            return processEventsTask ?? Task.CompletedTask;
+            return processEventsTask ?? Task.FromResult(0);
         }
     }
 }
