@@ -1,5 +1,5 @@
 ﻿{
-  "version": "0.0.1-preview",
+  "version": "0.0.2-preview",
   "title": "Microsoft.Azure.EventHubs",
   "description": "Microsoft.Azure.EventHubs Class Library",
   "authors": [ "Microsoft" ],
@@ -20,7 +20,7 @@
   "frameworks": {
     "net46": {
     },
-    "netstandard1.6": {
+    "netstandard1.3": {
       "imports": "dnxcore50",
       "dependencies": {
         "NETStandard.Library": "1.6.0",
