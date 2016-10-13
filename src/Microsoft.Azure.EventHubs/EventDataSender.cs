@@ -3,7 +3,6 @@
 
 namespace Microsoft.Azure.EventHubs
 {
-    using System;
     using System.Collections.Generic;
     using System.Linq;
     using System.Threading.Tasks;
@@ -35,7 +34,8 @@ namespace Microsoft.Azure.EventHubs
             {
                 throw Fx.Exception.Argument(nameof(eventDatas), Resources.EventDataListIsNullOrEmpty);
             }
-            else if (partitionId != null && partitionKey != null)
+
+            if (partitionId != null && partitionKey != null)
             {
                 throw Fx.Exception.Argument(nameof(partitionKey), Resources.PartitionInvalidPartitionKey.FormatForUser(partitionKey, partitionId));
             }

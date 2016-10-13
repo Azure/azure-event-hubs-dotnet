@@ -118,9 +118,9 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
 
         class ProxyAssembly
         {
-            AssemblyBuilder ab;
-            ModuleBuilder mb;
-            int typeId = 0;
+            AssemblyBuilder asmBuilder;
+            ModuleBuilder moduleBuilder;
+            int typeId;
             // Method token is keyed by Type and MethodToken.
             Dictionary<Type, Dictionary<int, MethodBase>> methodLookup;
 
@@ -128,14 +128,14 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
             {
                 AssemblyName assemblyName = new AssemblyName(name);
                 assemblyName.SetPublicKey(this.GetType().GetTypeInfo().Assembly.GetName().GetPublicKey());
-                this.ab = AssemblyBuilder.DefineDynamicAssembly(assemblyName, AssemblyBuilderAccess.Run);
-                this.mb = ab.DefineDynamicModule("testmod");
+                this.asmBuilder = AssemblyBuilder.DefineDynamicAssembly(assemblyName, AssemblyBuilderAccess.Run);
+                this.moduleBuilder = asmBuilder.DefineDynamicModule("testmod");
             }
 
             public ProxyBuilder CreateProxy(string name, Type proxyBaseType)
             {
                 int nextId = Interlocked.Increment(ref typeId);
-                TypeBuilder tb = this.mb.DefineType(name + "_" + nextId, TypeAttributes.Public, proxyBaseType);
+                TypeBuilder tb = this.moduleBuilder.DefineType(name + "_" + nextId, TypeAttributes.Public, proxyBaseType);
                 return new ProxyBuilder(this, tb, proxyBaseType);
             }
 
@@ -182,9 +182,11 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
                 this.tb = tb;
                 this.proxyBaseType = proxyBaseType;
 
-                this.fields = new List<FieldBuilder>();
-                this.fields.Add(tb.DefineField("proxy", typeof(object), FieldAttributes.Private));
-                this.fields.Add(tb.DefineField("invoke", typeof(Action<object[]>), FieldAttributes.Private));
+                this.fields = new List<FieldBuilder>
+                {
+                    tb.DefineField("proxy", typeof(object), FieldAttributes.Private),
+                    tb.DefineField("invoke", typeof(Action<object[]>), FieldAttributes.Private)
+                };
             }
 
             void Complete()
@@ -449,7 +451,7 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
                     Debug.Assert(!isAddress);
                     Type argType = source.GetElementType();
                     Ldind(il, argType);
-                    Convert(il, argType, target, isAddress);
+                    Convert(il, argType, target, isAddress); //??? always false
                     return;
                 }
                 if (target.GetTypeInfo().IsValueType)
@@ -596,10 +598,7 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
             this.method = method;
         }
 
-        public MethodBase MethodBase
-        {
-            get { return this.method; }
-        }
+        public MethodBase MethodBase => this.method;
     }
 
     class MethodCallMessage : MethodMessageBase
@@ -626,30 +625,21 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
 
     class ReturnMessage : MethodMessageBase
     {
-        readonly object ret;
-        readonly Exception exception;
-
         public ReturnMessage(object ret, object[] outArgs, int outArgsCount, MethodCallMessage mcm)
             : base(mcm.MethodBase)
         {
-            this.ret = ret;
+            this.ReturnValue = ret;
         }
 
         public ReturnMessage(Exception e, MethodCallMessage mcm)
             : base(mcm.MethodBase)
         {
-            this.exception = e;
+            this.Exception = e;
         }
 
-        public object ReturnValue
-        {
-            get { return this.ret; }
-        }
+        public object ReturnValue { get; }
 
-        public Exception Exception
-        {
-            get { return this.exception; }
-        }
+        public Exception Exception { get; }
     }
 
     static class TypeHelper
@@ -671,72 +661,69 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
 
                 return TypeCode.Object;
             }
-            else
+            if (type.GetTypeInfo().IsEnum)
             {
-                if (type.GetTypeInfo().IsEnum)
-                {
-                    type = Enum.GetUnderlyingType(type);
-                }
-
-                if (type == typeof(bool))
-                {
-                    return TypeCode.Boolean;
-                }
-                else if (type == typeof(byte))
-                {
-                    return TypeCode.Byte;
-                }
-                else if (type == typeof(char))
-                {
-                    return TypeCode.Char;
-                }
-                else if (type == typeof(DateTime))
-                {
-                    return TypeCode.DateTime;
-                }
-                else if (type == typeof(decimal))
-                {
-                    return TypeCode.Decimal;
-                }
-                else if (type == typeof(double))
-                {
-                    return TypeCode.Double;
-                }
-                else if (type == typeof(short))
-                {
-                    return TypeCode.Int16;
-                }
-                else if (type == typeof(int))
-                {
-                    return TypeCode.Int32;
-                }
-                else if (type == typeof(long))
-                {
-                    return TypeCode.Int64;
-                }
-                else if (type == typeof(sbyte))
-                {
-                    return TypeCode.SByte;
-                }
-                else if (type == typeof(float))
-                {
-                    return TypeCode.Single;
-                }
-                else if (type == typeof(ushort))
-                {
-                    return TypeCode.UInt16;
-                }
-                else if (type == typeof(uint))
-                {
-                    return TypeCode.UInt32;
-                }
-                else if (type == typeof(ulong))
-                {
-                    return TypeCode.UInt64;
-                }
-
-                throw new NotImplementedException(type.ToString());
+                type = Enum.GetUnderlyingType(type);
             }
+
+            if (type == typeof(bool))
+            {
+                return TypeCode.Boolean;
+            }
+            if (type == typeof(byte))
+            {
+                return TypeCode.Byte;
+            }
+            if (type == typeof(char))
+            {
+                return TypeCode.Char;
+            }
+            if (type == typeof(DateTime))
+            {
+                return TypeCode.DateTime;
+            }
+            if (type == typeof(decimal))
+            {
+                return TypeCode.Decimal;
+            }
+            if (type == typeof(double))
+            {
+                return TypeCode.Double;
+            }
+            if (type == typeof(short))
+            {
+                return TypeCode.Int16;
+            }
+            if (type == typeof(int))
+            {
+                return TypeCode.Int32;
+            }
+            if (type == typeof(long))
+            {
+                return TypeCode.Int64;
+            }
+            if (type == typeof(sbyte))
+            {
+                return TypeCode.SByte;
+            }
+            if (type == typeof(float))
+            {
+                return TypeCode.Single;
+            }
+            if (type == typeof(ushort))
+            {
+                return TypeCode.UInt16;
+            }
+            if (type == typeof(uint))
+            {
+                return TypeCode.UInt32;
+            }
+            if (type == typeof(ulong))
+            {
+                return TypeCode.UInt64;
+            }
+
+            throw new NotImplementedException(type.ToString());
         }
     }
 }

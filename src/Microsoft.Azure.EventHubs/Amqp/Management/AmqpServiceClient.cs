@@ -18,8 +18,6 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
     {
         static readonly string[] RequiredClaims = { ClaimConstants.Manage, ClaimConstants.Listen };
         readonly AmqpEventHubClient eventHubClient;
-        readonly string address;
-        readonly T channel;
         readonly FaultTolerantAmqpObject<RequestResponseAmqpLink> link;
         readonly ActiveClientLinkManager clientLinkManager;
 
@@ -32,21 +30,15 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
             }
 
             this.eventHubClient = eventHubClient;
-            this.address = address;
-            this.channel = new AmqpClientProxy(this, typeof(T)).GetChannel();
-            this.link = new FaultTolerantAmqpObject<RequestResponseAmqpLink>((t) => this.OpenLinkAsync(t), (rrlink) => rrlink.CloseAsync(TimeSpan.FromSeconds(10)));
+            this.Address = address;
+            this.Channel = new AmqpClientProxy(this, typeof(T)).GetChannel();
+            this.link = new FaultTolerantAmqpObject<RequestResponseAmqpLink>(t => this.OpenLinkAsync(t), rrlink => rrlink.CloseAsync(TimeSpan.FromSeconds(10)));
             this.clientLinkManager = new ActiveClientLinkManager(this.eventHubClient);
         }
 
-        public string Address
-        {
-            get { return this.address; }
-        }
+        public string Address { get; }
 
-        public T Channel
-        {
-            get { return this.channel; }
-        }
+        public T Channel { get; }
 
         public override Task CloseAsync()
         {
@@ -56,16 +48,16 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
         internal void OnAbort()
         {
             RequestResponseAmqpLink innerLink;
-            if (this.link.TryGetOpenedObject(out innerLink) && innerLink != null)
+            if (this.link.TryGetOpenedObject(out innerLink))
             {
-                innerLink.Abort();
+                innerLink?.Abort();
             }
         }
 
         async Task<RequestResponseAmqpLink> OpenLinkAsync(TimeSpan timeout)
         {
             ActiveClientRequestResponseLink activeClientLink = await this.eventHubClient.OpenRequestResponseLinkAsync(
-                "svc", this.address, null, AmqpServiceClient<T>.RequiredClaims, timeout);
+                "svc", this.Address, null, AmqpServiceClient<T>.RequiredClaims, timeout);
             this.clientLinkManager.SetActiveLink(activeClientLink);
             return activeClientLink.Link;
         }
@@ -132,7 +124,7 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
                     properties.Map[requestProperty.Key] = requestProperty.Value;
                 }
 
-                this.request = AmqpMessage.Create(new AmqpValue() { Value = bodyMap ?? bodyValue });
+                this.request = AmqpMessage.Create(new AmqpValue { Value = bodyMap ?? bodyValue });
                 this.request.ApplicationProperties = properties;
 
                 this.response = await requestLink.RequestAsync(request, TimeSpan.FromMinutes(1));
@@ -165,8 +157,7 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
                     returnValue = SerializationHelper.FromAmqp(serializable, returnValue);
                     if (!expected.IsAssignableFrom(returnValue.GetType()))
                     {
-                        throw new InvalidOperationException(string.Format("Return type mismatch in {0}. Expect {1} Actual {2}",
-                            mcm.MethodBase.Name, expected.Name, returnValue.GetType().Name));
+                        throw new InvalidOperationException($"Return type mismatch in {mcm.MethodBase.Name}. Expect {expected.Name} Actual {returnValue.GetType().Name}");
                     }
                 }
 
@@ -182,11 +173,11 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
             readonly AmqpServiceClient<T> client;
             readonly Dictionary<string, MethodData> methodCache;
 
-            public AmqpClientProxy(AmqpServiceClient<T> client, Type proxiedtype)
-                : base(proxiedtype, typeof(object))
+            public AmqpClientProxy(AmqpServiceClient<T> client, Type proxiedType)
+                : base(proxiedType, typeof(object))
             {
                 this.client = client;
-                this.methodCache = GetMethodCache(proxiedtype);
+                this.methodCache = GetMethodCache(proxiedType);
             }
 
             public T GetChannel()
@@ -202,7 +193,7 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
                     throw new NotImplementedException();
                 }
 
-                object result = null;
+                object result;
                 if (md.Operation.AsyncPattern == AsyncPattern.None)
                 {
                     result = this.client.RequestAsync(md, mcm, mcm.InArgs.Length).GetAwaiter().GetResult();
@@ -269,18 +260,18 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
                     DataType[] paramTypes;
                     mi.GetParameters(ignoreCount, out paramAttributes, out paramTypes);
 
-                    if (paramAttributes.Where(p => p.Location == ManagementParamLocation.MapBody).Any() &&
-                        paramAttributes.Where(p => p.Location == ManagementParamLocation.ValueBody).Any())
+                    if (paramAttributes.Any(p => p.Location == ManagementParamLocation.MapBody) &&
+                        paramAttributes.Any(p => p.Location == ManagementParamLocation.ValueBody))
                     {
                         throw new SerializationException("Cannot have both MapBody and ValueBody for parameters in method " + mi.Name);
                     }
 
-                    if (paramAttributes.Where(p => p.Location == ManagementParamLocation.ValueBody).Count() > 2)
+                    if (paramAttributes.Count(p => p.Location == ManagementParamLocation.ValueBody) > 2)
                     {
                         throw new SerializationException("Cannot have more than one ValueBody params in method " + mi.Name);
                     }
 
-                    MethodData md = new MethodData()
+                    MethodData md = new MethodData
                     {
                         Operation = attribute,
                         Parameters = paramAttributes,
@@ -290,10 +281,9 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
                     if (typeof(Task).IsAssignableFrom(mi.ReturnType))
                     {
                         attribute.AsyncPattern = AsyncPattern.Task;
-                        Type[] genericArgs = null;
                         if (mi.ReturnType.GetTypeInfo().IsGenericType)
                         {
-                            genericArgs = mi.ReturnType.GetGenericArguments();
+                            var genericArgs = mi.ReturnType.GetGenericArguments();
                             if (genericArgs.Length > 1)
                             {
                                 throw new NotSupportedException(mi.Name + ": Return type can have at most one generic argument");
@@ -356,10 +346,7 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
 
         class TaskSource<TResult> : TaskCompletionSource<TResult>, ITaskSource
         {
-            public object TaskObject
-            {
-                get { return this.Task; }
-            }
+            public object TaskObject => this.Task;
 
             public AmqpClientProxy Proxy { get; set; }
 

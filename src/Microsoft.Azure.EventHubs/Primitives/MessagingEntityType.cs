@@ -17,6 +17,6 @@ namespace Microsoft.Azure.EventHubs
         Partition = 9,
         Checkpoint = 10,
         RevokedPublisher = 11,
-        Unknown = (int)0x7FFFFFFE,
+        Unknown = 0x7FFFFFFE,
     }
 }

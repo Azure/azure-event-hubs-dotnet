@@ -5,7 +5,6 @@ namespace Microsoft.Azure.EventHubs.Processor
 {
     using System;
     using System.Collections.Generic;
-    using System.Diagnostics.Tracing;
     using System.Text.RegularExpressions;
     using System.Threading.Tasks;
 
@@ -83,9 +82,11 @@ namespace Microsoft.Azure.EventHubs.Processor
             Checkpoint checkpoint = null;
             if (lease != null && lease.Offset != null)
             {
-                checkpoint = new Checkpoint(partitionId);
-                checkpoint.Offset = lease.Offset;
-                checkpoint.SequenceNumber = lease.SequenceNumber;
+                checkpoint = new Checkpoint(partitionId)
+                {
+                    Offset = lease.Offset,
+                    SequenceNumber = lease.SequenceNumber
+                };
             }
 
     	    return checkpoint;
@@ -223,7 +224,7 @@ namespace Microsoft.Azure.EventHubs.Processor
 
         public async Task<Lease> CreateLeaseIfNotExistsAsync(string partitionId) // throws URISyntaxException, IOException, StorageException
         {
-        	AzureBlobLease returnLease = null;
+        	AzureBlobLease returnLease;
     	    try
     	    {
     		    CloudBlockBlob leaseBlob = this.consumerGroupDirectory.GetBlockBlobReference(partitionId);
@@ -264,11 +265,11 @@ namespace Microsoft.Azure.EventHubs.Processor
     	    return returnLease;
         }
 
-        public async Task DeleteLeaseAsync(Lease lease)
+        public Task DeleteLeaseAsync(Lease lease)
         {
             var azureBlobLease = (AzureBlobLease)lease;
             ProcessorEventSource.Log.AzureStorageManagerInfo(this.host.Id, azureBlobLease.PartitionId, "Deleting lease");
-            await azureBlobLease.Blob.DeleteIfExistsAsync();
+            return azureBlobLease.Blob.DeleteIfExistsAsync();
         }
 
         public Task<bool> AcquireLeaseAsync(Lease lease)
@@ -284,7 +285,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             string partitionId = lease.PartitionId;
         	try
             {
-                string newToken = null;
+                string newToken;
                 await leaseBlob.FetchAttributesAsync();
                 if (leaseBlob.Properties.LeaseState == LeaseState.Leased)
                 {
@@ -361,9 +362,11 @@ namespace Microsoft.Azure.EventHubs.Processor
         	try
             {
                 string leaseId = lease.Token;
-                AzureBlobLease releasedCopy = new AzureBlobLease(lease);
-                releasedCopy.Token = string.Empty;
-                releasedCopy.Owner = string.Empty;
+                AzureBlobLease releasedCopy = new AzureBlobLease(lease)
+                {
+                    Token = string.Empty,
+                    Owner = string.Empty
+                };
                 await leaseBlob.UploadTextAsync(JsonConvert.SerializeObject(releasedCopy), null, AccessCondition.GenerateLeaseCondition(leaseId), null, null);
                 await leaseBlob.ReleaseLeaseAsync(AccessCondition.GenerateLeaseCondition(leaseId));
             }
@@ -375,7 +378,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                 }
                 else
                 {
-                    throw se;
+                    throw;
                 }
             }
     	
@@ -417,16 +420,14 @@ namespace Microsoft.Azure.EventHubs.Processor
                 await leaseBlob.UploadTextAsync(jsonToUpload, null, AccessCondition.GenerateLeaseCondition(token), null, null);
             }
     	    catch (StorageException se)
-            {
-                if (WasLeaseLost(partitionId, se))
+	        {
+	            if (WasLeaseLost(partitionId, se))
                 {
                     throw new LeaseLostException(lease, se);
                 }
-                else
-                {
-                    throw se;
-                }
-            }
+
+                throw;
+	        }
     	
         	return true;
         }

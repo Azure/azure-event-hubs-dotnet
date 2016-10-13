@@ -43,7 +43,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
         protected override async Task OnSendAsync(IEnumerable<EventData> eventDatas, string partitionKey)
         {
-            bool shouldRetry = false;
+            bool shouldRetry;
 
             var timeoutHelper = new TimeoutHelper(this.EventHubClient.ConnectionStringBuilder.OperationTimeout, true);
 
@@ -149,7 +149,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     link,
                     this.EventHubClient.ConnectionStringBuilder.Endpoint.AbsoluteUri, // audience
                     this.EventHubClient.ConnectionStringBuilder.Endpoint.AbsoluteUri, // endpointUri
-                    new string[] { ClaimConstants.Send },
+                    new[] { ClaimConstants.Send },
                     true,
                     expiresAt);
 

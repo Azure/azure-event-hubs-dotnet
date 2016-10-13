@@ -3,8 +3,6 @@
 
 namespace Microsoft.Azure.EventHubs
 {
-    using System;
-
     public sealed class MessagingEntityNotFoundException : EventHubsException
     {
         public MessagingEntityNotFoundException(string message)

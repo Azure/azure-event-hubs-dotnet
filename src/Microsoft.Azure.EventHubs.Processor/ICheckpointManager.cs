@@ -3,7 +3,6 @@
 
 namespace Microsoft.Azure.EventHubs.Processor
 {
-    using System;
     using System.Threading.Tasks;
 
     /// <summary>

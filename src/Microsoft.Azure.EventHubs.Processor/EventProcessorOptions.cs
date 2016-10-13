@@ -32,7 +32,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             this.MaxBatchSize = 10;
             this.PrefetchCount = 300;
             this.ReceiveTimeout = TimeSpan.FromMinutes(1);
-            this.InitialOffsetProvider = (partitionId) => { return PartitionReceiver.StartOfStream; };
+            this.InitialOffsetProvider = partitionId => PartitionReceiver.StartOfStream;
         }
 
         /// <summary>
