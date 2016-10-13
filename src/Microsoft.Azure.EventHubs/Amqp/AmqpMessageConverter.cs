@@ -256,13 +256,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
         {
             MemoryStream memoryStream = new MemoryStream(512);
             stream.CopyTo(memoryStream, 512);
-
-            // TryGetBuffer will always succeed unless we provide the byte[] when calling MemoryStream..ctor(byte[])
-            ArraySegment<byte> buffer;
-            if (!memoryStream.TryGetBuffer(out buffer))
-            {
-                buffer = new ArraySegment<byte>(memoryStream.ToArray());
-            }
+            ArraySegment<byte> buffer = new ArraySegment<byte>(memoryStream.ToArray());
 
             return buffer;
         }

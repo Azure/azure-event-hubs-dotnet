@@ -112,13 +112,12 @@ namespace Microsoft.Azure.EventHubs.Processor
         public Task DeleteCheckpointAsync(string partitionId)
         {
             // Make this a no-op to avoid deleting leases by accident.
-            return Task.CompletedTask;
+            return Task.FromResult(0);
         }
 
         //
         // Lease operations.
         //
-
         public TimeSpan LeaseRenewInterval
         {
             get
