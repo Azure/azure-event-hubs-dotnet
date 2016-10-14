@@ -45,9 +45,12 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
         public static AmqpMessage EventDatasToAmqpMessage(IEnumerable<EventData> eventDatas, string partitionKey, bool batchable)
         {
+            if (eventDatas == null)
+                throw new ArgumentNullException(nameof(eventDatas));
+
             AmqpMessage returnMessage = null;
-            int dataCount = eventDatas.Count();
-            if (eventDatas != null && dataCount > 1)
+            var dataCount = eventDatas.Count();
+            if (dataCount > 1)
             {
                 IList<Data> bodyList = new List<Data>();
                 EventData firstEvent = null;
@@ -77,7 +80,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 returnMessage.MessageFormat = AmqpConstants.AmqpBatchedMessageFormat;
                 UpdateAmqpMessageHeadersAndProperties(returnMessage, null, partitionKey, firstEvent, copyUserProperties: false);
             }
-            else if (eventDatas != null && dataCount == 1)
+            else if (dataCount == 1) // ??? can't be null
             {
                 var data = eventDatas.First();
                 //this.ProcessFaultInjectionInfo(data);
@@ -136,7 +139,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
                 foreach (var pair in eventData.Properties)
                 {
-                    object amqpObject = null;
+                    object amqpObject;
                     if (TryGetAmqpObjectFromNetObject(pair.Value, MappingType.ApplicationProperty, out amqpObject))
                     {
                         message.ApplicationProperties.Map[pair.Key] = amqpObject;
@@ -145,7 +148,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
             }
         }
 
-        public static void UpdateEventDataHeaderAndProperties(AmqpMessage amqpMessage, EventData data)
+        private static void UpdateEventDataHeaderAndProperties(AmqpMessage amqpMessage, EventData data)
         {
             //Fx.AssertAndThrow(amqpMessage.DeliveryTag != null, "AmqpMessage should always contain delivery tag.");
             //data.DeliveryTag = amqpMessage.DeliveryTag;
@@ -192,25 +195,25 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 }
 
                 string partitionKey;
-                if (amqpMessage.MessageAnnotations.Map.TryGetValue<string>(PartitionKeyName, out partitionKey))
+                if (amqpMessage.MessageAnnotations.Map.TryGetValue(AmqpMessageConverter.PartitionKeyName, out partitionKey))
                 {
                     data.SystemProperties.PartitionKey = partitionKey;
                 }
 
                 DateTime enqueuedTimeUtc;
-                if (amqpMessage.MessageAnnotations.Map.TryGetValue<DateTime>(AmqpMessageConverter.EnqueuedTimeUtcName, out enqueuedTimeUtc))
+                if (amqpMessage.MessageAnnotations.Map.TryGetValue(AmqpMessageConverter.EnqueuedTimeUtcName, out enqueuedTimeUtc))
                 {
                     data.SystemProperties.EnqueuedTimeUtc = enqueuedTimeUtc;
                 }
 
                 long sequenceNumber;
-                if (amqpMessage.MessageAnnotations.Map.TryGetValue<long>(AmqpMessageConverter.SequenceNumberName, out sequenceNumber))
+                if (amqpMessage.MessageAnnotations.Map.TryGetValue(AmqpMessageConverter.SequenceNumberName, out sequenceNumber))
                 {
                     data.SystemProperties.SequenceNumber = sequenceNumber;
                 }
 
                 string offset;
-                if (amqpMessage.MessageAnnotations.Map.TryGetValue<string>(AmqpMessageConverter.OffsetName, out offset))
+                if (amqpMessage.MessageAnnotations.Map.TryGetValue(AmqpMessageConverter.OffsetName, out offset))
                 {
                     data.SystemProperties.Offset = offset;
                 }
@@ -330,8 +333,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
                         amqpObject = new AmqpMap((IDictionary)netObject);
                     }
                     break;
-                default:
-                    break;
             }
 
             return amqpObject != null;
@@ -423,8 +424,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     {
                         netObject = amqpObject;
                     }
-                    break;
-                default:
                     break;
             }
 

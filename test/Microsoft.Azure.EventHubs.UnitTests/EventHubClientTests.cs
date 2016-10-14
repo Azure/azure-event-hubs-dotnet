@@ -78,17 +78,13 @@
             WriteLine("Closing partition sender");
             await pSender.CloseAsync();
 
-            try
+            await Assert.ThrowsAsync<ObjectDisposedException>(async () =>
             {
                 WriteLine("Sending another event to partition 0 on the closed sender, this should fail");
                 eventData = new EventData(Encoding.UTF8.GetBytes("Hello EventHub!"));
                 await pSender.SendAsync(eventData);
                 throw new InvalidOperationException("Send should have failed");
-            }
-            catch (ObjectDisposedException)
-            {
-                WriteLine("Caught ObjectDisposedException as expected");
-            }
+            });
 
             await pReceiver.CloseAsync();
         }
@@ -110,55 +106,42 @@
             WriteLine("Closing partition receiver");
             await pReceiver.CloseAsync();
 
-            try
+            await Assert.ThrowsAsync<ObjectDisposedException>(async () =>
             {
                 WriteLine("Receiving another event from partition 0 on the closed receiver, this should fail");
                 await pReceiver.ReceiveAsync(1);
                 throw new InvalidOperationException("Receive should have failed");
-            }
-            catch (ObjectDisposedException)
-            {
-                WriteLine("Caught ObjectDisposedException as expected");
-            }
+            });
         }
-
-        /// <summary>
-        /// EventHubClient.CreateFromConnectionString expects entity path in the provided connection string.
-        /// </summary>
         [Fact]
-        void CreateClientWithoutEntityPathShouldFail()
+        Task CreateClientWithoutEntityPathShouldFail()
         {
             // Remove entity path from connection string.
             var csb = new EventHubsConnectionStringBuilder(this.connectionString);
             csb.EntityPath = null;
 
-            try
-            {
-                EventHubClient.CreateFromConnectionString(csb.ToString());
-                throw new Exception("Entity path wasn't provided in the connection string and this new call was supposed to fail");
-            }
-            catch (ArgumentException)
-            {
-                WriteLine("Caught ArgumentException as expected.");
-            }
+            return Assert.ThrowsAsync<ArgumentException>(() =>
+             {
+                 EventHubClient.CreateFromConnectionString(csb.ToString());
+                 throw new Exception("Entity path wasn't provided in the connection string and this new call was supposed to fail");
+             });
         }
-
         [Fact]
-        async Task EventHubClientSend()
+        Task EventHubClientSend()
         {
             WriteLine("Sending single Event via EventHubClient.SendAsync(EventData, string)");
             var eventData = new EventData(Encoding.UTF8.GetBytes("Hello EventHub by partitionKey!"));
-            await this.EventHubClient.SendAsync(eventData, "SomePartitionKeyHere");
+            return this.EventHubClient.SendAsync(eventData, "SomePartitionKeyHere");
         }
 
         [Fact]
-        async Task EventHubClientSendBatch()
+        Task EventHubClientSendBatch()
         {
             WriteLine("Sending multiple Events via EventHubClient.SendAsync(IEnumerable<EventData>)");
             var eventData1 = new EventData(Encoding.UTF8.GetBytes("Hello EventHub!"));
             var eventData2 = new EventData(Encoding.UTF8.GetBytes("This is another message in the batch!"));
             eventData2.Properties = new Dictionary<string, object> { ["ContosoEventType"] = "some value here" };
-            await this.EventHubClient.SendAsync(new[] { eventData1, eventData2 });
+            return this.EventHubClient.SendAsync(new[] { eventData1, eventData2 });
         }
 
         [Fact]

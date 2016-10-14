@@ -5,7 +5,6 @@ namespace Microsoft.Azure.EventHubs
 {
     using System;
     using System.Collections.Concurrent;
-    using System.Threading;
 
     public abstract class RetryPolicy
     {

@@ -237,8 +237,10 @@ namespace Microsoft.Azure.EventHubs.Processor
                 // Override operation timeout by receive timeout?
                 if (processorOptions.ReceiveTimeout > TimeSpan.MinValue)
                 {
-                    var cbs = new EventHubsConnectionStringBuilder(this.EventHubConnectionString);
-                    cbs.OperationTimeout = processorOptions.ReceiveTimeout;
+                    var cbs = new EventHubsConnectionStringBuilder(this.EventHubConnectionString)
+                    {
+                        OperationTimeout = processorOptions.ReceiveTimeout
+                    };
                     this.EventHubConnectionString = cbs.ToString();
                 }
 

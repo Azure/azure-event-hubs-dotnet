@@ -4,7 +4,6 @@
 namespace Microsoft.Azure.EventHubs.Amqp
 {
     using System;
-    using System.Globalization;
     using System.Threading;
     using Microsoft.Azure.Amqp;
 

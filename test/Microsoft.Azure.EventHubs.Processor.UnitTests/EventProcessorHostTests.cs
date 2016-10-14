@@ -6,10 +6,8 @@
     using System.Diagnostics;
     using System.Linq;
     using System.Text;
-    using System.Threading;
     using System.Threading.Tasks;
     using Xunit;
-    using Xunit.Abstractions;
 
     public class EventProcessorHostTests
     {
@@ -389,7 +387,7 @@
             // Generate a new lease container name that will be used through out the test.
             string leaseContainerName = Guid.NewGuid().ToString();
 
-            var consumerGroupNames = new string[] { PartitionReceiver.DefaultConsumerGroupName, customConsumerGroupName };
+            var consumerGroupNames = new[]  { PartitionReceiver.DefaultConsumerGroupName, customConsumerGroupName };
             var processorOptions = new EventProcessorOptions { ReceiveTimeout = TimeSpan.FromSeconds(15) };
             var processorFactory = new TestEventProcessorFactory();
             var partitionReceiveEvents = new ConcurrentDictionary<string, AsyncAutoResetEvent>();
@@ -506,7 +504,7 @@
             var processorOptions = new EventProcessorOptions
             {
                 ReceiveTimeout = TimeSpan.FromSeconds(15),
-                InitialOffsetProvider = (partitionId) => lastEnqueueDateTime
+                InitialOffsetProvider = partitionId => lastEnqueueDateTime
             };
 
             var receivedEvents = await this.RunGenericScenario(eventProcessorHost, processorOptions);
@@ -532,7 +530,7 @@
             var processorOptions = new EventProcessorOptions
             {
                 ReceiveTimeout = TimeSpan.FromSeconds(15),
-                InitialOffsetProvider = (partitionId) => lastEvents[partitionId].SystemProperties.Offset
+                InitialOffsetProvider = partitionId => lastEvents[partitionId].SystemProperties.Offset
             };
 
             var receivedEvents = await this.RunGenericScenario(eventProcessorHost, processorOptions);
@@ -568,7 +566,7 @@
             var processorOptions = new EventProcessorOptions
             {
                 ReceiveTimeout = TimeSpan.FromSeconds(15),
-                InitialOffsetProvider = (partitionId) => PartitionReceiver.StartOfStream
+                InitialOffsetProvider = partitionId => PartitionReceiver.StartOfStream
             };
             var receivedEvents = await this.RunGenericScenario(eventProcessorHost, processorOptions);
 

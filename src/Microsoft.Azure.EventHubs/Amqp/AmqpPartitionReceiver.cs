@@ -6,11 +6,9 @@ namespace Microsoft.Azure.EventHubs.Amqp
     using System;
     using System.Collections.Generic;
     using System.Globalization;
-    using System.Linq;
     using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Azure.Amqp;
-    using Microsoft.Azure.Amqp.Encoding;
     using Microsoft.Azure.Amqp.Framing;
 
     class AmqpPartitionReceiver : PartitionReceiver
@@ -52,7 +50,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
         protected override async Task<IList<EventData>> OnReceiveAsync(int maxMessageCount, TimeSpan waitTime)
         {
-            bool shouldRetry = false;
+            bool shouldRetry;
 
             var timeoutHelper = new TimeoutHelper(waitTime, true);
 
@@ -68,7 +66,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                         IEnumerable<AmqpMessage> amqpMessages = null;
                         bool hasMessages = await Task.Factory.FromAsync(
                             (c, s) => receiveLink.BeginReceiveMessages(maxMessageCount, timeoutHelper.RemainingTime(), c, s),
-                            (a) => receiveLink.EndReceiveMessages(a, out amqpMessages),
+                            a => receiveLink.EndReceiveMessages(a, out amqpMessages),
                             this);
 
                         if (receiveLink.TerminalException != null)
@@ -214,7 +212,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     link,
                     this.EventHubClient.ConnectionStringBuilder.Endpoint.AbsoluteUri, // audience
                     this.EventHubClient.ConnectionStringBuilder.Endpoint.AbsoluteUri, // endpointUri
-                    new string[] { ClaimConstants.Listen },
+                    new[] { ClaimConstants.Listen },
                     true,
                     expiresAt);
 
@@ -264,8 +262,8 @@ namespace Microsoft.Azure.EventHubs.Amqp
         static long TimeStampEncodingGetMilliseconds(DateTime value)
         {
             DateTime utcValue = value.ToUniversalTime();
-            double millisecs = (utcValue - AmqpConstants.StartOfEpoch).TotalMilliseconds;
-            return (long)millisecs;
+            double milliseconds = (utcValue - AmqpConstants.StartOfEpoch).TotalMilliseconds;
+            return (long)milliseconds;
         }
 
         async Task ReceivePumpAsync(CancellationToken cancellationToken)
@@ -285,10 +283,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                             // Pump has been shutdown, nothing more to do.
                             return;
                         }
-                        else
-                        {
-                            batchSize = receiveHandler.MaxBatchSize;
-                        }
+                        batchSize = receiveHandler.MaxBatchSize;
                     }
 
                     receivedEvents = await this.ReceiveAsync(batchSize);

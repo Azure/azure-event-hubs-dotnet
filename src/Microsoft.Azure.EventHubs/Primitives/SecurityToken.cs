@@ -65,58 +65,19 @@ namespace Microsoft.Azure.EventHubs
             GetExpirationDateAndAudienceFromToken(tokenString, out this.expiresAtUtc, out this.audience);
         }
 
-        public string Audience
-        {
-            get
-            {
-                return this.audience;
-            }
-        }
+        public string Audience => this.audience;
 
-        public DateTime ExpiresAtUtc
-        {
-            get
-            {
-                return this.expiresAtUtc;
-            }
-        }
+        public DateTime ExpiresAtUtc => this.expiresAtUtc;
 
-        protected virtual string ExpiresOnFieldName
-        {
-            get
-            {
-                return InternalExpiresOnFieldName;
-            }
-        }
+        protected virtual string ExpiresOnFieldName => InternalExpiresOnFieldName;
 
-        protected virtual string AudienceFieldName
-        {
-            get
-            {
-                return InternalAudienceFieldName;
-            }
-        }
+        protected virtual string AudienceFieldName => InternalAudienceFieldName;
 
-        protected virtual string KeyValueSeparator
-        {
-            get
-            {
-                return InternalKeyValueSeparator;
-            }
-        }
+        protected virtual string KeyValueSeparator => InternalKeyValueSeparator;
 
-        protected virtual string PairSeparator
-        {
-            get
-            {
-                return InternalPairSeparator;
-            }
-        }
+        protected virtual string PairSeparator => InternalPairSeparator;
 
-        public object TokenValue
-        {
-            get { return this.token; }
-        }
+        public object TokenValue => this.token;
 
         string GetAudienceFromToken(string token)
         {
@@ -150,10 +111,10 @@ namespace Microsoft.Azure.EventHubs
         static IDictionary<string, string> Decode(string encodedString, Func<string, string> keyDecoder, Func<string, string> valueDecoder, string keyValueSeparator, string pairSeparator)
         {
             IDictionary<string, string> dictionary = new Dictionary<string, string>();
-            IEnumerable<string> valueEncodedPairs = encodedString.Split(new string[] { pairSeparator }, StringSplitOptions.None);
+            IEnumerable<string> valueEncodedPairs = encodedString.Split(new[] { pairSeparator }, StringSplitOptions.None);
             foreach (string valueEncodedPair in valueEncodedPairs)
             {
-                string[] pair = valueEncodedPair.Split(new string[] { keyValueSeparator }, StringSplitOptions.None);
+                string[] pair = valueEncodedPair.Split(new[] { keyValueSeparator }, StringSplitOptions.None);
                 if (pair.Length != 2)
                 {
                     throw new FormatException(Resources.InvalidEncoding);
