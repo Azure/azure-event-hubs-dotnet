@@ -190,74 +190,79 @@
 
             int hostCount = 2;
             var hosts = new List<EventProcessorHost>();
-            for (int i = 0; i < hostCount; i++)
+            try
             {
-                WriteLine($"Creating EventProcessorHost");
-                var eventProcessorHost = new EventProcessorHost(
-                    string.Empty,
-                    PartitionReceiver.DefaultConsumerGroupName,
-                    this.EventHubConnectionString,
-                    this.StorageConnectionString,
-                    this.LeaseContainerName);
-                hosts.Add(eventProcessorHost);
-                WriteLine($"Calling RegisterEventProcessorAsync");
-                var processorOptions = new EventProcessorOptions
+                for (int i = 0; i < hostCount; i++)
                 {
-                    ReceiveTimeout = TimeSpan.FromSeconds(10),
-                    InvokeProcessorAfterReceiveTimeout = true
-                };
-
-                var processorFactory = new TestEventProcessorFactory();
-                processorFactory.OnCreateProcessor += (f, createArgs) =>
-                {
-                    var processor = createArgs.Item2;
-                    string partitionId = createArgs.Item1.PartitionId;
-                    string hostName = createArgs.Item1.Owner;
-                    processor.OnOpen += (_, partitionContext) => WriteLine($"{hostName} > Partition {partitionId} TestEventProcessor opened");
-                    processor.OnClose += (_, closeArgs) => WriteLine($"{hostName} > Partition {partitionId} TestEventProcessor closing: {closeArgs.Item2}");
-                    processor.OnProcessError += (_, errorArgs) => WriteLine($"{hostName} > Partition {partitionId} TestEventProcessor process error {errorArgs.Item2.Message}");
-                    processor.OnProcessEvents += (_, eventsArgs) =>
+                    WriteLine($"Creating EventProcessorHost");
+                    var eventProcessorHost = new EventProcessorHost(
+                        string.Empty,
+                        PartitionReceiver.DefaultConsumerGroupName,
+                        this.EventHubConnectionString,
+                        this.StorageConnectionString,
+                        this.LeaseContainerName);
+                    hosts.Add(eventProcessorHost);
+                    WriteLine($"Calling RegisterEventProcessorAsync");
+                    var processorOptions = new EventProcessorOptions
                     {
-                        int eventCount = eventsArgs.Item2 != null ? eventsArgs.Item2.events.Count() : 0;
-                        WriteLine($"{hostName} > Partition {partitionId} TestEventProcessor processing {eventCount} event(s)");
-                        if (eventCount > 0)
-                        {
-                            var receivedEvent = partitionReceiveEvents[partitionId];
-                            receivedEvent.Set();
-                        }
+                        ReceiveTimeout = TimeSpan.FromSeconds(10),
+                        InvokeProcessorAfterReceiveTimeout = true
                     };
-                };
 
-                await eventProcessorHost.RegisterEventProcessorFactoryAsync(processorFactory, processorOptions);
+                    var processorFactory = new TestEventProcessorFactory();
+                    processorFactory.OnCreateProcessor += (f, createArgs) =>
+                    {
+                        var processor = createArgs.Item2;
+                        string partitionId = createArgs.Item1.PartitionId;
+                        string hostName = createArgs.Item1.Owner;
+                        processor.OnOpen += (_, partitionContext) => WriteLine($"{hostName} > Partition {partitionId} TestEventProcessor opened");
+                        processor.OnClose += (_, closeArgs) => WriteLine($"{hostName} > Partition {partitionId} TestEventProcessor closing: {closeArgs.Item2}");
+                        processor.OnProcessError += (_, errorArgs) => WriteLine($"{hostName} > Partition {partitionId} TestEventProcessor process error {errorArgs.Item2.Message}");
+                        processor.OnProcessEvents += (_, eventsArgs) =>
+                        {
+                            int eventCount = eventsArgs.Item2 != null ? eventsArgs.Item2.events.Count() : 0;
+                            WriteLine($"{hostName} > Partition {partitionId} TestEventProcessor processing {eventCount} event(s)");
+                            if (eventCount > 0)
+                            {
+                                var receivedEvent = partitionReceiveEvents[partitionId];
+                                receivedEvent.Set();
+                            }
+                        };
+                    };
+
+                    await eventProcessorHost.RegisterEventProcessorFactoryAsync(processorFactory, processorOptions);
+                }
+
+                WriteLine($"Waiting for partition ownership to settle...");
+                await Task.Delay(TimeSpan.FromSeconds(30));
+
+                WriteLine($"Sending an event to each partition");
+                var sendTasks = new List<Task>();
+                foreach (var partitionId in PartitionIds)
+                {
+                    sendTasks.Add(this.SendToPartitionAsync(partitionId, $"{partitionId} event.", this.ConnectionStringBuilder.ToString()));
+                }
+                await Task.WhenAll(sendTasks);
+
+                WriteLine($"Verifying an event was received by each partition");
+                foreach (var partitionId in PartitionIds)
+                {
+                    var receivedEvent = partitionReceiveEvents[partitionId];
+                    bool partitionReceivedMessage = await receivedEvent.WaitAsync(TimeSpan.FromSeconds(30));
+                    Assert.True(partitionReceivedMessage, $"Partition {partitionId} didn't receive any message!");
+                }
             }
-
-            WriteLine($"Waiting for partition ownership to settle...");
-            await Task.Delay(TimeSpan.FromSeconds(30));
-
-            WriteLine($"Sending an event to each partition");
-            var sendTasks = new List<Task>();
-            foreach (var partitionId in PartitionIds)
+            finally
             {
-                sendTasks.Add(this.SendToPartitionAsync(partitionId, $"{partitionId} event.", this.ConnectionStringBuilder.ToString()));
-            }
-            await Task.WhenAll(sendTasks);
+                var shutdownTasks = new List<Task>();
+                foreach (var host in hosts)
+                {
+                    WriteLine($"Host {host.HostName} Calling UnregisterEventProcessorAsync.");
+                    shutdownTasks.Add(host.UnregisterEventProcessorAsync());
+                }
 
-            WriteLine($"Verifying an event was received by each partition");
-            foreach (var partitionId in PartitionIds)
-            {
-                var receivedEvent = partitionReceiveEvents[partitionId];
-                bool partitionReceivedMessage = await receivedEvent.WaitAsync(TimeSpan.FromSeconds(30));
-                Assert.True(partitionReceivedMessage, $"Partition {partitionId} didn't receive any message!");
+                await Task.WhenAll(shutdownTasks);
             }
-
-            var shutdownTasks = new List<Task>();
-            for (int i = 0; i < hostCount; i++)
-            {
-                WriteLine($"Host{i} Calling UnregisterEventProcessorAsync.");
-                shutdownTasks.Add(hosts[i].UnregisterEventProcessorAsync());
-            }
-
-            await Task.WhenAll(shutdownTasks);
         }
 
         [Fact]
@@ -379,11 +384,30 @@
         [Fact]
         async Task MultipleConsumerGroups()
         {
-            var consumerGroupNames = new string[] { PartitionReceiver.DefaultConsumerGroupName, "cgroup1"};
+            var customConsumerGroupName = "cgroup1";
+
+            // Generate a new lease container name that will be used through out the test.
+            string leaseContainerName = Guid.NewGuid().ToString();
+
+            var consumerGroupNames = new string[] { PartitionReceiver.DefaultConsumerGroupName, customConsumerGroupName };
             var processorOptions = new EventProcessorOptions { ReceiveTimeout = TimeSpan.FromSeconds(15) };
             var processorFactory = new TestEventProcessorFactory();
             var partitionReceiveEvents = new ConcurrentDictionary<string, AsyncAutoResetEvent>();
             var hosts = new List<EventProcessorHost>();
+
+            // Confirm that custom consumer group exists before starting hosts.
+            try
+            {
+                // Create a receiver on the consumer group and try to receive.
+                // Receive call will fail if consumer group is missing.
+                var ehClient = EventHubClient.CreateFromConnectionString(this.EventHubConnectionString);
+                var receiver = ehClient.CreateReceiver(customConsumerGroupName, this.PartitionIds.First(), PartitionReceiver.StartOfStream);
+                await receiver.ReceiveAsync(1, TimeSpan.FromSeconds(5));
+            }
+            catch (MessagingEntityNotFoundException)
+            {
+                throw new Exception($"Cunsumer group {customConsumerGroupName} cannot be found. MultipleConsumerGroups unit test requires consumer group '{customConsumerGroupName}' to be created before running the test.");
+            }
 
             processorFactory.OnCreateProcessor += (f, createArgs) =>
             {
@@ -406,53 +430,58 @@
                 };
             };
 
-            // Register a new host for each consumer group.
-            foreach (var consumerGroupName in consumerGroupNames)
+            try
             {
-                var eventProcessorHost = new EventProcessorHost(
-                    string.Empty,
-                    consumerGroupName,
-                    this.EventHubConnectionString,
-                    this.StorageConnectionString,
-                    this.LeaseContainerName);
-
-                WriteLine($"Calling RegisterEventProcessorAsync on consumer group {consumerGroupName}");
-
-                foreach (var partitionId in PartitionIds)
+                // Register a new host for each consumer group.
+                foreach (var consumerGroupName in consumerGroupNames)
                 {
-                    partitionReceiveEvents[consumerGroupName + "-" + partitionId] = new AsyncAutoResetEvent(false);
+                    var eventProcessorHost = new EventProcessorHost(
+                        string.Empty,
+                        consumerGroupName,
+                        this.EventHubConnectionString,
+                        this.StorageConnectionString,
+                        leaseContainerName);
+
+                    WriteLine($"Calling RegisterEventProcessorAsync on consumer group {consumerGroupName}");
+
+                    foreach (var partitionId in PartitionIds)
+                    {
+                        partitionReceiveEvents[consumerGroupName + "-" + partitionId] = new AsyncAutoResetEvent(false);
+                    }
+
+                    await eventProcessorHost.RegisterEventProcessorFactoryAsync(processorFactory, processorOptions);
+                    hosts.Add(eventProcessorHost);
                 }
 
-                await eventProcessorHost.RegisterEventProcessorFactoryAsync(processorFactory, processorOptions);
-                hosts.Add(eventProcessorHost);
-            }
-
-            WriteLine($"Sending an event to each partition");
-            var sendTasks = new List<Task>();
-            foreach (var partitionId in PartitionIds)
-            {
-                sendTasks.Add(this.SendToPartitionAsync(partitionId, $"{partitionId} event.", this.ConnectionStringBuilder.ToString()));
-            }
-
-            await Task.WhenAll(sendTasks);
-
-            WriteLine($"Verifying an event was received by each partition for each consumer group");
-            foreach (var consumerGroupName in consumerGroupNames)
-            {
+                WriteLine($"Sending an event to each partition");
+                var sendTasks = new List<Task>();
                 foreach (var partitionId in PartitionIds)
                 {
-                    var receivedEvent = partitionReceiveEvents[consumerGroupName + "-" + partitionId];
-                    bool partitionReceivedMessage = await receivedEvent.WaitAsync(TimeSpan.FromSeconds(30));
-                    Assert.True(partitionReceivedMessage, $"ConsumerGroup {consumerGroupName} > Partition {partitionId} didn't receive any message!");
+                    sendTasks.Add(this.SendToPartitionAsync(partitionId, $"{partitionId} event.", this.ConnectionStringBuilder.ToString()));
                 }
+
+                await Task.WhenAll(sendTasks);
+
+                WriteLine($"Verifying an event was received by each partition for each consumer group");
+                foreach (var consumerGroupName in consumerGroupNames)
+                {
+                    foreach (var partitionId in PartitionIds)
+                    {
+                        var receivedEvent = partitionReceiveEvents[consumerGroupName + "-" + partitionId];
+                        bool partitionReceivedMessage = await receivedEvent.WaitAsync(TimeSpan.FromSeconds(30));
+                        Assert.True(partitionReceivedMessage, $"ConsumerGroup {consumerGroupName} > Partition {partitionId} didn't receive any message!");
+                    }
+                }
+
+                WriteLine($"Success");
             }
-
-            WriteLine($"Success");
-
-            WriteLine($"Calling UnregisterEventProcessorAsync on both hosts.");
-            foreach (var eph in hosts)
+            finally
             {
-                await eph.UnregisterEventProcessorAsync();
+                WriteLine($"Calling UnregisterEventProcessorAsync on both hosts.");
+                foreach (var eph in hosts)
+                {
+                    await eph.UnregisterEventProcessorAsync();
+                }
             }
         }
 
@@ -515,7 +544,7 @@
         [Fact]
         async Task InitialOffsetProviderOverrideBehavior()
         {
-            // Generate a new lease container name that will use through out the test.
+            // Generate a new lease container name that will be used through out the test.
             string leaseContainerName = Guid.NewGuid().ToString();
 
             // First host will send and receive as usual.
@@ -612,7 +641,7 @@
         [Fact]
         async Task NoCheckpointThenNewHostReadsFromStart()
         {
-            // Generate a new lease container name that will use through out the test.
+            // Generate a new lease container name that will be used through out the test.
             string leaseContainerName = Guid.NewGuid().ToString();
 
             // Consume all messages with first host.
@@ -625,7 +654,7 @@
             var receivedEvents1 = await RunGenericScenario(eventProcessorHostFirst, checkPointLastEvent: false);
             var totalEventsFromFirstHost = receivedEvents1.Sum(part => part.Value.Count);
 
-            // Seconds time we initiate a host, it should pick from where previous host left.
+            // Second time we initiate a host, it should pick from where previous host left.
             // In other words, it shouldn't start receiving from start of the stream.
             var eventProcessorHostSecond = new EventProcessorHost(
                 string.Empty,

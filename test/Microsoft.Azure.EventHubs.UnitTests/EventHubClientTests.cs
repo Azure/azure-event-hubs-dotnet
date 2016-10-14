@@ -639,8 +639,8 @@
         {
             // Rebuild connection string with a nonexistent entity.
             var conSettings = new EventHubsConnectionStringBuilder(this.connectionString);
-            var conString = this.connectionString.Replace(conSettings.EntityPath, Guid.NewGuid().ToString());
-            var ehClient = EventHubClient.CreateFromConnectionString(conString);
+            conSettings.EntityPath = Guid.NewGuid().ToString();
+            var ehClient = EventHubClient.CreateFromConnectionString(conSettings.ToString());
 
             // Try sending.
             try
@@ -672,6 +672,25 @@
             {
                 await receiver.CloseAsync();
             }
+
+            // Try receiving on an nonexistent consumer group.
+            ehClient = EventHubClient.CreateFromConnectionString(this.connectionString);
+            try
+            {
+                WriteLine("Receiving from nonexistent consumer group.");
+                receiver = ehClient.CreateReceiver(Guid.NewGuid().ToString(), "0", PartitionReceiver.StartOfStream);
+                await receiver.ReceiveAsync(1);
+                throw new InvalidOperationException("Receive should have failed");
+            }
+            catch (MessagingEntityNotFoundException)
+            {
+                WriteLine("Caught expected MessagingEntityNotFoundException");
+            }
+            finally
+            {
+                await receiver.CloseAsync();
+            }
+
         }
 
         [Fact]
