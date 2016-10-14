@@ -45,9 +45,12 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
         public static AmqpMessage EventDatasToAmqpMessage(IEnumerable<EventData> eventDatas, string partitionKey, bool batchable)
         {
+            if (eventDatas == null)
+                throw new ArgumentNullException(nameof(eventDatas));
+
             AmqpMessage returnMessage = null;
-            int dataCount = eventDatas.Count();
-            if (eventDatas != null && dataCount > 1) // ??? eventData cannot be null. If it's null, line above will throw
+            var dataCount = eventDatas.Count();
+            if (dataCount > 1)
             {
                 IList<Data> bodyList = new List<Data>();
                 EventData firstEvent = null;
@@ -77,7 +80,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 returnMessage.MessageFormat = AmqpConstants.AmqpBatchedMessageFormat;
                 UpdateAmqpMessageHeadersAndProperties(returnMessage, null, partitionKey, firstEvent, copyUserProperties: false);
             }
-            else if (eventDatas != null && dataCount == 1) // ??? can't be null
+            else if (dataCount == 1) // ??? can't be null
             {
                 var data = eventDatas.First();
                 //this.ProcessFaultInjectionInfo(data);

@@ -89,7 +89,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 // Create the link
                 var link = new RequestResponseAmqpLink(type, session, address, linkSettings.Properties);
 
-                bool isClientToken = false;
                 var authorizationValidToUtc = DateTime.MaxValue;
 
                 if (!isNamespaceScope)
@@ -106,7 +105,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     this.ConnectionStringBuilder.Endpoint.AbsoluteUri, // audience
                     this.ConnectionStringBuilder.Endpoint.AbsoluteUri, // endpointUri
                     requiredClaims,
-                    isClientToken, // ??? always false
+                    false,
                     authorizationValidToUtc);
             }
             catch (Exception)

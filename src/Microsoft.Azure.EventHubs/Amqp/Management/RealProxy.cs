@@ -300,7 +300,7 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
                 packedArr.EndSet(this.fields[0].FieldType);
 
                 // packed[PackedArgs.DeclaringTypePosition] = typeof(iface);
-                MethodInfo Type_GetTypeFromHandle = typeof(Type).GetMethod("GetTypeFromHandle", new Type[] { typeof(RuntimeTypeHandle) });
+                MethodInfo Type_GetTypeFromHandle = typeof(Type).GetMethod("GetTypeFromHandle", new[] { typeof(RuntimeTypeHandle) });
                 int methodToken;
                 Type declaringType;
                 assembly.GetTokenForMethod(mi, out declaringType, out methodToken);
@@ -451,7 +451,7 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
                     Debug.Assert(!isAddress);
                     Type argType = source.GetElementType();
                     Ldind(il, argType);
-                    Convert(il, argType, target, isAddress); //??? always false
+                    Convert(il, argType, target, false); //??? always false
                     return;
                 }
                 if (target.GetTypeInfo().IsValueType)
