@@ -4,7 +4,6 @@
 namespace Microsoft.Azure.EventHubs.Processor
 {
     using System;
-    using System.Diagnostics.Tracing;
     using System.Threading.Tasks;
 
     public class PartitionContext
@@ -94,7 +93,7 @@ namespace Microsoft.Azure.EventHubs.Processor
         internal async Task<object> GetInitialOffsetAsync() // throws InterruptedException, ExecutionException
         {
             Checkpoint startingCheckpoint = await this.host.CheckpointManager.GetCheckpointAsync(this.PartitionId);
-            Object startAt = null;
+            object startAt;
 
             if (startingCheckpoint == null)
             {

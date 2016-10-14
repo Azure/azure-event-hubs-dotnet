@@ -5,7 +5,6 @@ namespace Microsoft.Azure.EventHubs
 {
     using System;
     using System.Text;
-    using Microsoft.Azure.EventHubs.Amqp;
 
     /// <summary>
     /// EventHubsConnectionStringBuilder can be used to construct a connection string which can establish communication with Event Hubs entities.

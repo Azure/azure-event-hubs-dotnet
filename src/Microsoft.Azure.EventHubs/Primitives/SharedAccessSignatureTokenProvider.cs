@@ -7,7 +7,6 @@ namespace Microsoft.Azure.EventHubs
     using System.Collections.Generic;
     using System.Diagnostics.CodeAnalysis;
     using System.Globalization;
-    using System.Linq;
     using System.Net;
     using System.Security.Cryptography;
     using System.Text;
@@ -31,12 +30,7 @@ namespace Microsoft.Azure.EventHubs
             this.sharedAccessSignature = sharedAccessSignature;
         }
 
-        internal SharedAccessSignatureTokenProvider(string keyName, string sharedAccessKey, TimeSpan tokenTimeToLive)
-            : this(keyName, sharedAccessKey, tokenTimeToLive, TokenScope.Entity)
-        {
-        }
-
-        internal SharedAccessSignatureTokenProvider(string keyName, string sharedAccessKey, TimeSpan tokenTimeToLive, TokenScope tokenScope)
+        internal SharedAccessSignatureTokenProvider(string keyName, string sharedAccessKey, TimeSpan tokenTimeToLive, TokenScope tokenScope = TokenScope.Entity)
             : this(keyName, sharedAccessKey, MessagingTokenProviderKeyEncoder, tokenTimeToLive, tokenScope)
         {
         }
@@ -163,43 +157,19 @@ namespace Microsoft.Azure.EventHubs
             {
             }
 
-            protected override string AudienceFieldName
-            {
-                get
-                {
-                    return SignedResourceFullFieldName;
-                }
-            }
+            protected override string AudienceFieldName => SignedResourceFullFieldName;
 
-            protected override string ExpiresOnFieldName
-            {
-                get
-                {
-                    return SignedExpiry;
-                }
-            }
+            protected override string ExpiresOnFieldName => SignedExpiry;
 
-            protected override string KeyValueSeparator
-            {
-                get
-                {
-                    return SasKeyValueSeparator;
-                }
-            }
+            protected override string KeyValueSeparator => SasKeyValueSeparator;
 
-            protected override string PairSeparator
-            {
-                get
-                {
-                    return SasPairSeparator;
-                }
-            }
+            protected override string PairSeparator => SasPairSeparator;
 
             internal static void Validate(string sharedAccessSignature)
             {
                 if (string.IsNullOrEmpty(sharedAccessSignature))
                 {
-                    throw new ArgumentNullException("sharedAccessSignature");
+                    throw new ArgumentNullException(nameof(sharedAccessSignature));
                 }
 
                 IDictionary<string, string> parsedFields = ExtractFieldValues(sharedAccessSignature);
@@ -235,17 +205,17 @@ namespace Microsoft.Azure.EventHubs
 
                 if (!string.Equals(tokenLines[0].Trim(), SharedAccessSignature, StringComparison.OrdinalIgnoreCase) || tokenLines.Length != 2)
                 {
-                    throw new ArgumentNullException("sharedAccessSignature");
+                    throw new ArgumentNullException(nameof(sharedAccessSignature));
                 }
 
                 IDictionary<string, string> parsedFields = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                string[] tokenFields = tokenLines[1].Trim().Split(new string[] { SasPairSeparator }, StringSplitOptions.None);
+                string[] tokenFields = tokenLines[1].Trim().Split(new[] { SasPairSeparator }, StringSplitOptions.None);
 
                 foreach (string tokenField in tokenFields)
                 {
                     if (tokenField != string.Empty)
                     {
-                        string[] fieldParts = tokenField.Split(new string[] { SasKeyValueSeparator }, StringSplitOptions.None);
+                        string[] fieldParts = tokenField.Split(new[] { SasKeyValueSeparator }, StringSplitOptions.None);
                         if (string.Equals(fieldParts[0], SignedResource, StringComparison.OrdinalIgnoreCase))
                         {
                             // We need to preserve the casing of the escape characters in the audience,

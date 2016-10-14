@@ -89,7 +89,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 // Create the link
                 var link = new RequestResponseAmqpLink(type, session, address, linkSettings.Properties);
 
-                bool isClientToken = false;
                 var authorizationValidToUtc = DateTime.MaxValue;
 
                 if (!isNamespaceScope)
@@ -106,16 +105,13 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     this.ConnectionStringBuilder.Endpoint.AbsoluteUri, // audience
                     this.ConnectionStringBuilder.Endpoint.AbsoluteUri, // endpointUri
                     requiredClaims,
-                    isClientToken,
+                    false,
                     authorizationValidToUtc);
             }
             catch (Exception)
             {
-                if (session != null)
-                {
-                    // Aborting the session will cleanup the link as well.
-                    session.Abort();
-                }
+                // Aborting the session will cleanup the link as well.
+                session?.Abort();
 
                 throw;
             }
@@ -176,9 +172,11 @@ namespace Microsoft.Azure.EventHubs.Amqp
             var settings = new AmqpSettings();
             if (useSslStreamSecurity && !useWebSockets && sslStreamUpgrade)
             {
-                var tlsSettings = new TlsTransportSettings();
-                tlsSettings.CertificateValidationCallback = certificateValidationCallback;
-                tlsSettings.TargetHost = sslHostName;
+                var tlsSettings = new TlsTransportSettings
+                {
+                    CertificateValidationCallback = certificateValidationCallback,
+                    TargetHost = sslHostName
+                };
 
                 var tlsProvider = new TlsTransportProvider(tlsSettings);
                 tlsProvider.Versions.Add(new AmqpVersion(amqpVersion));
@@ -197,9 +195,11 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 }
                 else if (networkCredential != null)
                 {
-                    var plainHandler = new SaslPlainHandler();
-                    plainHandler.AuthenticationIdentity = networkCredential.UserName;
-                    plainHandler.Password = networkCredential.Password;
+                    var plainHandler = new SaslPlainHandler
+                    {
+                        AuthenticationIdentity = networkCredential.UserName,
+                        Password = networkCredential.Password
+                    };
                     saslProvider.AddHandler(plainHandler);
                 }
                 else

@@ -3,8 +3,6 @@
 
 namespace Microsoft.Azure.EventHubs.Processor
 {
-    using System;
-
     public class Checkpoint
     {       
         public Checkpoint(string partitionId)
