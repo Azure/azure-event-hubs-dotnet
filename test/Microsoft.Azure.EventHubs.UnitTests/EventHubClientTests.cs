@@ -113,6 +113,7 @@
                 throw new InvalidOperationException("Receive should have failed");
             });
         }
+
         [Fact]
         Task CreateClientWithoutEntityPathShouldFail()
         {
@@ -126,6 +127,7 @@
                  throw new Exception("Entity path wasn't provided in the connection string and this new call was supposed to fail");
              });
         }
+
         [Fact]
         Task EventHubClientSend()
         {
