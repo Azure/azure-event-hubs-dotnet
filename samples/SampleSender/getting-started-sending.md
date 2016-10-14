@@ -58,7 +58,7 @@ To send messages to an Event Hub, we will write a C# console application using V
             EntityPath = EhEntityPath
         };
 
-        var eventHubClient = EventHubClient.Create(connectionStringBuilder);
+        var eventHubClient = EventHubClient.CreateFromConnectionString(connectionStringBuilder.ToString());
 
         for (var i = 0; i < numMessagesToSend; i++)
         {
@@ -121,7 +121,7 @@ To send messages to an Event Hub, we will write a C# console application using V
                     EntityPath = EhEntityPath
                 };
 
-                var eventHubClient = EventHubClient.Create(connectionStringBuilder);
+                var eventHubClient = EventHubClient.CreateFromConnectionString(connectionStringBuilder.ToString());
 
                 for (var i = 0; i < numMessagesToSend; i++)
                 {
