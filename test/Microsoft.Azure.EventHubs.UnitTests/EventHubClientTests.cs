@@ -7,15 +7,19 @@
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
+    using Newtonsoft.Json;
     using Xunit;
+    using Xunit.Abstractions;
 
     public class EventHubClientTests
     {
+        ITestOutputHelper output;
         string connectionString;
         string[] PartitionIds;
 
-        public EventHubClientTests()
+        public EventHubClientTests(ITestOutputHelper output)
         {
+            this.output = output;
             var connectionString = Environment.GetEnvironmentVariable("EVENTHUBCONNECTIONSTRING");
             if (string.IsNullOrWhiteSpace(connectionString))
             {
@@ -33,7 +37,7 @@
             // Discover partition ids.
             var eventHubInfo = this.EventHubClient.GetRuntimeInformationAsync().Result;
             this.PartitionIds = eventHubInfo.PartitionIds;
-            WriteLine($"EventHub has {PartitionIds.Length} partitions");
+            Log($"EventHub has {PartitionIds.Length} partitions");
         }
 
         EventHubClient EventHubClient { get; }
@@ -41,7 +45,7 @@
         [Fact]
         void ConnectionStringBuilderTest()
         {
-            WriteLine($"Original connection string: {this.connectionString}");
+            Log($"Original connection string: {this.connectionString}");
 
             var csb = new EventHubsConnectionStringBuilder(this.connectionString);
 
@@ -52,7 +56,7 @@
             csb.SasKeyName = "newsaskeyname";
             csb.SasKey = "newsaskey";
             var newConnectionString = csb.ToString();
-            WriteLine($"Connection string modified as : {newConnectionString}");
+            Log($"Connection string modified as : {newConnectionString}");
 
             // Now try creating a new ConnectionStringBuilder from modified connection string.
             var newCsb = new EventHubsConnectionStringBuilder(newConnectionString);
@@ -71,16 +75,16 @@
             var pSender = this.EventHubClient.CreatePartitionSender("0");
             var pReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", PartitionReceiver.StartOfStream);
 
-            WriteLine("Sending single event to partition 0");
+            Log("Sending single event to partition 0");
             var eventData = new EventData(Encoding.UTF8.GetBytes("Hello EventHub!"));
             await pSender.SendAsync(eventData);
 
-            WriteLine("Closing partition sender");
+            Log("Closing partition sender");
             await pSender.CloseAsync();
 
             await Assert.ThrowsAsync<ObjectDisposedException>(async () =>
             {
-                WriteLine("Sending another event to partition 0 on the closed sender, this should fail");
+                Log("Sending another event to partition 0 on the closed sender, this should fail");
                 eventData = new EventData(Encoding.UTF8.GetBytes("Hello EventHub!"));
                 await pSender.SendAsync(eventData);
                 throw new InvalidOperationException("Send should have failed");
@@ -95,20 +99,20 @@
             var pSender = this.EventHubClient.CreatePartitionSender("0");
             var pReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", PartitionReceiver.StartOfStream);
 
-            WriteLine("Sending single event to partition 0");
+            Log("Sending single event to partition 0");
             var eventData = new EventData(Encoding.UTF8.GetBytes("Hello EventHub!"));
             await pSender.SendAsync(eventData);
 
-            WriteLine("Receiving the event.");
+            Log("Receiving the event.");
             var events = await pReceiver.ReceiveAsync(1);
             Assert.True(events != null && events.Count() == 1, "Failed to receive 1 event");
 
-            WriteLine("Closing partition receiver");
+            Log("Closing partition receiver");
             await pReceiver.CloseAsync();
 
             await Assert.ThrowsAsync<ObjectDisposedException>(async () =>
             {
-                WriteLine("Receiving another event from partition 0 on the closed receiver, this should fail");
+                Log("Receiving another event from partition 0 on the closed receiver, this should fail");
                 await pReceiver.ReceiveAsync(1);
                 throw new InvalidOperationException("Receive should have failed");
             });
@@ -131,7 +135,7 @@
         [Fact]
         Task EventHubClientSend()
         {
-            WriteLine("Sending single Event via EventHubClient.SendAsync(EventData, string)");
+            Log("Sending single Event via EventHubClient.SendAsync(EventData, string)");
             var eventData = new EventData(Encoding.UTF8.GetBytes("Hello EventHub by partitionKey!"));
             return this.EventHubClient.SendAsync(eventData, "SomePartitionKeyHere");
         }
@@ -139,7 +143,7 @@
         [Fact]
         Task EventHubClientSendBatch()
         {
-            WriteLine("Sending multiple Events via EventHubClient.SendAsync(IEnumerable<EventData>)");
+            Log("Sending multiple Events via EventHubClient.SendAsync(IEnumerable<EventData>)");
             var eventData1 = new EventData(Encoding.UTF8.GetBytes("Hello EventHub!"));
             var eventData2 = new EventData(Encoding.UTF8.GetBytes("This is another message in the batch!"));
             eventData2.Properties = new Dictionary<string, object> { ["ContosoEventType"] = "some value here" };
@@ -149,7 +153,7 @@
         [Fact]
         async Task PartitionSenderSend()
         {
-            WriteLine("Sending single Event via PartitionSender.SendAsync(EventData)");
+            Log("Sending single Event via PartitionSender.SendAsync(EventData)");
             PartitionSender partitionSender1 = this.EventHubClient.CreatePartitionSender("1");
             try
             {
@@ -165,7 +169,7 @@
         [Fact]
         async Task PartitionSenderSendBatch()
         {
-            WriteLine("Sending single Event via PartitionSender.SendAsync(IEnumerable<EventData>)");
+            Log("Sending single Event via PartitionSender.SendAsync(IEnumerable<EventData>)");
             PartitionSender partitionSender1 = this.EventHubClient.CreatePartitionSender("1");
             try
             {
@@ -183,14 +187,14 @@
         [Fact]
         async Task PartitionReceiverReceive()
         {
-            WriteLine("Receiving Events via PartitionReceiver.ReceiveAsync");
+            Log("Receiving Events via PartitionReceiver.ReceiveAsync");
             const string partitionId = "1";
             PartitionSender partitionSender = this.EventHubClient.CreatePartitionSender(partitionId);
             PartitionReceiver partitionReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, DateTime.UtcNow.AddMinutes(-10));
             try
             {
                 string uniqueEventId = Guid.NewGuid().ToString();
-                WriteLine($"Sending an event to Partition {partitionId} with custom property EventId {uniqueEventId}");
+                Log($"Sending an event to Partition {partitionId} with custom property EventId {uniqueEventId}");
                 var sendEvent = new EventData(Encoding.UTF8.GetBytes("Hello EventHub!"));
                 sendEvent.Properties = new Dictionary<string, object> { ["EventId"] = uniqueEventId };
                 await partitionSender.SendAsync(sendEvent);
@@ -204,17 +208,17 @@
                         break;
                     }
 
-                    WriteLine($"Received a batch of {eventDatas.Count()} events:");
+                    Log($"Received a batch of {eventDatas.Count()} events:");
                     foreach (var eventData in eventDatas)
                     {
                         object objectValue;
                         if (eventData.Properties != null && eventData.Properties.TryGetValue("EventId", out objectValue))
                         {
-                            WriteLine($"Received message with EventId {objectValue}");
+                            Log($"Received message with EventId {objectValue}");
                             string receivedId = objectValue.ToString();
                             if (receivedId == uniqueEventId)
                             {
-                                WriteLine("Success");
+                                Log("Success");
                                 expectedEventReceived = true;
                                 break;
                             }
@@ -238,7 +242,7 @@
         {
             // Randomly pick one of the available partitons.
             var partitionId = this.PartitionIds[new Random().Next(this.PartitionIds.Count())];
-            WriteLine($"Randomly picked partition {partitionId}");
+            Log($"Randomly picked partition {partitionId}");
 
             // Send and receive a message to identify the end of stream.
             var lastMessage = await SendAndReceiveSingleEvent(partitionId);
@@ -251,7 +255,7 @@
             await this.EventHubClient.CreatePartitionSender(partitionId).SendAsync(eventSent);
 
             // Create a new receiver which will start reading from the last message on the stream.
-            WriteLine($"Creating a new receiver with offset {lastMessage.SystemProperties.Offset}");
+            Log($"Creating a new receiver with offset {lastMessage.SystemProperties.Offset}");
             var receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, lastMessage.SystemProperties.Offset);
             var receivedMessages = await receiver.ReceiveAsync(100);
 
@@ -262,7 +266,7 @@
             Assert.True(receivedMessages.Single().Properties["stamp"].ToString() == eventSent.Properties["stamp"].ToString()
                 , "Stamps didn't match on the message sent and received!");
 
-            WriteLine("Received correct message as expected.");
+            Log("Received correct message as expected.");
 
             // Next receive on this partition shouldn't return any more messages.
             receivedMessages = await receiver.ReceiveAsync(100, TimeSpan.FromSeconds(15));
@@ -276,7 +280,7 @@
         {
             // Randomly pick one of the available partitons.
             var partitionId = this.PartitionIds[new Random().Next(this.PartitionIds.Count())];
-            WriteLine($"Randomly picked partition {partitionId}");
+            Log($"Randomly picked partition {partitionId}");
 
             // Send and receive a message to identify the end of stream.
             var lastMessage = await SendAndReceiveSingleEvent(partitionId);
@@ -289,7 +293,7 @@
             await this.EventHubClient.CreatePartitionSender(partitionId).SendAsync(eventSent);
 
             // Create a new receiver which will start reading from the last message on the stream.
-            WriteLine($"Creating a new receiver with date-time {lastMessage.SystemProperties.EnqueuedTimeUtc}");
+            Log($"Creating a new receiver with date-time {lastMessage.SystemProperties.EnqueuedTimeUtc}");
             var receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, lastMessage.SystemProperties.EnqueuedTimeUtc);
             var receivedMessages = await receiver.ReceiveAsync(100);
 
@@ -300,7 +304,7 @@
             Assert.True(receivedMessages.Single().Properties["stamp"].ToString() == eventSent.Properties["stamp"].ToString()
                 , "Stamps didn't match on the message sent and received!");
 
-            WriteLine("Received correct message as expected.");
+            Log("Received correct message as expected.");
 
             // Next receive on this partition shouldn't return any more messages.
             receivedMessages = await receiver.ReceiveAsync(100, TimeSpan.FromSeconds(15));
@@ -313,14 +317,14 @@
         async Task PartitionReceiverReceiveBatch()
         {
             const int MaxBatchSize = 5;
-            WriteLine("Receiving Events via PartitionReceiver.ReceiveAsync(BatchSize)");
+            Log("Receiving Events via PartitionReceiver.ReceiveAsync(BatchSize)");
             const string partitionId = "0";
             PartitionSender partitionSender = this.EventHubClient.CreatePartitionSender(partitionId);
             PartitionReceiver partitionReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, DateTime.UtcNow.AddMinutes(-10));
             try
             {
                 int eventCount = 20;
-                WriteLine($"Sending {eventCount} events to Partition {partitionId}");
+                Log($"Sending {eventCount} events to Partition {partitionId}");
                 var sendEvents = new List<EventData>(eventCount);
                 for (int i = 0; i < eventCount; i++)
                 {
@@ -333,7 +337,7 @@
                 {
                     IEnumerable<EventData> partition1Events = await partitionReceiver.ReceiveAsync(MaxBatchSize);
                     int receivedEventCount = partition1Events != null ? partition1Events.Count() : 0;
-                    WriteLine($"Received {receivedEventCount} event(s)");
+                    Log($"Received {receivedEventCount} event(s)");
 
                     if (partition1Events == null)
                     {
@@ -356,30 +360,30 @@
         [Fact]
         async Task PartitionReceiverEpochReceive()
         {
-            WriteLine("Testing EpochReceiver semantics");
+            Log("Testing EpochReceiver semantics");
             var epochReceiver1 = this.EventHubClient.CreateEpochReceiver(PartitionReceiver.DefaultConsumerGroupName, "1", PartitionReceiver.StartOfStream, 1);
             var epochReceiver2 = this.EventHubClient.CreateEpochReceiver(PartitionReceiver.DefaultConsumerGroupName, "1", PartitionReceiver.StartOfStream, 2);
             try
             {
                 // Read the events from Epoch 1 Receiver until we're at the end of the stream
-                WriteLine("Starting epoch 1 receiver");
+                Log("Starting epoch 1 receiver");
                 IEnumerable<EventData> events;
                 do
                 {
                     events = await epochReceiver1.ReceiveAsync(10);
-                    int count = events != null ? events.Count() : 0;
+                    var count = events?.Count() ?? 0;
                 }
                 while (events != null);
 
-                WriteLine("Starting epoch 2 receiver");
+                Log("Starting epoch 2 receiver");
                 var epoch2ReceiveTask = epochReceiver2.ReceiveAsync(10);
 
                 DateTime stopTime = DateTime.UtcNow.AddSeconds(30);
                 do
                 {
                     events = await epochReceiver1.ReceiveAsync(10);
-                    int count = events != null ? events.Count() : 0;
-                    WriteLine($"Epoch 1 receiver got {count} event(s)");
+                    var count = events?.Count() ?? 0;
+                    Log($"Epoch 1 receiver got {count} event(s)");
                 }
                 while (DateTime.UtcNow < stopTime);
 
@@ -387,7 +391,7 @@
             }
             catch(ReceiverDisconnectedException disconnectedException)
             {
-                WriteLine($"Received expected exception {disconnectedException.GetType()}: {disconnectedException.Message}");
+                Log($"Received expected exception {disconnectedException.GetType()}: {disconnectedException.Message}");
 
                 try
                 {
@@ -396,7 +400,7 @@
                 }
                 catch (ReceiverDisconnectedException e)
                 {
-                    WriteLine($"Received expected exception {e.GetType()}");
+                    Log($"Received expected exception {e.GetType()}");
                 }
             }
             finally
@@ -409,36 +413,36 @@
         [Fact]
         async Task PartitionReceiverSetReceiveHandler()
         {
-            WriteLine("Receiving Events via PartitionReceiver.SetReceiveHandler()");
+            Log("Receiving Events via PartitionReceiver.SetReceiveHandler()");
             string partitionId = "1";
             PartitionReceiver partitionReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, DateTime.UtcNow.AddMinutes(-10));
             PartitionSender partitionSender = this.EventHubClient.CreatePartitionSender(partitionId);
             try
             {
                 string uniqueEventId = Guid.NewGuid().ToString();
-                WriteLine($"Sending an event to Partition {partitionId} with custom property EventId {uniqueEventId}");
+                Log($"Sending an event to Partition {partitionId} with custom property EventId {uniqueEventId}");
                 var sendEvent = new EventData(Encoding.UTF8.GetBytes("Hello EventHub!"));
                 sendEvent.Properties = new Dictionary<string, object> { ["EventId"] = uniqueEventId };
                 await partitionSender.SendAsync(sendEvent);
 
                 EventWaitHandle dataReceivedEvent = new EventWaitHandle(false, EventResetMode.ManualReset);
                 var handler = new TestPartitionReceiveHandler();
-                handler.ErrorReceived += (s, e) => WriteLine($"TestPartitionReceiveHandler.ProcessError {e.GetType().Name}: {e.Message}");
+                handler.ErrorReceived += (s, e) => Log($"TestPartitionReceiveHandler.ProcessError {e.GetType().Name}: {e.Message}");
                 handler.EventsReceived += (s, eventDatas) =>
                 {
                     int count = eventDatas != null ? eventDatas.Count() : 0;
-                    WriteLine($"Received {count} event(s):");
+                    Log($"Received {count} event(s):");
 
                     foreach (var eventData in eventDatas)
                     {
                         object objectValue;
                         if (eventData.Properties != null && eventData.Properties.TryGetValue("EventId", out objectValue))
                         {
-                            WriteLine($"Received message with EventId {objectValue}");
+                            Log($"Received message with EventId {objectValue}");
                             string receivedId = objectValue.ToString();
                             if (receivedId == uniqueEventId)
                             {
-                                WriteLine("Success");
+                                Log("Success");
                                 dataReceivedEvent.Set();
                                 break;
                             }
@@ -463,17 +467,17 @@
         [Fact]
         async Task GetEventHubRuntimeInformation()
         {
-            WriteLine("Getting  EventHubRuntimeInformation");
+            Log("Getting  EventHubRuntimeInformation");
             var eventHubRuntimeInformation = await this.EventHubClient.GetRuntimeInformationAsync();
 
             Assert.True(eventHubRuntimeInformation != null, "eventHubRuntimeInformation was null!");
             Assert.True(eventHubRuntimeInformation.PartitionIds != null, "eventHubRuntimeInformation.PartitionIds was null!");
             Assert.True(eventHubRuntimeInformation.PartitionIds.Length != 0, "eventHubRuntimeInformation.PartitionIds.Length was 0!");
 
-            WriteLine("Found partitions:");
+            Log("Found partitions:");
             foreach (string partitionId in eventHubRuntimeInformation.PartitionIds)
             {
-                WriteLine(partitionId);
+                Log(partitionId);
             }
         }
 
@@ -485,47 +489,47 @@
 
             retry.IncrementRetryCount(clientId);
             TimeSpan? firstRetryInterval = retry.GetNextRetryInterval(clientId, new ServerBusyException(string.Empty), TimeSpan.FromSeconds(60));
-            WriteLine("firstRetryInterval: " + firstRetryInterval);
+            Log("firstRetryInterval: " + firstRetryInterval);
             Assert.True(firstRetryInterval != null);
 
             retry.IncrementRetryCount(clientId);
             TimeSpan? secondRetryInterval = retry.GetNextRetryInterval(clientId, new ServerBusyException(string.Empty), TimeSpan.FromSeconds(60));
-            WriteLine("secondRetryInterval: " + secondRetryInterval);
+            Log("secondRetryInterval: " + secondRetryInterval);
 
             Assert.True(secondRetryInterval != null);
             Assert.True(secondRetryInterval?.TotalMilliseconds > firstRetryInterval?.TotalMilliseconds);
 
             retry.IncrementRetryCount(clientId);
             TimeSpan? thirdRetryInterval = retry.GetNextRetryInterval(clientId, new ServerBusyException(string.Empty), TimeSpan.FromSeconds(60));
-            WriteLine("thirdRetryInterval: " + thirdRetryInterval);
+            Log("thirdRetryInterval: " + thirdRetryInterval);
 
             Assert.True(thirdRetryInterval != null);
             Assert.True(thirdRetryInterval?.TotalMilliseconds > secondRetryInterval?.TotalMilliseconds);
 
             retry.IncrementRetryCount(clientId);
             TimeSpan? fourthRetryInterval = retry.GetNextRetryInterval(clientId, new ServerBusyException(string.Empty), TimeSpan.FromSeconds(60));
-            WriteLine("fourthRetryInterval: " + fourthRetryInterval);
+            Log("fourthRetryInterval: " + fourthRetryInterval);
 
             Assert.True(fourthRetryInterval != null);
             Assert.True(fourthRetryInterval?.TotalMilliseconds > thirdRetryInterval?.TotalMilliseconds);
 
             retry.IncrementRetryCount(clientId);
             TimeSpan? fifthRetryInterval = retry.GetNextRetryInterval(clientId, new ServerBusyException(string.Empty), TimeSpan.FromSeconds(60));
-            WriteLine("fifthRetryInterval: " + fifthRetryInterval);
+            Log("fifthRetryInterval: " + fifthRetryInterval);
 
             Assert.True(fifthRetryInterval != null);
             Assert.True(fifthRetryInterval?.TotalMilliseconds > fourthRetryInterval?.TotalMilliseconds);
 
             retry.IncrementRetryCount(clientId);
             TimeSpan? sixthRetryInterval = retry.GetNextRetryInterval(clientId, new ServerBusyException(string.Empty), TimeSpan.FromSeconds(60));
-            WriteLine("sixthRetryInterval: " + sixthRetryInterval);
+            Log("sixthRetryInterval: " + sixthRetryInterval);
 
             Assert.True(sixthRetryInterval != null);
             Assert.True(sixthRetryInterval?.TotalMilliseconds > fifthRetryInterval?.TotalMilliseconds);
 
             retry.IncrementRetryCount(clientId);
             TimeSpan? seventhRetryInterval = retry.GetNextRetryInterval(clientId, new ServerBusyException(string.Empty), TimeSpan.FromSeconds(60));
-            WriteLine("seventhRetryInterval: " + seventhRetryInterval);
+            Log("seventhRetryInterval: " + seventhRetryInterval);
 
             Assert.True(seventhRetryInterval != null);
             Assert.True(seventhRetryInterval?.TotalMilliseconds > sixthRetryInterval?.TotalMilliseconds);
@@ -551,21 +555,21 @@
             String clientId = "someClientEntity";
 
             // Retry up to 5 times.
-            RetryPolicy retry = new RetryPolicyCustom(5);
+            RetryPolicy retry = new RetryPolicyCustom(5, output);
 
             // Retry 4 times. These should allow retry.
             for (int i = 0; i < 4; i++)
             {
                 retry.IncrementRetryCount(clientId);
                 TimeSpan? thisRetryInterval = retry.GetNextRetryInterval(clientId, new ServerBusyException(string.Empty), TimeSpan.FromSeconds(60));
-                WriteLine("RetryInterval: " + thisRetryInterval);
+                Log("RetryInterval: " + thisRetryInterval);
                 Assert.True(thisRetryInterval.Value.TotalSeconds == 2 + i);
             }
 
             // Retry 5th times. This should not allow retry.
             retry.IncrementRetryCount(clientId);
             TimeSpan? newRetryInterval = retry.GetNextRetryInterval(clientId, new ServerBusyException(string.Empty), TimeSpan.FromSeconds(60));
-            WriteLine("RetryInterval: " + newRetryInterval);
+            Log("RetryInterval: " + newRetryInterval);
             Assert.True(newRetryInterval == null);
         }
 
@@ -580,7 +584,7 @@
             {
                 foreach (var receiveTimeoutInSeconds in testValues)
                 {
-                    WriteLine($"Testing with {receiveTimeoutInSeconds} seconds.");
+                    Log($"Testing with {receiveTimeoutInSeconds} seconds.");
 
                     // Start receiving from a future time so that Receive call won't be able to fetch any events.
                     receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", DateTime.UtcNow.AddMinutes(1));
@@ -607,7 +611,7 @@
         {
             try
             { 
-                WriteLine("Sending large event via EventHubClient.SendAsync(EventData)");
+                Log("Sending large event via EventHubClient.SendAsync(EventData)");
                 var eventData = new EventData(new byte[300000]);
                 await this.EventHubClient.SendAsync(eventData);
                 throw new InvalidOperationException("Send should have failed with " +
@@ -615,7 +619,7 @@
             }
             catch (MessageSizeExceededException)
             {
-                WriteLine("Caught MessageSizeExceededException as expected");
+                Log("Caught MessageSizeExceededException as expected");
             }
         }
 
@@ -631,7 +635,7 @@
             PartitionSender sender = null;
             await Assert.ThrowsAsync<MessagingEntityNotFoundException>(async () =>
             {
-                WriteLine("Sending an event to nonexistent entity.");
+                Log("Sending an event to nonexistent entity.");
                 sender = ehClient.CreatePartitionSender("0");
                 await sender.SendAsync(new EventData(Encoding.UTF8.GetBytes("this send should fail.")));
                 throw new InvalidOperationException("Send should have failed");
@@ -642,7 +646,7 @@
             PartitionReceiver receiver = null;
             await Assert.ThrowsAsync<MessagingEntityNotFoundException>(async () =>
             {
-                WriteLine("Receiving from nonexistent entity.");
+                Log("Receiving from nonexistent entity.");
                 receiver = ehClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", PartitionReceiver.StartOfStream);
                 await receiver.ReceiveAsync(1);
                 throw new InvalidOperationException("Receive should have failed");
@@ -668,16 +672,16 @@
             var partitionOffsets = new Dictionary<string, string>();
 
             // Discover the end of stream on each partition.
-            WriteLine("Discovering end of stream on each partition.");
+            Log("Discovering end of stream on each partition.");
             foreach (var partitionId in this.PartitionIds)
             {
                 var lastEvent = await SendAndReceiveSingleEvent(partitionId);
                 partitionOffsets.Add(partitionId, lastEvent.SystemProperties.Offset);
-                WriteLine($"Partition {partitionId} has last message with offset {lastEvent.SystemProperties.Offset}");
+                Log($"Partition {partitionId} has last message with offset {lastEvent.SystemProperties.Offset}");
             }
 
             // Now send a set of messages with different partition keys.
-            WriteLine($"Sending {NumberOfMessagesToSend} messages.");
+            Log($"Sending {NumberOfMessagesToSend} messages.");
             Random rnd = new Random();
             for (int i=0; i<NumberOfMessagesToSend; i++)
             {
@@ -688,7 +692,7 @@
             // It is time to receive all messages that we just sent.
             // Prepare partition key to partition map while receiving.
             // Validation: All messages of a partition key should be received from a single partition.
-            WriteLine("Starting to receive all messages from each partition.");
+            Log("Starting to receive all messages from each partition.");
             var partitionMap = new Dictionary<string, string>();
             int totalReceived = 0;
             foreach (var partitionId in this.PartitionIds)
@@ -701,7 +705,7 @@
                         partitionId,
                         partitionOffsets[partitionId]);
                     var messagesFromPartition = await ReceiveAllMessages(receiver);
-                    WriteLine($"Received {messagesFromPartition.Count} messages from partition {partitionId}.");
+                    Log($"Received {messagesFromPartition.Count} messages from partition {partitionId}.");
                     foreach (var ed in messagesFromPartition)
                     {
                         var pk = ed.SystemProperties.PartitionKey;
@@ -733,13 +737,15 @@
             // Stamp this message so we can recognize it when received.
             var stampValue = Guid.NewGuid().ToString();
             var sendEvent = new EventData(Encoding.UTF8.GetBytes("Hello EventHub!"));
-            eDataToSend.Properties = new Dictionary<string, object>();
-            eDataToSend.Properties.Add("stamp", stampValue);
+            eDataToSend.Properties = new Dictionary<string, object>
+            {
+                {"stamp", stampValue}
+            };
             PartitionSender partitionSender = this.EventHubClient.CreatePartitionSender(partitionId);
-            WriteLine($"Sending single event to partition {partitionId} with stamp {stampValue}");
+            Log($"Sending single event to partition {partitionId} with stamp {stampValue}");
             await partitionSender.SendAsync(eDataToSend);
 
-            WriteLine($"Receiving all messages from partition {partitionId}");
+            Log($"Receiving all messages from partition {partitionId}");
             PartitionReceiver receiver = null;
             try
             {
@@ -753,7 +759,7 @@
                         throw new Exception("Not able to receive stamped message!");
                     }
 
-                    WriteLine($"Received {receivedEvents.Count()} event(s) in batch where last event is sent on {receivedEvents.Last().SystemProperties.EnqueuedTimeUtc}");
+                    Log($"Received {receivedEvents.Count()} event(s) in batch where last event is sent on {receivedEvents.Last().SystemProperties.EnqueuedTimeUtc}");
 
                     // Continue until we locate stamped message.
                     foreach (var receivedEvent in receivedEvents)
@@ -793,10 +799,10 @@
             return messages;
         }
 
-        static void WriteLine(string message)
+        void Log(string message)
         {
-            // Currently xunit2 for .net core doesn't seem to have any output mechanism.  If we find one, replace these here:
-            message = DateTime.Now.TimeOfDay + " " + message;
+            var log = string.Format("{0} {1}", DateTime.Now.TimeOfDay, message);
+            output.WriteLine(log);
             Debug.WriteLine(message);
             Console.WriteLine(message);
         }
@@ -830,10 +836,12 @@
         public sealed class RetryPolicyCustom : RetryPolicy
         {
             readonly int maximumRetryCount;
+            readonly ITestOutputHelper testOutputHelper;
 
-            public RetryPolicyCustom(int maximumRetryCount)
+            public RetryPolicyCustom(int maximumRetryCount, ITestOutputHelper testOutputHelper)
             {
                 this.maximumRetryCount = maximumRetryCount;
+                this.testOutputHelper = testOutputHelper;
             }
 
             protected override TimeSpan? OnGetNextRetryInterval(string clientId, Exception lastException, TimeSpan remainingTime, int baseWaitTimeSecs)
@@ -842,17 +850,27 @@
 
                 if (currentRetryCount >= this.maximumRetryCount)
                 {
-                    WriteLine("Not retrying: currentRetryCount >= maximumRetryCount");
+                    Log("Not retrying: currentRetryCount >= maximumRetryCount");
                     return null;
                 }
 
-                WriteLine("Retrying: currentRetryCount < maximumRetryCount");
+                Log("Retrying: currentRetryCount < maximumRetryCount");
 
                 // Retry after 1 second + retry count.
                 TimeSpan retryAfter = TimeSpan.FromSeconds(1 + currentRetryCount);
 
                 return retryAfter;
             }
+
+            void Log(string message)
+            {
+                var log = string.Format("{0} {1}", DateTime.Now.TimeOfDay, message);
+                testOutputHelper.WriteLine(log);
+                Debug.WriteLine(message);
+                Console.WriteLine(message);
+
+            }
+
         }
     }
 }
