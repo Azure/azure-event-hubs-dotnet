@@ -242,7 +242,7 @@
                 }
                 await Task.WhenAll(sendTasks);
 
-                WriteLine($"Verifying an event was received by each partition");
+                WriteLine("Verifying an event was received by each partition");
                 foreach (var partitionId in PartitionIds)
                 {
                     var receivedEvent = partitionReceiveEvents[partitionId];
@@ -451,7 +451,7 @@
                     hosts.Add(eventProcessorHost);
                 }
 
-                WriteLine($"Sending an event to each partition");
+                WriteLine("Sending an event to each partition");
                 var sendTasks = new List<Task>();
                 foreach (var partitionId in PartitionIds)
                 {
@@ -460,7 +460,7 @@
 
                 await Task.WhenAll(sendTasks);
 
-                WriteLine($"Verifying an event was received by each partition for each consumer group");
+                WriteLine("Verifying an event was received by each partition for each consumer group");
                 foreach (var consumerGroupName in consumerGroupNames)
                 {
                     foreach (var partitionId in PartitionIds)
@@ -471,11 +471,11 @@
                     }
                 }
 
-                WriteLine($"Success");
+                WriteLine("Success");
             }
             finally
             {
-                WriteLine($"Calling UnregisterEventProcessorAsync on both hosts.");
+                WriteLine("Calling UnregisterEventProcessorAsync on both hosts.");
                 foreach (var eph in hosts)
                 {
                     await eph.UnregisterEventProcessorAsync();
