@@ -5,6 +5,8 @@ namespace Microsoft.Azure.EventHubs.Amqp
 {
     using System;
     using System.Collections.Generic;
+    using System.Text.RegularExpressions;
+
     using Microsoft.Azure.Amqp;
     using Microsoft.Azure.Amqp.Encoding;
     using Microsoft.Azure.Amqp.Framing;
@@ -75,7 +77,8 @@ namespace Microsoft.Azure.EventHubs.Amqp
             }
             else if (string.Equals(condition, AmqpErrorCode.NotFound.Value))
             {
-                if (message.ToLower().Contains("status-code: 404"))
+                if (message.ToLower().Contains("status-code: 404") ||
+                    Regex.IsMatch(message, "The messaging entity .* could not be found"))
                 {
                     return new MessagingEntityNotFoundException(message);
                 }

@@ -113,6 +113,7 @@
                 throw new InvalidOperationException("Receive should have failed");
             });
         }
+
         [Fact]
         Task CreateClientWithoutEntityPathShouldFail()
         {
@@ -126,6 +127,7 @@
                  throw new Exception("Entity path wasn't provided in the connection string and this new call was supposed to fail");
              });
         }
+
         [Fact]
         Task EventHubClientSend()
         {
@@ -621,40 +623,42 @@
         async Task SendReceiveNonexistentEntity()
         {
             // Rebuild connection string with a nonexistent entity.
-            var conSettings = new EventHubsConnectionStringBuilder(this.connectionString);
-            var conString = this.connectionString.Replace(conSettings.EntityPath, Guid.NewGuid().ToString());
-            var ehClient = EventHubClient.CreateFromConnectionString(conString);
+            var csb = new EventHubsConnectionStringBuilder(this.connectionString);
+            csb.EntityPath = Guid.NewGuid().ToString();
+            var ehClient = EventHubClient.CreateFromConnectionString(csb.ToString());
 
             // Try sending.
-            try
+            PartitionSender sender = null;
+            await Assert.ThrowsAsync<MessagingEntityNotFoundException>(async () =>
             {
                 WriteLine("Sending an event to nonexistent entity.");
-                var sender = ehClient.CreatePartitionSender("0");
+                sender = ehClient.CreatePartitionSender("0");
                 await sender.SendAsync(new EventData(Encoding.UTF8.GetBytes("this send should fail.")));
                 throw new InvalidOperationException("Send should have failed");
-            }
-            catch (MessagingEntityNotFoundException)
-            {
-                WriteLine("Caught expected MessagingEntityNotFoundException");
-            }
+            });
+            await sender.CloseAsync();
 
             // Try receiving.
             PartitionReceiver receiver = null;
-            try
+            await Assert.ThrowsAsync<MessagingEntityNotFoundException>(async () =>
             {
                 WriteLine("Receiving from nonexistent entity.");
                 receiver = ehClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", PartitionReceiver.StartOfStream);
                 await receiver.ReceiveAsync(1);
                 throw new InvalidOperationException("Receive should have failed");
-            }
-            catch (MessagingEntityNotFoundException)
+            });
+            await receiver.CloseAsync();
+
+            // Try receiving on an nonexistent consumer group.
+            ehClient = EventHubClient.CreateFromConnectionString(this.connectionString);
+            await Assert.ThrowsAsync<MessagingEntityNotFoundException>(async () =>
             {
-                WriteLine("Caught expected MessagingEntityNotFoundException");
-            }
-            finally
-            {
-                await receiver.CloseAsync();
-            }
+                WriteLine("Receiving from nonexistent consumer group.");
+                receiver = ehClient.CreateReceiver(Guid.NewGuid().ToString(), "0", PartitionReceiver.StartOfStream);
+                await receiver.ReceiveAsync(1);
+                throw new InvalidOperationException("Receive should have failed");
+            });
+            await receiver.CloseAsync();
         }
 
         [Fact]
