@@ -14,7 +14,7 @@
   },
 
   "dependencies": {
-    "Microsoft.Azure.EventHubs": "0.0.2-preview",
+    "Microsoft.Azure.EventHubs": "0.0.3-preview",
     "Newtonsoft.Json": "9.0.1",
     "WindowsAzure.Storage": "7.2.1"
   },
