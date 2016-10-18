@@ -657,7 +657,7 @@
             ehClient = EventHubClient.CreateFromConnectionString(this.connectionString);
             await Assert.ThrowsAsync<MessagingEntityNotFoundException>(async () =>
             {
-                WriteLine("Receiving from nonexistent consumer group.");
+                Log("Receiving from nonexistent consumer group.");
                 receiver = ehClient.CreateReceiver(Guid.NewGuid().ToString(), "0", PartitionReceiver.StartOfStream);
                 await receiver.ReceiveAsync(1);
                 throw new InvalidOperationException("Receive should have failed");

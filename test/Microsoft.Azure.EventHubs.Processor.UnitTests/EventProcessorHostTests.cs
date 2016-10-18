@@ -183,7 +183,7 @@
         [Fact]
         async Task MultipleProcessorHosts()
         {
-            Log($"Testing with 2 EventProcessorHost instances");
+            Log("Testing with 2 EventProcessorHost instances");
 
             var partitionReceiveEvents = new ConcurrentDictionary<string, AsyncAutoResetEvent>();
             foreach (var partitionId in PartitionIds)
@@ -197,7 +197,7 @@
             {
                 for (int i = 0; i < hostCount; i++)
                 {
-                Log($"Creating EventProcessorHost");
+                Log("Creating EventProcessorHost");
                     var eventProcessorHost = new EventProcessorHost(
                         string.Empty,
                         PartitionReceiver.DefaultConsumerGroupName,
@@ -236,10 +236,10 @@
                     await eventProcessorHost.RegisterEventProcessorFactoryAsync(processorFactory, processorOptions);
                 }
 
-            Log($"Waiting for partition ownership to settle...");
+            Log("Waiting for partition ownership to settle...");
                 await Task.Delay(TimeSpan.FromSeconds(30));
 
-            Log($"Sending an event to each partition");
+            Log("Sending an event to each partition");
                 var sendTasks = new List<Task>();
                 foreach (var partitionId in PartitionIds)
                 {
@@ -247,7 +247,7 @@
                 }
                 await Task.WhenAll(sendTasks);
 
-            Log($"Verifying an event was received by each partition");
+            Log("Verifying an event was received by each partition");
                 foreach (var partitionId in PartitionIds)
                 {
                     var receivedEvent = partitionReceiveEvents[partitionId];
@@ -260,7 +260,7 @@
                 var shutdownTasks = new List<Task>();
                 foreach (var host in hosts)
                 {
-                Log($"Host{i} Calling UnregisterEventProcessorAsync.");
+                Log($"Host {host} Calling UnregisterEventProcessorAsync.");
                     shutdownTasks.Add(host.UnregisterEventProcessorAsync());
                 }
 
@@ -273,7 +273,7 @@
         {
             const int ReceiveTimeoutInSeconds = 15;
 
-            Log($"Testing EventProcessorHost with InvokeProcessorAfterReceiveTimeout=true");
+            Log("Testing EventProcessorHost with InvokeProcessorAfterReceiveTimeout=true");
 
             var emptyBatchReceiveEvents = new ConcurrentDictionary<string, AsyncAutoResetEvent>();
             foreach (var partitionId in PartitionIds)
@@ -314,7 +314,7 @@
             await eventProcessorHost.RegisterEventProcessorFactoryAsync(processorFactory, processorOptions);
             try
             {
-                Log($"Waiting for each partition to receive an empty batch of events...");
+                Log("Waiting for each partition to receive an empty batch of events...");
                 foreach (var partitionId in PartitionIds)
                 {
                     var emptyBatchReceiveEvent = emptyBatchReceiveEvents[partitionId];
@@ -324,7 +324,7 @@
             }
             finally
             {
-                Log($"Calling UnregisterEventProcessorAsync");
+                Log("Calling UnregisterEventProcessorAsync");
                 await eventProcessorHost.UnregisterEventProcessorAsync();
             }
         }
@@ -334,7 +334,7 @@
         {
             const int ReceiveTimeoutInSeconds = 15;
 
-            Log($"Calling RegisterEventProcessorAsync with InvokeProcessorAfterReceiveTimeout=false");
+            Log("Calling RegisterEventProcessorAsync with InvokeProcessorAfterReceiveTimeout=false");
 
             var eventProcessorHost = new EventProcessorHost(
                 string.Empty,
@@ -369,13 +369,13 @@
             await eventProcessorHost.RegisterEventProcessorFactoryAsync(processorFactory, processorOptions);
             try
             {
-                Log($"Verifying no empty batches arrive...");
+                Log("Verifying no empty batches arrive...");
                 bool waitSucceeded = await emptyBatchReceiveEvent.WaitAsync(TimeSpan.FromSeconds(ReceiveTimeoutInSeconds * 2));
                 Assert.False(waitSucceeded, "No empty batch should have been received!");
             }
             finally
             {
-                Log($"Calling UnregisterEventProcessorAsync");
+                Log("Calling UnregisterEventProcessorAsync");
                 await eventProcessorHost.UnregisterEventProcessorAsync();
             }
         }
@@ -456,7 +456,7 @@
                     hosts.Add(eventProcessorHost);
                 }
 
-            Log($"Sending an event to each partition");
+            Log("Sending an event to each partition");
                 var sendTasks = new List<Task>();
                 foreach (var partitionId in PartitionIds)
                 {
@@ -465,7 +465,7 @@
 
                 await Task.WhenAll(sendTasks);
 
-            Log($"Verifying an event was received by each partition for each consumer group");
+            Log("Verifying an event was received by each partition for each consumer group");
                 foreach (var consumerGroupName in consumerGroupNames)
                 {
                     foreach (var partitionId in PartitionIds)
@@ -476,11 +476,11 @@
                     }
                 }
 
-            Log($"Success");
+            Log("Success");
             }
             finally
             {
-                WriteLine("Calling UnregisterEventProcessorAsync on both hosts.");
+                Log("Calling UnregisterEventProcessorAsync on both hosts.");
                 foreach (var eph in hosts)
                 {
                     await eph.UnregisterEventProcessorAsync();
@@ -676,7 +676,7 @@
         async Task<Dictionary<string, EventData>> SendAndReceiveSingleEvent()
         {
             // Send single event to each partition.
-            Log($"Sending an event to each partition");
+            Log("Sending an event to each partition");
             var sendTasks = new List<Task>();
             foreach (var partitionId in PartitionIds)
             {
@@ -780,17 +780,17 @@
                     await Task.Delay(1000);
                 }
 
-                Log($"Verifying at least an event was received by each partition");
+                Log("Verifying at least an event was received by each partition");
                 foreach (var partitionId in PartitionIds)
                 {
                     Assert.True(receivedEvents.ContainsKey(partitionId), $"Partition {partitionId} didn't receive any message!");
                 }
 
-                Log($"Success");
+                Log("Success");
             }
             finally
             {
-                Log($"Calling UnregisterEventProcessorAsync");
+                Log("Calling UnregisterEventProcessorAsync");
                 await eventProcessorHost.UnregisterEventProcessorAsync();
             }
 
