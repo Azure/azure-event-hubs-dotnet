@@ -5,7 +5,7 @@
   },
 
   "dependencies": {
-    "Microsoft.Azure.EventHubs": "0.0.3-preview",
+    "Microsoft.Azure.EventHubs": "0.0.4-preview",
     "Microsoft.NETCore.App": {
       "type": "platform",
       "version": "1.0.1"

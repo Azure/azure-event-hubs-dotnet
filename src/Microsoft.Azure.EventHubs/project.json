@@ -1,8 +1,15 @@
 ﻿{
-  "version": "0.0.3-preview",
+  "version": "0.0.4-preview",
   "title": "Microsoft.Azure.EventHubs",
   "description": "Microsoft.Azure.EventHubs Class Library",
   "authors": [ "Microsoft" ],
+
+  "buildOptions": {
+    "allowUnsafe": true,
+    "warningsAsErrors": true,
+    "delaySign": true,
+    "keyFile": "../../build/MSSharedLibSN1024.snk"
+  },
 
   "packOptions": {
     "tags": [ "Azure", "Event Hubs", "EventHubs", ".NET", "AMQP", "IoT" ],

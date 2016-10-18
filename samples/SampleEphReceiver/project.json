@@ -5,8 +5,8 @@
   },
 
   "dependencies": {
-    "Microsoft.Azure.EventHubs.Processor": "0.0.3-preview",
-    "Microsoft.Azure.EventHubs": "0.0.3-preview"
+    "Microsoft.Azure.EventHubs.Processor": "0.0.4-preview",
+    "Microsoft.Azure.EventHubs": "0.0.4-preview"
   },
 
   "frameworks": {
