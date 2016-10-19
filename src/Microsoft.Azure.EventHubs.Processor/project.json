@@ -1,8 +1,14 @@
 {
-  "version": "0.0.3-preview",
+  "version": "0.0.4-preview",
   "title": "Microsoft.Azure.EventHubs.Processor",
   "description": "Microsoft.Azure.EventHubs.Processor Class Library",
   "authors": [ "Microsoft" ],
+
+  "buildOptions": {
+    "warningsAsErrors": true,
+    "delaySign": true,
+    "keyFile": "../../build/MSSharedLibSN1024.snk"
+  },
 
   "packOptions": {
     "tags": [ "Azure", "Event Hubs", "EventHubs", ".NET", "AMQP", "IoT", "Event Processor Host" ],
@@ -14,7 +20,9 @@
   },
 
   "dependencies": {
-    "Microsoft.Azure.EventHubs": "0.0.3-preview",
+    "Microsoft.Azure.EventHubs": {
+      "target": "project" 
+    },
     "Newtonsoft.Json": "9.0.1",
     "WindowsAzure.Storage": "7.2.1"
   },

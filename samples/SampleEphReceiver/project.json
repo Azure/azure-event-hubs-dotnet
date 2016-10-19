@@ -1,12 +1,16 @@
 {
-  "version": "0.0.2-preview",
+  "version": "1.0.0",
   "buildOptions": {
     "emitEntryPoint": true
   },
 
   "dependencies": {
-    "Microsoft.Azure.EventHubs.Processor": "0.0.3-preview",
-    "Microsoft.Azure.EventHubs": "0.0.3-preview"
+    "Microsoft.Azure.EventHubs.Processor": {
+      "target": "project"
+    },
+    "Microsoft.Azure.EventHubs": {
+      "target": "project"
+    }
   },
 
   "frameworks": {
