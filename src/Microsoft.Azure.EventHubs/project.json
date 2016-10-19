@@ -5,7 +5,6 @@
   "authors": [ "Microsoft" ],
 
   "buildOptions": {
-    "allowUnsafe": true,
     "warningsAsErrors": true,
     "delaySign": true,
     "keyFile": "../../build/MSSharedLibSN1024.snk"
