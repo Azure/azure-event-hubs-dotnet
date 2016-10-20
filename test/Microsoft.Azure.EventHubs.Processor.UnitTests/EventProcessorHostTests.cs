@@ -13,11 +13,11 @@
     public class EventProcessorHostTests
     {
         ITestOutputHelper output;
-        EventHubsConnectionStringBuilder ConnectionStringBuilder;
-        string StorageConnectionString;
-        string EventHubConnectionString;
-        string LeaseContainerName;
-        string[] PartitionIds;
+        protected EventHubsConnectionStringBuilder ConnectionStringBuilder;
+        protected string StorageConnectionString;
+        protected string EventHubConnectionString;
+        protected string LeaseContainerName;
+        protected string[] PartitionIds;
 
         public EventProcessorHostTests(ITestOutputHelper output)
         {
@@ -45,7 +45,9 @@
             this.LeaseContainerName = this.ConnectionStringBuilder.EntityPath.ToLower();
 
             // Discover partition ids.
-            PartitionIds = this.GetPartitionIdsAsync(this.ConnectionStringBuilder.ToString()).Result;
+            var ehClient = EventHubClient.CreateFromConnectionString(this.EventHubConnectionString);
+            var eventHubInfo = ehClient.GetRuntimeInformationAsync().Result;
+            this.PartitionIds = eventHubInfo.PartitionIds;
             Log($"EventHub has {PartitionIds.Length} partitions");
         }
 
@@ -129,6 +131,7 @@
                 Log("Caught ArgumentException as expected.");
             }
         }
+
         [Fact]
         Task SingleProcessorHost()
         {
@@ -140,44 +143,6 @@
                 this.LeaseContainerName);
 
             return RunGenericScenario(eventProcessorHost);
-        }
-
-        [Fact]
-        async Task HostReregisterShouldFail()
-        {
-            var eventProcessorHost = new EventProcessorHost(
-                string.Empty,
-                PartitionReceiver.DefaultConsumerGroupName,
-                this.EventHubConnectionString,
-                this.StorageConnectionString,
-                this.LeaseContainerName);
-
-            // Calling register for the first time should succeed.
-            Log("Registering EventProcessorHost for the first time.");
-            await eventProcessorHost.RegisterEventProcessorAsync<TestEventProcessor>();
-
-            try
-            {
-                // Calling register for the second time should fail.
-                Log("Registering EventProcessorHost for the second time which should fail.");
-                await eventProcessorHost.RegisterEventProcessorAsync<TestEventProcessor>();
-                throw new InvalidOperationException("Second RegisterEventProcessorAsync call should have failed.");
-            }
-            catch (InvalidOperationException ex)
-            {
-                if (ex.Message.Contains("A PartitionManager cannot be started multiple times."))
-                {
-                    Log($"Caught {ex.GetType()} as expected");
-                }
-                else
-                {
-                    throw;
-                }
-            }
-            finally
-            {
-                await eventProcessorHost.UnregisterEventProcessorAsync();
-            }
         }
 
         [Fact]
@@ -797,20 +762,6 @@
             return receivedEvents.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
         }
 
-        async Task<string[]> GetPartitionIdsAsync(string connectionString)
-        {
-            var eventHubClient = EventHubClient.CreateFromConnectionString(connectionString);
-            try
-            {
-                var eventHubInfo = await eventHubClient.GetRuntimeInformationAsync();
-                return eventHubInfo.PartitionIds;
-            }
-            finally
-            {
-                await eventHubClient.CloseAsync();
-            }
-        }
-
         async Task SendToPartitionAsync(string partitionId, string messageBody, string connectionString)
         {
             var eventHubClient = EventHubClient.CreateFromConnectionString(connectionString);
@@ -825,84 +776,12 @@
             }
         }
 
-        void Log(string message)
+        protected void Log(string message)
         {
             var log = string.Format("{0} {1}", DateTime.Now.TimeOfDay, message);
             output.WriteLine(log);
             Debug.WriteLine(message);
             Console.WriteLine(message);
-
-        }
-
-        class TestEventProcessor : IEventProcessor
-        {
-            public event EventHandler<PartitionContext> OnOpen;
-            public event EventHandler<Tuple<PartitionContext, CloseReason>> OnClose;
-            public event EventHandler<Tuple<PartitionContext, ReceivedEventArgs>> OnProcessEvents;
-            public event EventHandler<Tuple<PartitionContext, Exception>> OnProcessError;
-
-            public TestEventProcessor()
-            {
-            }
-
-            Task IEventProcessor.CloseAsync(PartitionContext context, CloseReason reason)
-            {
-                this.OnClose?.Invoke(this, new Tuple<PartitionContext, CloseReason>(context, reason));
-                return Task.CompletedTask;
-            }
-
-            Task IEventProcessor.ProcessErrorAsync(PartitionContext context, Exception error)
-            {
-                this.OnProcessError?.Invoke(this, new Tuple<PartitionContext, Exception>(context, error));
-                return Task.CompletedTask;
-            }
-
-            Task IEventProcessor.ProcessEventsAsync(PartitionContext context, IEnumerable<EventData> events)
-            {
-                var eventsArgs = new ReceivedEventArgs();
-                eventsArgs.events = events;
-                this.OnProcessEvents?.Invoke(this, new Tuple<PartitionContext, ReceivedEventArgs>(context, eventsArgs));
-                EventData lastEvent = events?.LastOrDefault();
-
-                // Checkpoint with last event?
-                if (eventsArgs.checkPointLastEvent && lastEvent != null)
-                {
-                    return context.CheckpointAsync(lastEvent);
-                }
-
-                // Checkpoint batch? This should checkpoint with last message delivered.
-                if (eventsArgs.checkPointBatch)
-                {
-                    return context.CheckpointAsync();
-                }
-
-                return Task.CompletedTask;
-            }
-
-            Task IEventProcessor.OpenAsync(PartitionContext context)
-            {
-                this.OnOpen?.Invoke(this, context);
-                return Task.CompletedTask;
-            }
-        }
-
-        class TestEventProcessorFactory : IEventProcessorFactory
-        {
-            public event EventHandler<Tuple<PartitionContext, TestEventProcessor>> OnCreateProcessor;
-
-            IEventProcessor IEventProcessorFactory.CreateEventProcessor(PartitionContext context)
-            {
-                var processor = new TestEventProcessor();
-                this.OnCreateProcessor?.Invoke(this, new Tuple<PartitionContext, TestEventProcessor>(context, processor));
-                return processor;
-            }
-        }
-
-        class ReceivedEventArgs
-        {
-            public IEnumerable<EventData> events;
-            public bool checkPointLastEvent = true;
-            public bool checkPointBatch = false;
         }
     }
 }

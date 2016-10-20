@@ -134,7 +134,7 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
                 {
                     AmqpSymbol errorCondition = AmqpExceptionHelper.GetResponseErrorCondition(this.response, (AmqpResponseStatusCode)statusCode);
                     Error error = new Error { Condition = errorCondition, Description = statusDescription };
-                    throw new AmqpException(error);
+                    throw AmqpExceptionHelper.ToMessagingContract(error);
                 }
 
                 object returnValue = null;
