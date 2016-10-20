@@ -45,7 +45,9 @@
             this.LeaseContainerName = this.ConnectionStringBuilder.EntityPath.ToLower();
 
             // Discover partition ids.
-            PartitionIds = this.GetPartitionIdsAsync(this.ConnectionStringBuilder.ToString()).Result;
+            var ehClient = EventHubClient.CreateFromConnectionString(this.EventHubConnectionString);
+            var eventHubInfo = ehClient.GetRuntimeInformationAsync().Result;
+            this.PartitionIds = eventHubInfo.PartitionIds;
             Log($"EventHub has {PartitionIds.Length} partitions");
         }
 
@@ -758,20 +760,6 @@
             }
 
             return receivedEvents.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-        }
-
-        async Task<string[]> GetPartitionIdsAsync(string connectionString)
-        {
-            var eventHubClient = EventHubClient.CreateFromConnectionString(connectionString);
-            try
-            {
-                var eventHubInfo = await eventHubClient.GetRuntimeInformationAsync();
-                return eventHubInfo.PartitionIds;
-            }
-            finally
-            {
-                await eventHubClient.CloseAsync();
-            }
         }
 
         async Task SendToPartitionAsync(string partitionId, string messageBody, string connectionString)

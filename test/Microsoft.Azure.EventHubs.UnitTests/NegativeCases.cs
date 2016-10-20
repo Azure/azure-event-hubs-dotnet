@@ -74,7 +74,6 @@
                 EventHubClient.CreateFromConnectionString(csb.ToString());
                 throw new Exception("Entity path wasn't provided in the connection string and this new call was supposed to fail");
             });
-
         }
 
         [Fact]

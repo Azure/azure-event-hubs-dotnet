@@ -26,13 +26,13 @@
                 throw new InvalidOperationException("EVENTHUBCONNECTIONSTRING environment variable was not found!");
             }
 
-            // Update operation timeout on ConnectionBuilderString.
+            // Update operation timeout on ConnectionStringBuilder.
             var cbs = new EventHubsConnectionStringBuilder(connectionString);
             cbs.OperationTimeout = TimeSpan.FromSeconds(15);
             this.EventHubConnectionString = cbs.ToString();
 
             // Create default EH client.
-            this.EventHubClient = EventHubClient.CreateFromConnectionString(connectionString);
+            this.EventHubClient = EventHubClient.CreateFromConnectionString(this.EventHubConnectionString);
 
             // Discover partition ids.
             var eventHubInfo = this.EventHubClient.GetRuntimeInformationAsync().Result;
