@@ -36,9 +36,11 @@ To get started receiving events with the **EventProcessorHost** refer to [Get st
 
 In order to run the unit tests, you will need to set the following Environment Variables:
 
-1. `EVENTHUBCONNECTIONSTRING`
+1. `EVENTHUBCONNECTIONSTRING` 
 
 2. `EVENTPROCESSORSTORAGECONNECTIONSTRING`
+
+* Please note that, some of the unit tests require `EVENTHUBCONNECTIONSTRING` to include EventHub entity path and custom consumer group `cgroup1` to be present on subject EventHub.
 
 ## How to provide feedback
 
