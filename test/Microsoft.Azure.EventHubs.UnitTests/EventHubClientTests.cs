@@ -578,11 +578,11 @@
 
                     // Receive call should have waited more than receive timeout.
                     var diff = DateTime.Now.Subtract(startTime).TotalSeconds;
-                    Assert.True(diff >= receiveTimeoutInSeconds, $"Hit timeout {diff} seconds ionto Receive call while testing {receiveTimeoutInSeconds} seconds timeout.");
+                    Assert.True(diff >= receiveTimeoutInSeconds, $"Hit timeout {diff} seconds into Receive call while testing {receiveTimeoutInSeconds} seconds timeout.");
 
                     // Timeout should not be late more than 5 seconds.
                     // This is just a logical buffer for timeout behavior validation.
-                    Assert.True(diff < receiveTimeoutInSeconds + 5, $"Hit timeout {diff} seconds ionto Receive call while testing {receiveTimeoutInSeconds} seconds timeout.");
+                    Assert.True(diff < receiveTimeoutInSeconds + 5, $"Hit timeout {diff} seconds into Receive call while testing {receiveTimeoutInSeconds} seconds timeout.");
                 }
             }
             finally
