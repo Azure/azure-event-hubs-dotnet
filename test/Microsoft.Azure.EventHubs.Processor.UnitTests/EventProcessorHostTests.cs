@@ -45,6 +45,7 @@
             this.LeaseContainerName = this.ConnectionStringBuilder.EntityPath.ToLower();
 
             // Discover partition ids.
+            Log("Discovering partitions on eventhub");
             var ehClient = EventHubClient.CreateFromConnectionString(this.EventHubConnectionString);
             var eventHubInfo = ehClient.GetRuntimeInformationAsync().Result;
             this.PartitionIds = eventHubInfo.PartitionIds;
@@ -514,6 +515,7 @@
         {
             // Generate a new lease container name that will be used through out the test.
             string leaseContainerName = Guid.NewGuid().ToString();
+            Log($"Using lease container {leaseContainerName}");
 
             // First host will send and receive as usual.
             var eventProcessorHost = new EventProcessorHost(
@@ -538,7 +540,7 @@
                 ReceiveTimeout = TimeSpan.FromSeconds(15),
                 InitialOffsetProvider = partitionId => PartitionReceiver.StartOfStream
             };
-            var receivedEvents = await this.RunGenericScenario(eventProcessorHost, processorOptions);
+            var receivedEvents = await this.RunGenericScenario(eventProcessorHost, processorOptions, checkPointLastEvent: false);
 
             // We should have received only 1 event from each partition.
             Assert.False(receivedEvents.Any(kvp => kvp.Value.Count != 1), "One of the partitions didn't return exactly 1 event");

@@ -4,6 +4,7 @@
 namespace Microsoft.Azure.EventHubs.Amqp.Management
 {
     using System;
+    using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Linq;
     using System.Reflection;
@@ -166,7 +167,7 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
         }
 
         const BindingFlags MethodFlags = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
-        static Dictionary<Type, Dictionary<string, MethodData>> typeCache = new Dictionary<Type, Dictionary<string, MethodData>>();
+        static ConcurrentDictionary<Type, Dictionary<string, MethodData>> typeCache = new ConcurrentDictionary<Type, Dictionary<string, MethodData>>();
 
         class AmqpClientProxy : RealProxy
         {
