@@ -258,6 +258,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 HostName = hostName
             };
 
+            ClientInfo.Add(connectionSettings);
             return connectionSettings;
         }
 
