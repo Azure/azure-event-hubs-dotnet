@@ -655,6 +655,62 @@
                 $"Didn't receive the same number of messages that we sent. Sent: {NumberOfMessagesToSend}, Received: {totalReceived}");
         }
 
+        [Fact]
+        async Task MultipleClientsSend()
+        {
+            int maxNumberOfClients = 100;
+            var syncEvent = new ManualResetEventSlim(false);
+
+            Log($"Starting {maxNumberOfClients} SendAsync tasks in parallel.");
+            List<Task> tasks = new List<Task>();
+            for (int i = 0; i < maxNumberOfClients; i++)
+            {
+                var task = Task.Factory.StartNew(async () =>
+                {
+                    syncEvent.Wait();
+                    var ehClient = EventHubClient.CreateFromConnectionString(this.EventHubConnectionString);
+                    await ehClient.SendAsync(new EventData(Encoding.UTF8.GetBytes("Hello EventHub!")));
+                });
+
+                tasks.Add(task.Unwrap());
+            }
+
+            // Let all tasks make the call around the same time.
+            await Task.Delay(10000);
+            syncEvent.Set();
+
+            await Task.WhenAll(tasks);
+            Log("All Send tasks have completed.");
+        }
+
+        [Fact]
+        async Task MultipleClientsGetRuntimeInformation()
+        {
+            int maxNumberOfClients = 100;
+            var syncEvent = new ManualResetEventSlim(false);
+
+            Log($"Starting {maxNumberOfClients} GetRuntimeInformationAsync tasks in parallel.");
+            List<Task> tasks = new List<Task>();
+            for (int i = 0; i < maxNumberOfClients; i++)
+            {
+                var task = Task.Factory.StartNew(async () =>
+                {
+                    syncEvent.Wait();
+                    var ehClient = EventHubClient.CreateFromConnectionString(this.EventHubConnectionString);
+                    await ehClient.GetRuntimeInformationAsync();
+                });
+
+                tasks.Add(task.Unwrap());
+            }
+
+            // Let all tasks make the call around the same time.
+            await Task.Delay(10000);
+            syncEvent.Set();
+
+            await Task.WhenAll(tasks);
+            Log("All GetRuntimeInformationAsync tasks have completed.");
+        }
+        
         // Sends single message to given partition and returns it after receiving.
         async Task<EventData> SendAndReceiveSingleEvent(string partitionId)
         {
