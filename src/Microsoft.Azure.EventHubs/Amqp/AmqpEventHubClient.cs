@@ -6,8 +6,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
     using System;
     using System.Linq;
     using System.Net;
-    using System.Net.Security;
-    using System.Security.Cryptography.X509Certificates;
     using System.Threading.Tasks;
     using Microsoft.Azure.Amqp.Sasl;
     using Microsoft.Azure.Amqp;
@@ -220,8 +218,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
             int port,
             bool useSslStreamSecurity,
             bool sslStreamUpgrade = false,
-            string sslHostName = null,
-            X509Certificate2 certificate = null)
+            string sslHostName = null)
         {
             TcpTransportSettings tcpSettings = new TcpTransportSettings
             {
@@ -237,7 +234,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 TlsTransportSettings tlsSettings = new TlsTransportSettings(tcpSettings)
                 {
                     TargetHost = sslHostName ?? hostName,
-                    Certificate = certificate,
                 };
                 tpSettings = tlsSettings;
             }
