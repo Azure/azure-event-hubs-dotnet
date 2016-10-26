@@ -21,7 +21,7 @@ namespace Microsoft.Azure.EventHubs
             {
                 Assembly assembly = typeof(ClientInfo).GetTypeInfo().Assembly;
                 product = GetAssemblyAttributeValue<AssemblyProductAttribute>(assembly, p => p.Product);
-                version = GetAssemblyAttributeValue<AssemblyVersionAttribute>(assembly, v => v.Version);
+                version = GetAssemblyAttributeValue<AssemblyFileVersionAttribute>(assembly, v => v.Version);
                 framework = GetAssemblyAttributeValue<TargetFrameworkAttribute>(assembly, f => f.FrameworkName);
 #if NETSTANDARD
                 platform = System.Runtime.InteropServices.RuntimeInformation.OSDescription;
