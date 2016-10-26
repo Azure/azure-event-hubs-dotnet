@@ -658,56 +658,57 @@
         [Fact]
         async Task MultipleClientsSend()
         {
-            int maxNumberOfClients = 100;
+            var maxNumberOfClients = 100;
             var syncEvent = new ManualResetEventSlim(false);
 
             Log($"Starting {maxNumberOfClients} SendAsync tasks in parallel.");
-            List<Task> tasks = new List<Task>();
-            for (int i = 0; i < maxNumberOfClients; i++)
+
+            var tasks = new List<Task>();
+            for (var i = 0; i < maxNumberOfClients; i++)
             {
-                var task = Task.Factory.StartNew(async () =>
+                var task = Task.Run(async () =>
                 {
                     syncEvent.Wait();
                     var ehClient = EventHubClient.CreateFromConnectionString(this.EventHubConnectionString);
                     await ehClient.SendAsync(new EventData(Encoding.UTF8.GetBytes("Hello EventHub!")));
                 });
-
-                tasks.Add(task.Unwrap());
+                tasks.Add(task);
             }
 
-            // Let all tasks make the call around the same time.
-            await Task.Delay(10000);
+            var waitForAccountToInitialize = Task.Delay(10000);
+            await waitForAccountToInitialize;
             syncEvent.Set();
-
             await Task.WhenAll(tasks);
+
             Log("All Send tasks have completed.");
         }
 
         [Fact]
         async Task MultipleClientsGetRuntimeInformation()
         {
-            int maxNumberOfClients = 100;
+            var maxNumberOfClients = 100;
             var syncEvent = new ManualResetEventSlim(false);
 
             Log($"Starting {maxNumberOfClients} GetRuntimeInformationAsync tasks in parallel.");
-            List<Task> tasks = new List<Task>();
-            for (int i = 0; i < maxNumberOfClients; i++)
+
+            var tasks = new List<Task>();
+            for (var i = 0; i < maxNumberOfClients; i++)
             {
-                var task = Task.Factory.StartNew(async () =>
+                var task = Task.Run(async () =>
                 {
                     syncEvent.Wait();
                     var ehClient = EventHubClient.CreateFromConnectionString(this.EventHubConnectionString);
                     await ehClient.GetRuntimeInformationAsync();
                 });
 
-                tasks.Add(task.Unwrap());
+                tasks.Add(task);
             }
 
-            // Let all tasks make the call around the same time.
-            await Task.Delay(10000);
+            var waitForAccountToInitialize = Task.Delay(10000);
+            await waitForAccountToInitialize;
             syncEvent.Set();
-
             await Task.WhenAll(tasks);
+
             Log("All GetRuntimeInformationAsync tasks have completed.");
         }
         
