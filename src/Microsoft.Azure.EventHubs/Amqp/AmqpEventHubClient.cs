@@ -166,7 +166,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
             bool useWebSockets = false,
             bool sslStreamUpgrade = false,
             NetworkCredential networkCredential = null,
-            RemoteCertificateValidationCallback certificateValidationCallback = null,
             bool forceTokenProvider = true)
         {
             var settings = new AmqpSettings();
@@ -174,7 +173,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
             {
                 var tlsSettings = new TlsTransportSettings
                 {
-                    CertificateValidationCallback = certificateValidationCallback,
                     TargetHost = sslHostName
                 };
 
@@ -223,8 +221,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
             bool useSslStreamSecurity,
             bool sslStreamUpgrade = false,
             string sslHostName = null,
-            X509Certificate2 certificate = null,
-            RemoteCertificateValidationCallback certificateValidationCallback = null)
+            X509Certificate2 certificate = null)
         {
             TcpTransportSettings tcpSettings = new TcpTransportSettings
             {
@@ -241,7 +238,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 {
                     TargetHost = sslHostName ?? hostName,
                     Certificate = certificate,
-                    CertificateValidationCallback = certificateValidationCallback
                 };
                 tpSettings = tlsSettings;
             }
