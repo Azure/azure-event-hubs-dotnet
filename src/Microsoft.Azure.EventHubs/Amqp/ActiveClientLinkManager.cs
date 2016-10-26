@@ -65,7 +65,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     thisPtr.eventHubClient.ConnectionStringBuilder.Endpoint,
                     thisPtr.activeClientLink.Audience, thisPtr.activeClientLink.EndpointUri,
                     thisPtr.activeClientLink.RequiredClaims,
-                    ActiveClientLinkManager.SendTokenTimeout);
+                    ActiveClientLinkManager.SendTokenTimeout).ConfigureAwait(false);
 
                 //DNX_TODO: MessagingClientEtwProvider.Provider.EventWriteAmqpManageLink("After SendToken", thisPtr.activeClientLink.LinkObject, validTo.ToString(CultureInfo.InvariantCulture));
 

@@ -142,8 +142,8 @@ namespace Microsoft.Azure.EventHubs
             int count = 0;
             try
             {
-                IList<EventData> events = await this.OnReceiveAsync(maxMessageCount, waitTime);
-                count = events != null ? events.Count : 0;
+                IList<EventData> events = await this.OnReceiveAsync(maxMessageCount, waitTime).ConfigureAwait(false);
+                count = events?.Count ?? 0;
                 EventData lastEvent = events?[count - 1];
                 if (lastEvent != null)
                 {

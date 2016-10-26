@@ -62,12 +62,12 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 {
                     try
                     {
-                        ReceivingAmqpLink receiveLink = await this.ReceiveLinkManager.GetOrCreateAsync(timeoutHelper.RemainingTime());
+                        ReceivingAmqpLink receiveLink = await this.ReceiveLinkManager.GetOrCreateAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
                         IEnumerable<AmqpMessage> amqpMessages = null;
                         bool hasMessages = await Task.Factory.FromAsync(
                             (c, s) => receiveLink.BeginReceiveMessages(maxMessageCount, timeoutHelper.RemainingTime(), c, s),
                             a => receiveLink.EndReceiveMessages(a, out amqpMessages),
-                            this);
+                            this).ConfigureAwait(false);
 
                         if (receiveLink.TerminalException != null)
                         {
@@ -105,7 +105,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     TimeSpan? retryInterval = this.EventHubClient.RetryPolicy.GetNextRetryInterval(this.ClientId, ex, timeoutHelper.RemainingTime());
                     if (retryInterval != null)
                     {
-                        await Task.Delay(retryInterval.Value);
+                        await Task.Delay(retryInterval.Value).ConfigureAwait(false);
                         shouldRetry = true;
                     }
                     else
@@ -158,7 +158,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
             var amqpEventHubClient = ((AmqpEventHubClient)this.EventHubClient);
             var csb = this.EventHubClient.ConnectionStringBuilder;
             var timeoutHelper = new TimeoutHelper(csb.OperationTimeout);
-            AmqpConnection connection = await amqpEventHubClient.ConnectionManager.GetOrCreateAsync(timeoutHelper.RemainingTime());
+            AmqpConnection connection = await amqpEventHubClient.ConnectionManager.GetOrCreateAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
 
             // Authenticate over CBS
             var cbsLink = connection.Extensions.Find<AmqpCbsLink>();
@@ -167,7 +167,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
             Uri address = new Uri(csb.Endpoint, this.Path);
             string audience = address.AbsoluteUri;
             string resource = address.AbsoluteUri;
-            var expiresAt = await cbsLink.SendTokenAsync(cbsTokenProvider, address, audience, resource, new[] { ClaimConstants.Listen }, timeoutHelper.RemainingTime());
+            var expiresAt = await cbsLink.SendTokenAsync(cbsTokenProvider, address, audience, resource, new[] { ClaimConstants.Listen }, timeoutHelper.RemainingTime()).ConfigureAwait(false);
 
             AmqpSession session = null;
             try
@@ -175,7 +175,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 // Create our Session
                 var sessionSettings = new AmqpSessionSettings { Properties = new Fields() };
                 session = connection.CreateSession(sessionSettings);
-                await session.OpenAsync(timeoutHelper.RemainingTime());
+                await session.OpenAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
 
                 FilterSet filterMap = null;
                 var filters = this.CreateFilters();
@@ -207,7 +207,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 linkSettings.LinkName = $"{amqpEventHubClient.ContainerId};{connection.Identifier}:{session.Identifier}:{link.Identifier}";
                 link.AttachTo(session);
 
-                await link.OpenAsync(timeoutHelper.RemainingTime());
+                await link.OpenAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
                 var activeClientLink = new ActiveClientLink(
                     link,
                     this.EventHubClient.ConnectionStringBuilder.Endpoint.AbsoluteUri, // audience
@@ -290,17 +290,17 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 }
                 catch (Exception e)
                 {
-                    await this.ReceiveHandlerProcessErrorAsync(e);
+                    await this.ReceiveHandlerProcessErrorAsync(e).ConfigureAwait(false);
                     break;
                 }
 
                 try
                 {
-                    await this.ReceiveHandlerProcessEventsAsync(receivedEvents);
+                    await this.ReceiveHandlerProcessEventsAsync(receivedEvents).ConfigureAwait(false);
                 }
                 catch (Exception userCodeError)
                 {
-                    await this.ReceiveHandlerProcessErrorAsync(userCodeError);
+                    await this.ReceiveHandlerProcessErrorAsync(userCodeError).ConfigureAwait(false);
                     break;
                 }
             }

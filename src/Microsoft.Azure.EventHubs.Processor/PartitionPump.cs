@@ -48,7 +48,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                     this.Processor = this.Host.ProcessorFactory.CreateEventProcessor(this.PartitionContext);
                     action = EventProcessorHostActionStrings.OpeningEventProcessor;
                     ProcessorEventSource.Log.PartitionPumpInvokeProcessorOpenStart(this.Host.Id, this.PartitionContext.PartitionId, this.Processor.GetType().ToString());
-                    await this.Processor.OpenAsync(this.PartitionContext);
+                    await this.Processor.OpenAsync(this.PartitionContext).ConfigureAwait(false);
                     ProcessorEventSource.Log.PartitionPumpInvokeProcessorOpenStop(this.Host.Id, this.PartitionContext.PartitionId);
                 }
                 catch (Exception e)
@@ -64,7 +64,7 @@ namespace Microsoft.Azure.EventHubs.Processor
 
             if (this.PumpStatus == PartitionPumpStatus.Opening)
             {
-                await this.OnOpenAsync();
+                await this.OnOpenAsync().ConfigureAwait(false);
             }
         }
 
@@ -86,17 +86,17 @@ namespace Microsoft.Azure.EventHubs.Processor
             this.PumpStatus = PartitionPumpStatus.Closing;
             try
             {
-                await this.OnClosingAsync(reason);
+                await this.OnClosingAsync(reason).ConfigureAwait(false);
 
                 if (this.Processor != null)
                 {
-                    using (await this.ProcessingAsyncLock.LockAsync())
+                    using (await this.ProcessingAsyncLock.LockAsync().ConfigureAwait(false))
                     {
                         // When we take the lock, any existing ProcessEventsAsync call has finished.
                         // Because the client has been closed, there will not be any more
                         // calls to onEvents in the future. Therefore we can safely call CloseAsync.
                         ProcessorEventSource.Log.PartitionPumpInvokeProcessorCloseStart(this.Host.Id, this.PartitionContext.PartitionId, reason.ToString());
-                        await this.Processor.CloseAsync(this.PartitionContext, reason);
+                        await this.Processor.CloseAsync(this.PartitionContext, reason).ConfigureAwait(false);
                         ProcessorEventSource.Log.PartitionPumpInvokeProcessorCloseStop(this.Host.Id, this.PartitionContext.PartitionId);
                     }
                 }
@@ -112,7 +112,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             if (reason != CloseReason.LeaseLost)
             {
                 // Since this pump is dead, release the lease. 
-                await this.Host.LeaseManager.ReleaseLeaseAsync(this.PartitionContext.Lease);
+                await this.Host.LeaseManager.ReleaseLeaseAsync(this.PartitionContext.Lease).ConfigureAwait(false);
             }
 
             this.PumpStatus = PartitionPumpStatus.Closed;
@@ -133,9 +133,9 @@ namespace Microsoft.Azure.EventHubs.Processor
             // The handler is not installed until after OpenAsync returns, so ProcessEventsAsync cannot conflict with OpenAsync.
             // There could be a conflict between ProcessEventsAsync and CloseAsync, however. All calls to CloseAsync are
             // protected by synchronizing too.
-            using (await this.ProcessingAsyncLock.LockAsync())
+            using (await this.ProcessingAsyncLock.LockAsync().ConfigureAwait(false))
             {
-                int eventCount = events != null ? events.Count() : 0;
+                int eventCount = events?.Count() ?? 0;
                 ProcessorEventSource.Log.PartitionPumpInvokeProcessorEventsStart(this.Host.Id, this.PartitionContext.PartitionId, eventCount);
                 try
                 {
@@ -146,7 +146,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                         this.PartitionContext.Offset = lastMessage.SystemProperties.Offset;
                     }
 
-                    await this.Processor.ProcessEventsAsync(this.PartitionContext, events);
+                    await this.Processor.ProcessEventsAsync(this.PartitionContext, events).ConfigureAwait(false);
                 }
                 catch (Exception e)
                 {
