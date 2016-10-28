@@ -1,0 +1,26 @@
+version: 1.0.{build}
+environment:
+  EVENTHUBCONNECTIONSTRING:
+    secure: aQ2/H108LCoNr+/hSNQWawR1mFoaps7FffvLJ9cEIGsC45bHqVXFkGzi6vDHjUkeTea9TPNrzpGbsfrbC7PFljVgBLiTcLCHOcyYf2zfybR7bEMPyRwMdlMLaxPyry8dFKFMdf5ftW3gzf2XdnsRs8865LpR6tS1wGLZ40HVEzzwhB8U/6MJjGIxqH+JBaY/3GUw7d5pYvZsJbGLxK6aDAM+C1U8iLfULIz67hpm/yw=
+  EVENTPROCESSORSTORAGECONNECTIONSTRING:
+    secure: 6fF17Wv8GKmLry9g039iI987R7ULu3z5XWdo2Q0ygOHr5+JKJNzyJWZUsJpJSoBw7JagCjsD4o+ISHQJDPYBmDKOm19Ub47/bvUJC7EUOF1Y79V7D2gMqIJvTZxlM5lsYbytbhVJO+rSL9VeVf3C4xf5BcQp+jKS1nWIdJIGjKkX1romtrar0Ttf5bo3pWgE2OaM2zoen/zVrZtq8M7QIA==
+build_script:
+- cmd: >-
+    dotnet restore
+    dotnet build src/Microsoft.Azure.EventHubs/project.json
+    dotnet build src/Microsoft.Azure.EventHubs.Processor/project.json
+    dotnet build test/Microsoft.Azure.EventHubs.UnitTests/project.json
+    dotnet build test/Microsoft.Azure.EventHubs.Processor.UnitTests/project.json
+after_build:
+- ps: >- 
+    $xUnitConfig = "
+    {
+        `"parallelizeAssembly`": false,
+        `"parallelizeTestCollections`": false
+    }"
+    New-Item test/Microsoft.Azure.EventHubs.UnitTests/bin/debug/netcoreapp1.0/xunit.runner.json -type file -force -value $xUnitConfig
+    New-Item test/Microsoft.Azure.EventHubs.Processor.UnitTests/bin/debug/netcoreapp1.0/xunit.runner.json -type file -force -value $xUnitConfig
+test_script:
+- cmd: >-
+    dotnet test test/Microsoft.Azure.EventHubs.UnitTests/project.json
+    dotnet test test/Microsoft.Azure.EventHubs.Processor.UnitTests/project.json

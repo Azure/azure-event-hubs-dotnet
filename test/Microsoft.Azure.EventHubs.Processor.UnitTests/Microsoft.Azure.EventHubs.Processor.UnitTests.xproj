@@ -9,8 +9,8 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>f7f892f4-4490-4bc9-bb18-f42f2c85e345</ProjectGuid>
     <RootNamespace>Microsoft.Azure.EventHubs.Processor.UnitTests</RootNamespace>
-    <BaseIntermediateOutputPath Condition="'$(BaseIntermediateOutputPath)'=='' ">..\..\out\obj</BaseIntermediateOutputPath>
-    <OutputPath Condition="'$(OutputPath)'=='' ">..\..\out\bin\</OutputPath>
+    <BaseIntermediateOutputPath Condition="'$(BaseIntermediateOutputPath)'=='' ">.\obj</BaseIntermediateOutputPath>
+    <OutputPath Condition="'$(OutputPath)'=='' ">.\bin\</OutputPath>
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
   </PropertyGroup>
 
