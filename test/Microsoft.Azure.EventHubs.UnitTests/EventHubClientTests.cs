@@ -665,14 +665,14 @@
             List<Task> tasks = new List<Task>();
             for (int i = 0; i < maxNumberOfClients; i++)
             {
-                var task = Task.Factory.StartNew(async () =>
+                var task = Task.Run(async () =>
                 {
                     syncEvent.Wait();
                     var ehClient = EventHubClient.CreateFromConnectionString(this.EventHubConnectionString);
                     await ehClient.SendAsync(new EventData(Encoding.UTF8.GetBytes("Hello EventHub!")));
                 });
 
-                tasks.Add(task.Unwrap());
+                tasks.Add(task);
             }
 
             // Let all tasks make the call around the same time.
@@ -693,14 +693,14 @@
             List<Task> tasks = new List<Task>();
             for (int i = 0; i < maxNumberOfClients; i++)
             {
-                var task = Task.Factory.StartNew(async () =>
+                var task = Task.Run(async () =>
                 {
                     syncEvent.Wait();
                     var ehClient = EventHubClient.CreateFromConnectionString(this.EventHubConnectionString);
                     await ehClient.GetRuntimeInformationAsync();
                 });
 
-                tasks.Add(task.Unwrap());
+                tasks.Add(task);
             }
 
             // Let all tasks make the call around the same time.

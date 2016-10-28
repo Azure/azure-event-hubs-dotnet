@@ -6,8 +6,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
     using System;
     using System.Linq;
     using System.Net;
-    using System.Net.Security;
-    using System.Security.Cryptography.X509Certificates;
     using System.Threading.Tasks;
     using Microsoft.Azure.Amqp.Sasl;
     using Microsoft.Azure.Amqp;
@@ -128,8 +126,11 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 SecurityToken token = await this.TokenProvider.GetTokenAsync(this.ConnectionStringBuilder.Endpoint.AbsoluteUri, ClaimConstants.Manage, timeoutHelper.RemainingTime());
 
                 var serviceClient = this.GetManagementServiceClient(serviceClientAddress);
-                var eventHubRuntimeInformation = await serviceClient.Channel.GetRuntimeInfoAsync<EventHubRuntimeInformation>(
-                    entityType, this.ConnectionStringBuilder.EntityPath, null, token.TokenValue.ToString(), this.ConnectionStringBuilder.OperationTimeout);
+                var request = this.CreateGetRuntimeInfoRequest(token.TokenValue.ToString());
+                serviceClient.
+
+                //var eventHubRuntimeInformation = await serviceClient.Channel.GetRuntimeInfoAsync<EventHubRuntimeInformation>(
+                //    entityType, this.ConnectionStringBuilder.EntityPath, null, token.TokenValue.ToString(), this.ConnectionStringBuilder.OperationTimeout);
 
                 return eventHubRuntimeInformation;
             }
@@ -158,6 +159,18 @@ namespace Microsoft.Azure.EventHubs.Amqp
             return this.managementServiceClient;
         }
 
+        internal AmqpMessage CreateGetRuntimeInfoRequest(string token)
+        {
+            AmqpMessage getRuntimeInfoRequest = AmqpMessage.Create();
+            getRuntimeInfoRequest.ApplicationProperties = new ApplicationProperties();
+            getRuntimeInfoRequest.ApplicationProperties.Map[AmqpClientConstants.EntityNameKey] = this.eventHubClient.EventHubName;
+            getRuntimeInfoRequest.ApplicationProperties.Map[AmqpClientConstants.ManagementOperationKey] = AmqpClientConstants.ReadOperationValue;
+            getRuntimeInfoRequest.ApplicationProperties.Map[AmqpClientConstants.ManagementEntityTypeKey] = AmqpClientConstants.ManagementEventHubEntityTypeValue;
+            getRuntimeInfoRequest.ApplicationProperties.Map[AmqpClientConstants.ManagementSecurityTokenKey] = token;
+
+            return getRuntimeInfoRequest;
+        }
+
         internal static AmqpSettings CreateAmqpSettings(
             Version amqpVersion,
             bool useSslStreamSecurity,
@@ -166,7 +179,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
             bool useWebSockets = false,
             bool sslStreamUpgrade = false,
             NetworkCredential networkCredential = null,
-            RemoteCertificateValidationCallback certificateValidationCallback = null,
             bool forceTokenProvider = true)
         {
             var settings = new AmqpSettings();
@@ -174,7 +186,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
             {
                 var tlsSettings = new TlsTransportSettings
                 {
-                    CertificateValidationCallback = certificateValidationCallback,
                     TargetHost = sslHostName
                 };
 
@@ -222,9 +233,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
             int port,
             bool useSslStreamSecurity,
             bool sslStreamUpgrade = false,
-            string sslHostName = null,
-            X509Certificate2 certificate = null,
-            RemoteCertificateValidationCallback certificateValidationCallback = null)
+            string sslHostName = null)
         {
             TcpTransportSettings tcpSettings = new TcpTransportSettings
             {
@@ -240,8 +249,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 TlsTransportSettings tlsSettings = new TlsTransportSettings(tcpSettings)
                 {
                     TargetHost = sslHostName ?? hostName,
-                    Certificate = certificate,
-                    CertificateValidationCallback = certificateValidationCallback
                 };
                 tpSettings = tlsSettings;
             }
