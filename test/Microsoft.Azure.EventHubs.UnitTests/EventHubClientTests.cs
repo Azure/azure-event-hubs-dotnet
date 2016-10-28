@@ -43,8 +43,6 @@
         [Fact]
         void ConnectionStringBuilderTest()
         {
-            Log($"Original connection string: {this.EventHubConnectionString}");
-
             var csb = new EventHubsConnectionStringBuilder(this.EventHubConnectionString);
 
             // Try update settings and rebuild the connection string.
@@ -54,7 +52,6 @@
             csb.SasKeyName = "newsaskeyname";
             csb.SasKey = "newsaskey";
             var newConnectionString = csb.ToString();
-            Log($"Connection string modified as : {newConnectionString}");
 
             // Now try creating a new ConnectionStringBuilder from modified connection string.
             var newCsb = new EventHubsConnectionStringBuilder(newConnectionString);
