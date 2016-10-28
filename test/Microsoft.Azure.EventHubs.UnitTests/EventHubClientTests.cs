@@ -43,8 +43,6 @@
         [Fact]
         void ConnectionStringBuilderTest()
         {
-            Log($"Original connection string: {this.EventHubConnectionString}");
-
             var csb = new EventHubsConnectionStringBuilder(this.EventHubConnectionString);
 
             // Try update settings and rebuild the connection string.
@@ -54,7 +52,6 @@
             csb.SasKeyName = "newsaskeyname";
             csb.SasKey = "newsaskey";
             var newConnectionString = csb.ToString();
-            Log($"Connection string modified as : {newConnectionString}");
 
             // Now try creating a new ConnectionStringBuilder from modified connection string.
             var newCsb = new EventHubsConnectionStringBuilder(newConnectionString);
@@ -658,12 +655,13 @@
         [Fact]
         async Task MultipleClientsSend()
         {
-            int maxNumberOfClients = 100;
+            var maxNumberOfClients = 100;
             var syncEvent = new ManualResetEventSlim(false);
 
             Log($"Starting {maxNumberOfClients} SendAsync tasks in parallel.");
-            List<Task> tasks = new List<Task>();
-            for (int i = 0; i < maxNumberOfClients; i++)
+
+            var tasks = new List<Task>();
+            for (var i = 0; i < maxNumberOfClients; i++)
             {
                 var task = Task.Run(async () =>
                 {
@@ -675,23 +673,24 @@
                 tasks.Add(task);
             }
 
-            // Let all tasks make the call around the same time.
-            await Task.Delay(10000);
+            var waitForAccountToInitialize = Task.Delay(10000);
+            await waitForAccountToInitialize;
             syncEvent.Set();
-
             await Task.WhenAll(tasks);
+
             Log("All Send tasks have completed.");
         }
 
         [Fact]
         async Task MultipleClientsGetRuntimeInformation()
         {
-            int maxNumberOfClients = 100;
+            var maxNumberOfClients = 100;
             var syncEvent = new ManualResetEventSlim(false);
 
             Log($"Starting {maxNumberOfClients} GetRuntimeInformationAsync tasks in parallel.");
-            List<Task> tasks = new List<Task>();
-            for (int i = 0; i < maxNumberOfClients; i++)
+
+            var tasks = new List<Task>();
+            for (var i = 0; i < maxNumberOfClients; i++)
             {
                 var task = Task.Run(async () =>
                 {
@@ -703,11 +702,11 @@
                 tasks.Add(task);
             }
 
-            // Let all tasks make the call around the same time.
-            await Task.Delay(10000);
+            var waitForAccountToInitialize = Task.Delay(10000);
+            await waitForAccountToInitialize;
             syncEvent.Set();
-
             await Task.WhenAll(tasks);
+
             Log("All GetRuntimeInformationAsync tasks have completed.");
         }
         
