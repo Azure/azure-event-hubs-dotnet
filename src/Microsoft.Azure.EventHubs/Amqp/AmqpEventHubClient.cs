@@ -72,7 +72,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 var connection = await this.ConnectionManager.GetOrCreateAsync(timeoutHelper.RemainingTime());
 
                 var sessionSettings = new AmqpSessionSettings { Properties = new Fields() };
-                //sessionSettings.Properties[AmqpClientConstants.BatchFlushIntervalName] = (uint)batchFlushInterval.TotalMilliseconds;
                 session = connection.CreateSession(sessionSettings);
 
                 await session.OpenAsync(timeoutHelper.RemainingTime());
