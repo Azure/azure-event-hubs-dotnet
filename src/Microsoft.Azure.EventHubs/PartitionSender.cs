@@ -107,7 +107,7 @@ namespace Microsoft.Azure.EventHubs
             EventHubsEventSource.Log.EventSendStart(this.ClientId, count, null);
             try
             {
-                await this.InnerSender.SendAsync(eventDatas, null);
+                await this.InnerSender.SendAsync(eventDatas, null).ConfigureAwait(false);
             }
             catch (Exception exception)
             {
@@ -125,7 +125,7 @@ namespace Microsoft.Azure.EventHubs
             EventHubsEventSource.Log.ClientCloseStart(this.ClientId);
             try
             {
-                await this.InnerSender.CloseAsync();
+                await this.InnerSender.CloseAsync().ConfigureAwait(false);
             }
             finally
             {

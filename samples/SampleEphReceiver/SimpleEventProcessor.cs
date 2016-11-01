@@ -30,7 +30,7 @@ namespace SampleEphReceiver
             return Task.FromResult<object>(null);
         }
 
-        public async Task ProcessEventsAsync(PartitionContext context, IEnumerable<EventData> messages)
+        public Task ProcessEventsAsync(PartitionContext context, IEnumerable<EventData> messages)
         {
             foreach (var eventData in messages)
             {
@@ -38,7 +38,7 @@ namespace SampleEphReceiver
                 Console.WriteLine($"Message received. Partition: '{context.PartitionId}', Data: '{data}'");
             }
 
-            await context.CheckpointAsync();
+            return context.CheckpointAsync();
         }
     }
 }

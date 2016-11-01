@@ -33,7 +33,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                 try
                 {
                     eventHubClient = EventHubClient.CreateFromConnectionString(this.host.EventHubConnectionString);
-                    var runtimeInfo = await eventHubClient.GetRuntimeInformationAsync();
+                    var runtimeInfo = await eventHubClient.GetRuntimeInformationAsync().ConfigureAwait(false);
                     this.partitionIds = runtimeInfo.PartitionIds.ToList();
                 }
                 catch (Exception e)
@@ -44,7 +44,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                 {
                     if (eventHubClient != null)
                     {
-                        await eventHubClient.CloseAsync();
+                        await eventHubClient.CloseAsync().ConfigureAwait(false);
                     }
                 }
 
@@ -71,7 +71,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                 throw new InvalidOperationException("A PartitionManager cannot be started multiple times.");
             }
 
-            await this.InitializeStoresAsync();
+            await this.InitializeStoresAsync().ConfigureAwait(false);
             this.OnInitializeComplete();
 
             this.runTask = this.RunAsync();
@@ -83,7 +83,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             var localRunTask = this.runTask;
             if (localRunTask != null)
             {
-                await localRunTask;
+                await localRunTask.ConfigureAwait(false);
             }
         }
 
@@ -91,7 +91,7 @@ namespace Microsoft.Azure.EventHubs.Processor
         {
             try
             {
-                await this.RunLoopAsync(this.cancellationTokenSource.Token);
+                await this.RunLoopAsync(this.cancellationTokenSource.Token).ConfigureAwait(false);
             }
             catch (Exception e)
             {
@@ -103,7 +103,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             {
                 // Cleanup
                 ProcessorEventSource.Log.EventProcessorHostInfo(this.host.Id, "Shutting down all pumps");
-                await this.RemoveAllPumpsAsync(CloseReason.Shutdown);
+                await this.RemoveAllPumpsAsync(CloseReason.Shutdown).ConfigureAwait(false);
             }
             catch (Exception e)
 	    	{
@@ -116,36 +116,36 @@ namespace Microsoft.Azure.EventHubs.Processor
         {
             // Make sure the lease store exists
             ILeaseManager leaseManager = this.host.LeaseManager;
-            if (!await leaseManager.LeaseStoreExistsAsync())
+            if (!await leaseManager.LeaseStoreExistsAsync().ConfigureAwait(false))
             {
                 await RetryAsync(() => leaseManager.CreateLeaseStoreIfNotExistsAsync(), null, "Failure creating lease store for this Event Hub, retrying",
-        			    "Out of retries creating lease store for this Event Hub", EventProcessorHostActionStrings.CreatingLeaseStore, 5);
+        			    "Out of retries creating lease store for this Event Hub", EventProcessorHostActionStrings.CreatingLeaseStore, 5).ConfigureAwait(false);
             }
             // else
             //	lease store already exists, no work needed
         
             // Now make sure the leases exist
-            foreach (string id in await this.GetPartitionIdsAsync())
+            foreach (string id in await this.GetPartitionIdsAsync().ConfigureAwait(false))
             {
                 await RetryAsync(() => leaseManager.CreateLeaseIfNotExistsAsync(id), id, "Failure creating lease for partition, retrying",
-        			    "Out of retries creating lease for partition", EventProcessorHostActionStrings.CreatingLease, 5);
+        			    "Out of retries creating lease for partition", EventProcessorHostActionStrings.CreatingLease, 5).ConfigureAwait(false);
             }
 
             // Make sure the checkpoint store exists
             ICheckpointManager checkpointManager = this.host.CheckpointManager;
-            if (!await checkpointManager.CheckpointStoreExistsAsync())
+            if (!await checkpointManager.CheckpointStoreExistsAsync().ConfigureAwait(false))
             {
                 await RetryAsync(() => checkpointManager.CreateCheckpointStoreIfNotExistsAsync(), null, "Failure creating checkpoint store for this Event Hub, retrying",
-        			    "Out of retries creating checkpoint store for this Event Hub", EventProcessorHostActionStrings.CreatingCheckpointStore, 5);
+        			    "Out of retries creating checkpoint store for this Event Hub", EventProcessorHostActionStrings.CreatingCheckpointStore, 5).ConfigureAwait(false);
             }
             // else
             //	checkpoint store already exists, no work needed
         
             // Now make sure the checkpoints exist
-            foreach (string id in await this.GetPartitionIdsAsync())
+            foreach (string id in await this.GetPartitionIdsAsync().ConfigureAwait(false))
             {
                 await RetryAsync(() => checkpointManager.CreateCheckpointIfNotExistsAsync(id), id, "Failure creating checkpoint for partition, retrying",
-        			    "Out of retries creating checkpoint blob for partition", EventProcessorHostActionStrings.CreatingCheckpoint, 5);
+        			    "Out of retries creating checkpoint blob for partition", EventProcessorHostActionStrings.CreatingCheckpoint, 5).ConfigureAwait(false);
             }
         }
     
@@ -158,7 +158,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             {
                 try
                 {
-                    await lambda();
+                    await lambda().ConfigureAwait(false);
                     createdOK = true;
                 }
                 catch (Exception e)
@@ -208,12 +208,12 @@ namespace Microsoft.Azure.EventHubs.Processor
                 {
                     try
                     {
-                        Lease possibleLease = await getLeastTask;
+                        Lease possibleLease = await getLeastTask.ConfigureAwait(false);
                         allLeases[possibleLease.PartitionId] = possibleLease;
                         if (await possibleLease.IsExpired().ConfigureAwait(false))
                         {
                             ProcessorEventSource.Log.PartitionPumpInfo(this.host.Id, possibleLease.PartitionId, "Trying to acquire lease.");
-                            if (await leaseManager.AcquireLeaseAsync(possibleLease))
+                            if (await leaseManager.AcquireLeaseAsync(possibleLease).ConfigureAwait(false))
                             {
                                 ourLeasesCount++;
                             }
@@ -226,7 +226,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                         else if (possibleLease.Owner == this.host.HostName)
                         {
                             ProcessorEventSource.Log.PartitionPumpInfo(this.host.Id, possibleLease.PartitionId, "Trying to renew lease.");
-                            if (await leaseManager.RenewLeaseAsync(possibleLease))
+                            if (await leaseManager.RenewLeaseAsync(possibleLease).ConfigureAwait(false))
                             {
                                 ourLeasesCount++;
                             }
@@ -259,7 +259,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                             try
                             {
                                 ProcessorEventSource.Log.PartitionPumpStealLeaseStart(this.host.Id, stealee.PartitionId);
-                                if (await leaseManager.AcquireLeaseAsync(stealee))
+                                if (await leaseManager.AcquireLeaseAsync(stealee).ConfigureAwait(false))
                                 {
                                     // Succeeded in stealing lease
                                     ProcessorEventSource.Log.PartitionPumpStealLeaseStop(this.host.Id, stealee.PartitionId);
@@ -286,11 +286,11 @@ namespace Microsoft.Azure.EventHubs.Processor
                     ProcessorEventSource.Log.EventProcessorHostInfo(this.host.Id, $"Lease on partition {updatedLease.PartitionId} owned by {updatedLease.Owner}");
                     if (updatedLease.Owner == this.host.HostName)
                     {
-                        await this.AddPumpAsync(partitionId, updatedLease);
+                        await this.AddPumpAsync(partitionId, updatedLease).ConfigureAwait(false);
                     }
                     else
                     {
-                        await this.RemovePumpAsync(partitionId, CloseReason.LeaseLost);
+                        await this.RemovePumpAsync(partitionId, CloseReason.LeaseLost).ConfigureAwait(false);
                     }
                 }
 
@@ -298,7 +298,7 @@ namespace Microsoft.Azure.EventHubs.Processor
 
                 try
                 {
-                    await Task.Delay(leaseManager.LeaseRenewInterval, cancellationToken);
+                    await Task.Delay(leaseManager.LeaseRenewInterval, cancellationToken).ConfigureAwait(false);
                 }
                 catch (TaskCanceledException)
                 {
@@ -316,8 +316,8 @@ namespace Microsoft.Azure.EventHubs.Processor
                 if (capturedPump.PumpStatus == PartitionPumpStatus.Errored || capturedPump.IsClosing)
                 {
                     // The existing pump is bad. Remove it and create a new one.
-                    await RemovePumpAsync(partitionId, CloseReason.Shutdown);
-                    await CreateNewPumpAsync(partitionId, lease);
+                    await RemovePumpAsync(partitionId, CloseReason.Shutdown).ConfigureAwait(false);
+                    await CreateNewPumpAsync(partitionId, lease).ConfigureAwait(false);
                 }
                 else
                 {
@@ -329,14 +329,14 @@ namespace Microsoft.Azure.EventHubs.Processor
             else
             {
                 // No existing pump, create a new one.
-                await CreateNewPumpAsync(partitionId, lease);
+                await CreateNewPumpAsync(partitionId, lease).ConfigureAwait(false);
             }
         }
 
         async Task CreateNewPumpAsync(string partitionId, Lease lease)
         {
             PartitionPump newPartitionPump = new EventHubPartitionPump(this.host, lease);
-            await newPartitionPump.OpenAsync();
+            await newPartitionPump.OpenAsync().ConfigureAwait(false);
             this.partitionPumps.TryAdd(partitionId, newPartitionPump); // do the put after start, if the start fails then put doesn't happen
             ProcessorEventSource.Log.PartitionPumpInfo(this.host.Id, partitionId, "Created new PartitionPump");
         }
@@ -348,7 +348,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             {
                 if (!capturedPump.IsClosing)
                 {
-                    await capturedPump.CloseAsync(reason);
+                    await capturedPump.CloseAsync(reason).ConfigureAwait(false);
                 }
                 // else, pump is already closing/closed, don't need to try to shut it down again
             }

@@ -45,13 +45,13 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
 
         public async Task<EventHubRuntimeInformation> GetRuntimeInformationAsync(string token)
         {
-            RequestResponseAmqpLink requestLink = await this.link.GetOrCreateAsync(TimeSpan.FromMinutes(1));
+            RequestResponseAmqpLink requestLink = await this.link.GetOrCreateAsync(TimeSpan.FromMinutes(1)).ConfigureAwait(false);
 
             // Create request and attach token.
             var request = this.CreateGetRuntimeInformationRequest();
             request.ApplicationProperties.Map[AmqpClientConstants.ManagementSecurityTokenKey] = token;
 
-            var response = await requestLink.RequestAsync(request, TimeSpan.FromMinutes(1));
+            var response = await requestLink.RequestAsync(request, TimeSpan.FromMinutes(1)).ConfigureAwait(false);
             int statusCode = (int)response.ApplicationProperties.Map[AmqpClientConstants.ResponseStatusCode];
             string statusDescription = (string)response.ApplicationProperties.Map[AmqpClientConstants.ResponseStatusDescription];
             if (statusCode != (int)AmqpResponseStatusCode.Accepted && statusCode != (int)AmqpResponseStatusCode.OK)

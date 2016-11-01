@@ -69,12 +69,12 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 // Don't need to get token for namespace scope operations, included in request
                 bool isNamespaceScope = address.Equals(AmqpClientConstants.ManagementAddress, StringComparison.OrdinalIgnoreCase);
 
-                var connection = await this.ConnectionManager.GetOrCreateAsync(timeoutHelper.RemainingTime());
+                var connection = await this.ConnectionManager.GetOrCreateAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
 
                 var sessionSettings = new AmqpSessionSettings { Properties = new Fields() };
                 session = connection.CreateSession(sessionSettings);
 
-                await session.OpenAsync(timeoutHelper.RemainingTime());
+                await session.OpenAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
 
                 var linkSettings = new AmqpLinkSettings();
                 linkSettings.AddProperty(AmqpClientConstants.TimeoutName, (uint)timeoutHelper.RemainingTime().TotalMilliseconds);
@@ -93,7 +93,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     // TODO: Get Entity level token here
                 }
 
-                await link.OpenAsync(timeoutHelper.RemainingTime());
+                await link.OpenAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
 
                 // Redirected scenario requires entityPath as the audience, otherwise we 
                 // should always use the full EndpointUri as audience.
@@ -125,7 +125,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
                 string serviceClientAddress = AmqpClientConstants.ManagementAddress;
                 var serviceClient = this.GetManagementServiceClient(serviceClientAddress);
-                var eventHubRuntimeInformation = await serviceClient.GetRuntimeInformationAsync(token.TokenValue.ToString());
+                var eventHubRuntimeInformation = await serviceClient.GetRuntimeInformationAsync(token.TokenValue.ToString()).ConfigureAwait(false);
 
                 return eventHubRuntimeInformation;
             }
@@ -272,11 +272,11 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 useSslStreamSecurity: true);
 
             var initiator = new AmqpTransportInitiator(amqpSettings, tpSettings);
-            var transport = await initiator.ConnectTaskAsync(timeoutHelper.RemainingTime());
+            var transport = await initiator.ConnectTaskAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
 
             var connectionSettings = CreateAmqpConnectionSettings(this.MaxFrameSize, this.ContainerId, hostName);
             var connection = new AmqpConnection(transport, amqpSettings, connectionSettings);
-            await connection.OpenAsync(timeoutHelper.RemainingTime());
+            await connection.OpenAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
 
             // Always create the CBS Link + Session
             var cbsLink = new AmqpCbsLink(connection);
@@ -311,7 +311,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 string claim = requiredClaims?.FirstOrDefault();
                 var tokenProvider = this.eventHubClient.TokenProvider;
                 var timeout = this.eventHubClient.ConnectionStringBuilder.OperationTimeout;
-                var token = await tokenProvider.GetTokenAsync(appliesTo, claim, timeout);
+                var token = await tokenProvider.GetTokenAsync(appliesTo, claim, timeout).ConfigureAwait(false);
                 return new CbsToken(token.TokenValue, CbsConstants.ServiceBusSasTokenType, token.ExpiresAtUtc);
             }
         }

@@ -68,8 +68,7 @@ namespace Microsoft.Azure.EventHubs
             }
 
             EventHubsEventSource.Log.EventHubClientCreateStart(csb.Endpoint.Host, csb.EntityPath);
-            EventHubClient eventHubClient;
-            eventHubClient = new AmqpEventHubClient(csb);
+            EventHubClient eventHubClient = new AmqpEventHubClient(csb);
             EventHubsEventSource.Log.EventHubClientCreateStop(eventHubClient.ClientId);
             return eventHubClient;
         }
@@ -79,7 +78,7 @@ namespace Microsoft.Azure.EventHubs
             EventHubsEventSource.Log.ClientCloseStart(this.ClientId);
             try
             {
-                await this.OnCloseAsync();
+                await this.OnCloseAsync().ConfigureAwait(false);
             }
             finally
             {
@@ -210,7 +209,7 @@ namespace Microsoft.Azure.EventHubs
             EventHubsEventSource.Log.EventSendStart(this.ClientId, count, partitionKey);
             try
             {
-                await this.InnerSender.SendAsync(eventDatas, partitionKey);
+                await this.InnerSender.SendAsync(eventDatas, partitionKey).ConfigureAwait(false);
             }
             catch (Exception exception)
             {
@@ -387,8 +386,7 @@ namespace Microsoft.Azure.EventHubs
             EventHubsEventSource.Log.GetEventHubRuntimeInformationStart(this.ClientId);
             try
             {
-                var eventHubRuntimeInformation = await this.OnGetRuntimeInformationAsync();
-                return eventHubRuntimeInformation;
+                return await this.OnGetRuntimeInformationAsync();
             }
             catch (Exception e)
             {
