@@ -121,7 +121,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 var timeoutHelper = new TimeoutHelper(this.ConnectionStringBuilder.OperationTimeout);
                 SecurityToken token = await this.TokenProvider.GetTokenAsync(
                     this.ConnectionStringBuilder.Endpoint.AbsoluteUri, 
-                    ClaimConstants.Manage, timeoutHelper.RemainingTime());
+                    ClaimConstants.Manage, timeoutHelper.RemainingTime()).ConfigureAwait(false);
 
                 string serviceClientAddress = AmqpClientConstants.ManagementAddress;
                 var serviceClient = this.GetManagementServiceClient(serviceClientAddress);
