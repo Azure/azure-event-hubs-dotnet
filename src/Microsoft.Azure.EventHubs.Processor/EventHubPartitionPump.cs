@@ -27,7 +27,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             {
                 try
                 {
-                    await OpenClientsAsync();
+                    await OpenClientsAsync().ConfigureAwait(false);
                     openedOK = true;
                 }
                 catch (Exception e)
@@ -56,7 +56,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             {
                 // IEventProcessor.onOpen is called from the base PartitionPump and must have returned in order for execution to reach here, 
                 // so we can report this error to it instead of the general error handler.
-                await this.Processor.ProcessErrorAsync(this.PartitionContext, lastException);
+                await this.Processor.ProcessErrorAsync(this.PartitionContext, lastException).ConfigureAwait(false);
                 this.PumpStatus = PartitionPumpStatus.OpenFailed;
             }
 
@@ -81,7 +81,7 @@ namespace Microsoft.Azure.EventHubs.Processor
         async Task OpenClientsAsync() // throws EventHubsException, IOException, InterruptedException, ExecutionException
         {
             // Create new clients
-            object startAt = await this.PartitionContext.GetInitialOffsetAsync();
+            object startAt = await this.PartitionContext.GetInitialOffsetAsync().ConfigureAwait(false);
             long epoch = this.Lease.Epoch;
             ProcessorEventSource.Log.PartitionPumpCreateClientsStart(this.Host.Id, this.PartitionContext.PartitionId, epoch, startAt);
 		    this.eventHubClient = EventHubClient.CreateFromConnectionString(this.Host.EventHubConnectionString);
@@ -107,29 +107,29 @@ namespace Microsoft.Azure.EventHubs.Processor
             {
                 // Taking the lock means that there is no ProcessEventsAsync call in progress.
                 Task closeTask;
-                using (await this.ProcessingAsyncLock.LockAsync())
+                using (await this.ProcessingAsyncLock.LockAsync().ConfigureAwait(false))
                 {
                     // Calling PartitionReceiver.CloseAsync will gracefully close the IPartitionReceiveHandler we have installed.
                     ProcessorEventSource.Log.PartitionPumpInfo(this.Host.Id, this.PartitionContext.PartitionId, "Closing PartitionReceiver");
                     closeTask = this.partitionReceiver.CloseAsync();
                 }
 
-                await closeTask;
+                await closeTask.ConfigureAwait(false);
                 this.partitionReceiver = null;
             }
 
             if (this.eventHubClient != null)
             {
                 ProcessorEventSource.Log.PartitionPumpInfo(this.Host.Id, this.PartitionContext.PartitionId, "Closing EventHubClient");
-                await this.eventHubClient.CloseAsync();
+                await this.eventHubClient.CloseAsync().ConfigureAwait(false);
                 this.eventHubClient = null;
             }
         }
 
-        protected override async Task OnClosingAsync(CloseReason reason)
+        protected override Task OnClosingAsync(CloseReason reason)
         {
             // Close the EH clients. Errors are swallowed, nothing we could do about them anyway.
-            await CleanUpClientsAsync();
+            return CleanUpClientsAsync();
         }
 
         class PartitionReceiveHandler : IPartitionReceiveHandler
@@ -170,7 +170,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                 {
                     ProcessorEventSource.Log.PartitionPumpError(
                         this.eventHubPartitionPump.Host.Id, this.eventHubPartitionPump.PartitionContext.PartitionId, "EventHub client error:", error.ToString());
-                    await this.eventHubPartitionPump.ProcessErrorAsync(error);
+                    await this.eventHubPartitionPump.ProcessErrorAsync(error).ConfigureAwait(false);
                 }
 
                 this.eventHubPartitionPump.PumpStatus = PartitionPumpStatus.Errored;

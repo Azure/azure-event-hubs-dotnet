@@ -251,7 +251,7 @@ namespace Microsoft.Azure.EventHubs.Processor
 
                 this.ProcessorFactory = factory;
                 this.EventProcessorOptions = processorOptions;
-                await this.PartitionManager.StartAsync();
+                await this.PartitionManager.StartAsync().ConfigureAwait(false);
             }
             catch (Exception e)
             {
@@ -273,7 +273,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             ProcessorEventSource.Log.EventProcessorHostCloseStart(this.Id);    	
             try
             {
-                await this.PartitionManager.StopAsync();
+                await this.PartitionManager.StopAsync().ConfigureAwait(false);
             }
             catch (Exception e)
             {

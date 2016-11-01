@@ -92,7 +92,7 @@ namespace Microsoft.Azure.EventHubs.Processor
 
         internal async Task<object> GetInitialOffsetAsync() // throws InterruptedException, ExecutionException
         {
-            Checkpoint startingCheckpoint = await this.host.CheckpointManager.GetCheckpointAsync(this.PartitionId);
+            Checkpoint startingCheckpoint = await this.host.CheckpointManager.GetCheckpointAsync(this.PartitionId).ConfigureAwait(false);
             object startAt;
 
             if (startingCheckpoint == null)
@@ -170,17 +170,17 @@ namespace Microsoft.Azure.EventHubs.Processor
             ProcessorEventSource.Log.PartitionPumpCheckpointStart(this.host.Id, checkpoint.PartitionId, checkpoint.Offset, checkpoint.SequenceNumber);
             try
             {
-                Checkpoint inStoreCheckpoint = await this.host.CheckpointManager.GetCheckpointAsync(checkpoint.PartitionId);
+                Checkpoint inStoreCheckpoint = await this.host.CheckpointManager.GetCheckpointAsync(checkpoint.PartitionId).ConfigureAwait(false);
                 if (inStoreCheckpoint == null || checkpoint.SequenceNumber >= inStoreCheckpoint.SequenceNumber)
                 {
                     if (inStoreCheckpoint == null)
                     {
-                        inStoreCheckpoint = await this.host.CheckpointManager.CreateCheckpointIfNotExistsAsync(checkpoint.PartitionId);
+                        inStoreCheckpoint = await this.host.CheckpointManager.CreateCheckpointIfNotExistsAsync(checkpoint.PartitionId).ConfigureAwait(false);
                     }
 
                     inStoreCheckpoint.Offset = checkpoint.Offset;
                     inStoreCheckpoint.SequenceNumber = checkpoint.SequenceNumber;
-                    await this.host.CheckpointManager.UpdateCheckpointAsync(inStoreCheckpoint);
+                    await this.host.CheckpointManager.UpdateCheckpointAsync(inStoreCheckpoint).ConfigureAwait(false);
                 }
                 else
                 {

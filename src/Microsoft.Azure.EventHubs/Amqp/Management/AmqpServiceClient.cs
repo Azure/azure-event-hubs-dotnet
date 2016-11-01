@@ -58,7 +58,7 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
         async Task<RequestResponseAmqpLink> OpenLinkAsync(TimeSpan timeout)
         {
             ActiveClientRequestResponseLink activeClientLink = await this.eventHubClient.OpenRequestResponseLinkAsync(
-                "svc", this.Address, null, AmqpServiceClient<T>.RequiredClaims, timeout);
+                "svc", this.Address, null, AmqpServiceClient<T>.RequiredClaims, timeout).ConfigureAwait(false);
             this.clientLinkManager.SetActiveLink(activeClientLink);
             return activeClientLink.Link;
         }
@@ -87,7 +87,7 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
 
             public async Task<object> Start()
             {
-                RequestResponseAmqpLink requestLink = await this.client.link.GetOrCreateAsync(TimeSpan.FromMinutes(1));
+                RequestResponseAmqpLink requestLink = await this.client.link.GetOrCreateAsync(TimeSpan.FromMinutes(1)).ConfigureAwait(false);
 
                 ApplicationProperties properties = new ApplicationProperties();
                 properties.Map[AmqpClientConstants.ManagementOperationKey] = this.md.Operation.Name;
@@ -128,7 +128,7 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
                 this.request = AmqpMessage.Create(new AmqpValue { Value = bodyMap ?? bodyValue });
                 this.request.ApplicationProperties = properties;
 
-                this.response = await requestLink.RequestAsync(request, TimeSpan.FromMinutes(1));
+                this.response = await requestLink.RequestAsync(request, TimeSpan.FromMinutes(1)).ConfigureAwait(false);
                 int statusCode = (int)this.response.ApplicationProperties.Map[AmqpClientConstants.ResponseStatusCode];
                 string statusDescription = (string)this.response.ApplicationProperties.Map[AmqpClientConstants.ResponseStatusDescription];
                 if (statusCode != (int)AmqpResponseStatusCode.Accepted && statusCode != (int)AmqpResponseStatusCode.OK)

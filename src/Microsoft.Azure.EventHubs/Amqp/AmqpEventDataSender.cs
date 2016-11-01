@@ -57,7 +57,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     {
                         try
                         {
-                            var amqpLink = await this.SendLinkManager.GetOrCreateAsync(timeoutHelper.RemainingTime());
+                            var amqpLink = await this.SendLinkManager.GetOrCreateAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
                             if (amqpLink.Settings.MaxMessageSize.HasValue)
                             {
                                 ulong size = (ulong)amqpMessage.SerializedMessageSize;
@@ -67,7 +67,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                                 }
                             }
 
-                            Outcome outcome = await amqpLink.SendMessageAsync(amqpMessage, this.GetNextDeliveryTag(), AmqpConstants.NullBinary, timeoutHelper.RemainingTime());
+                            Outcome outcome = await amqpLink.SendMessageAsync(amqpMessage, this.GetNextDeliveryTag(), AmqpConstants.NullBinary, timeoutHelper.RemainingTime()).ConfigureAwait(false);
                             if (outcome.DescriptorCode != Accepted.Code)
                             {
                                 Rejected rejected = (Rejected)outcome;
@@ -88,7 +88,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                         TimeSpan? retryInterval = this.EventHubClient.RetryPolicy.GetNextRetryInterval(this.ClientId, ex, timeoutHelper.RemainingTime());
                         if (retryInterval != null)
                         {
-                            await Task.Delay(retryInterval.Value);
+                            await Task.Delay(retryInterval.Value).ConfigureAwait(false);
                             shouldRetry = true;
                         }
                         else
@@ -111,7 +111,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
             var amqpEventHubClient = ((AmqpEventHubClient)this.EventHubClient);
             var csb = amqpEventHubClient.ConnectionStringBuilder;
             var timeoutHelper = new TimeoutHelper(csb.OperationTimeout);
-            AmqpConnection connection = await amqpEventHubClient.ConnectionManager.GetOrCreateAsync(timeoutHelper.RemainingTime());
+            AmqpConnection connection = await amqpEventHubClient.ConnectionManager.GetOrCreateAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
 
             // Authenticate over CBS
             var cbsLink = connection.Extensions.Find<AmqpCbsLink>();
@@ -120,7 +120,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
             Uri address = new Uri(csb.Endpoint, this.Path);
             string audience = address.AbsoluteUri;
             string resource = address.AbsoluteUri;
-            var expiresAt = await cbsLink.SendTokenAsync(cbsTokenProvider, address, audience, resource, new[] { ClaimConstants.Send }, timeoutHelper.RemainingTime());
+            var expiresAt = await cbsLink.SendTokenAsync(cbsTokenProvider, address, audience, resource, new[] { ClaimConstants.Send }, timeoutHelper.RemainingTime()).ConfigureAwait(false);
 
             AmqpSession session = null;
             try
@@ -128,7 +128,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 // Create our Session
                 var sessionSettings = new AmqpSessionSettings { Properties = new Fields() };
                 session = connection.CreateSession(sessionSettings);
-                await session.OpenAsync(timeoutHelper.RemainingTime());
+                await session.OpenAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
 
                 // Create our Link
                 var linkSettings = new AmqpLinkSettings();
@@ -143,7 +143,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 linkSettings.LinkName = $"{amqpEventHubClient.ContainerId};{connection.Identifier}:{session.Identifier}:{link.Identifier}";
                 link.AttachTo(session);
 
-                await link.OpenAsync(timeoutHelper.RemainingTime());
+                await link.OpenAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
 
                 var activeClientLink = new ActiveClientLink(
                     link,

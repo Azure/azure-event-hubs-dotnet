@@ -28,11 +28,11 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
 
         public static DataType Wrap(Type type)
         {
-            return new DataType()
+            return new DataType
             {
                 Type = type,
                 HasValue = type != typeof(void),
-                Serializable = (type == typeof(void) || type.IsGenericParameter) ? null : type.GetSerializable()
+                Serializable = type == typeof(void) || type.IsGenericParameter ? null : type.GetSerializable()
             };
         }
     }
