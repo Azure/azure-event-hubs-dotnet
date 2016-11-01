@@ -15,19 +15,27 @@ build_script:
     dotnet build test/Microsoft.Azure.EventHubs.UnitTests/project.json
     
     dotnet build test/Microsoft.Azure.EventHubs.Processor.UnitTests/project.json
-after_build:
-- ps: >- 
-    $xUnitConfig = "
-    {
-        `"parallelizeAssembly`": false,
-        `"parallelizeTestCollections`": false
-    }"
-
-    New-Item test/Microsoft.Azure.EventHubs.UnitTests/bin/debug/netcoreapp1.0/xunit.runner.json -type file -force -value $xUnitConfig
-    
-    New-Item test/Microsoft.Azure.EventHubs.Processor.UnitTests/bin/debug/netcoreapp1.0/xunit.runner.json -type file -force -value $xUnitConfig
 test_script:
-- cmd: >-
-    dotnet test test/Microsoft.Azure.EventHubs.UnitTests/project.json
-    
-    dotnet test test/Microsoft.Azure.EventHubs.Processor.UnitTests/project.json
+- ps: >-
+    if (![bool]$env:APPVEYOR_PULL_REQUEST_NUMBER)
+    {
+        Write-Host "Build is not a pull request - running tests"
+
+        $xUnitConfig = "
+        {
+            `"parallelizeAssembly`": false,
+            `"parallelizeTestCollections`": false
+        }"
+
+        New-Item test/Microsoft.Azure.EventHubs.UnitTests/bin/debug/netcoreapp1.0/xunit.runner.json -type file -force -value $xUnitConfig
+        
+        New-Item test/Microsoft.Azure.EventHubs.Processor.UnitTests/bin/debug/netcoreapp1.0/xunit.runner.json -type file -force -value $xUnitConfig
+
+        dotnet test test/Microsoft.Azure.EventHubs.UnitTests/project.json
+        
+        dotnet test test/Microsoft.Azure.EventHubs.Processor.UnitTests/project.json
+    }
+    else
+    {
+        Write-Host "This is a pull request - skipping unit tests"
+    }
