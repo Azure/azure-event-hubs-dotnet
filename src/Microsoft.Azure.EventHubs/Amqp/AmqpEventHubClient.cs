@@ -16,7 +16,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
     sealed class AmqpEventHubClient : EventHubClient
     {
         const string CbsSaslMechanismName = "MSSBCBS";
-        AmqpServiceClient<IAmqpEntityManagement> managementServiceClient; // serviceClient that handles management calls
+        AmqpServiceClient managementServiceClient; // serviceClient that handles management calls
 
         public AmqpEventHubClient(EventHubsConnectionStringBuilder csb)
             : base(csb)
@@ -120,17 +120,13 @@ namespace Microsoft.Azure.EventHubs.Amqp
             try
             {
                 var timeoutHelper = new TimeoutHelper(this.ConnectionStringBuilder.OperationTimeout);
+                SecurityToken token = await this.TokenProvider.GetTokenAsync(
+                    this.ConnectionStringBuilder.Endpoint.AbsoluteUri, 
+                    ClaimConstants.Manage, timeoutHelper.RemainingTime());
+
                 string serviceClientAddress = AmqpClientConstants.ManagementAddress;
-
-                string entityType = AmqpClientConstants.ManagementEventHubEntityTypeValue;
-                SecurityToken token = await this.TokenProvider.GetTokenAsync(this.ConnectionStringBuilder.Endpoint.AbsoluteUri, ClaimConstants.Manage, timeoutHelper.RemainingTime());
-
                 var serviceClient = this.GetManagementServiceClient(serviceClientAddress);
-                var request = this.CreateGetRuntimeInfoRequest(token.TokenValue.ToString());
-                serviceClient.
-
-                //var eventHubRuntimeInformation = await serviceClient.Channel.GetRuntimeInfoAsync<EventHubRuntimeInformation>(
-                //    entityType, this.ConnectionStringBuilder.EntityPath, null, token.TokenValue.ToString(), this.ConnectionStringBuilder.OperationTimeout);
+                var eventHubRuntimeInformation = await serviceClient.GetRuntimeInformationAsync(token.TokenValue.ToString());
 
                 return eventHubRuntimeInformation;
             }
@@ -141,7 +137,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
             }
         }
 
-        internal AmqpServiceClient<IAmqpEntityManagement> GetManagementServiceClient(string address)
+        internal AmqpServiceClient GetManagementServiceClient(string address)
         {
             if (this.managementServiceClient == null)
             {
@@ -149,26 +145,15 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 {
                     if (this.managementServiceClient == null)
                     {
-                        this.managementServiceClient = new AmqpServiceClient<IAmqpEntityManagement>(this, address);
+                        this.managementServiceClient = new AmqpServiceClient(this, address);
                     }
 
-                    Fx.Assert(string.Equals(this.managementServiceClient.Address, address, StringComparison.OrdinalIgnoreCase), "The address should match the address of managementServiceClient");
+                    Fx.Assert(string.Equals(this.managementServiceClient.Address, address, StringComparison.OrdinalIgnoreCase),
+                        "The address should match the address of managementServiceClient");
                 }
             }
 
             return this.managementServiceClient;
-        }
-
-        internal AmqpMessage CreateGetRuntimeInfoRequest(string token)
-        {
-            AmqpMessage getRuntimeInfoRequest = AmqpMessage.Create();
-            getRuntimeInfoRequest.ApplicationProperties = new ApplicationProperties();
-            getRuntimeInfoRequest.ApplicationProperties.Map[AmqpClientConstants.EntityNameKey] = this.eventHubClient.EventHubName;
-            getRuntimeInfoRequest.ApplicationProperties.Map[AmqpClientConstants.ManagementOperationKey] = AmqpClientConstants.ReadOperationValue;
-            getRuntimeInfoRequest.ApplicationProperties.Map[AmqpClientConstants.ManagementEntityTypeKey] = AmqpClientConstants.ManagementEventHubEntityTypeValue;
-            getRuntimeInfoRequest.ApplicationProperties.Map[AmqpClientConstants.ManagementSecurityTokenKey] = token;
-
-            return getRuntimeInfoRequest;
         }
 
         internal static AmqpSettings CreateAmqpSettings(
