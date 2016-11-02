@@ -13,7 +13,6 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
     using Microsoft.Azure.Amqp;
     using Microsoft.Azure.Amqp.Encoding;
     using Microsoft.Azure.Amqp.Framing;
-    using Microsoft.Azure.Amqp.Serialization;
 
     class AmqpServiceClient : ClientEntity
     {
@@ -61,24 +60,25 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
                 throw AmqpExceptionHelper.ToMessagingContract(error);
             }
 
-            object returnValue = null;
+            AmqpMap infoMap = null;
             if (response.ValueBody != null)
             {
-                returnValue = response.ValueBody.Value;
+                infoMap = response.ValueBody.Value as AmqpMap;
             }
 
-            if (returnValue != null)
+            if (infoMap == null)
             {
-                Type expected = typeof(EventHubRuntimeInformation);
-                var serializable = expected.GetSerializable();
-                returnValue = SerializationHelper.FromAmqp(serializable, returnValue);
-                if (!expected.IsAssignableFrom(returnValue.GetType()))
-                {
-                    throw new InvalidOperationException($"Return type mismatch in GetRuntimeInformationAsync. Expect {expected.Name} Actual {returnValue.GetType().Name}");
-                }
+                throw new InvalidOperationException($"Return type mismatch in GetRuntimeInformationAsync. Response returned NULL or response isn't AmqpMap.");
             }
 
-            return (EventHubRuntimeInformation)returnValue;
+            return new EventHubRuntimeInformation()
+            {
+                Type = (string)infoMap[new MapKey("type")],
+                Path = (string)infoMap[new MapKey("name")],
+                CreatedAt = (DateTime)infoMap[new MapKey("created_at")],
+                PartitionCount = (int)infoMap[new MapKey("partition_count")],
+                PartitionIds = (string[])infoMap[new MapKey("partition_ids")],
+            };
         }
 
         public string Address { get; }
