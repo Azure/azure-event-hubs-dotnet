@@ -269,7 +269,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
             amqpObject = null;
             if (netObject == null)
             {
-                return false;
+                return true;
             }
 
             switch (SerializationUtilities.GetTypeId(netObject))
@@ -343,7 +343,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
             netObject = null;
             if (amqpObject == null)
             {
-                return false;
+                return true;
             }
 
             switch (SerializationUtilities.GetTypeId(amqpObject))
