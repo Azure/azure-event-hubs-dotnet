@@ -574,8 +574,9 @@
                     await receiver.ReceiveAsync(1, TimeSpan.FromSeconds(receiveTimeoutInSeconds));
 
                     // Receive call should have waited more than receive timeout.
+                    // Give 100 milliseconds of buffer.
                     var diff = DateTime.Now.Subtract(startTime).TotalSeconds;
-                    Assert.True(diff >= receiveTimeoutInSeconds, $"Hit timeout {diff} seconds into Receive call while testing {receiveTimeoutInSeconds} seconds timeout.");
+                    Assert.True(diff >= receiveTimeoutInSeconds - 0.1, $"Hit timeout {diff} seconds into Receive call while testing {receiveTimeoutInSeconds} seconds timeout.");
 
                     // Timeout should not be late more than 5 seconds.
                     // This is just a logical buffer for timeout behavior validation.
@@ -669,6 +670,7 @@
                     var ehClient = EventHubClient.CreateFromConnectionString(this.EventHubConnectionString);
                     await ehClient.SendAsync(new EventData(Encoding.UTF8.GetBytes("Hello EventHub!")));
                 });
+
                 tasks.Add(task);
             }
 

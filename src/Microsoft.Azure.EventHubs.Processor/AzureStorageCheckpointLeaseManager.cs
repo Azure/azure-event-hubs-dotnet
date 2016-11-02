@@ -250,9 +250,6 @@ namespace Microsoft.Azure.EventHubs.Processor
                 }
     		    else
     		    {
-    			    Console.WriteLine($"errorCode {extendedErrorInfo.ErrorCode}");
-                    Console.WriteLine($"errorString {extendedErrorInfo.ErrorMessage}");
-
                     ProcessorEventSource.Log.AzureStorageManagerError(
                         this.host.Id,
                         partitionId,

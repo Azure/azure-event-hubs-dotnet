@@ -16,7 +16,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
     sealed class AmqpEventHubClient : EventHubClient
     {
         const string CbsSaslMechanismName = "MSSBCBS";
-        AmqpServiceClient<IAmqpEntityManagement> managementServiceClient; // serviceClient that handles management calls
+        AmqpServiceClient managementServiceClient; // serviceClient that handles management calls
 
         public AmqpEventHubClient(EventHubsConnectionStringBuilder csb)
             : base(csb)
@@ -72,7 +72,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 var connection = await this.ConnectionManager.GetOrCreateAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
 
                 var sessionSettings = new AmqpSessionSettings { Properties = new Fields() };
-                //sessionSettings.Properties[AmqpClientConstants.BatchFlushIntervalName] = (uint)batchFlushInterval.TotalMilliseconds;
                 session = connection.CreateSession(sessionSettings);
 
                 await session.OpenAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
@@ -120,14 +119,13 @@ namespace Microsoft.Azure.EventHubs.Amqp
             try
             {
                 var timeoutHelper = new TimeoutHelper(this.ConnectionStringBuilder.OperationTimeout);
+                SecurityToken token = await this.TokenProvider.GetTokenAsync(
+                    this.ConnectionStringBuilder.Endpoint.AbsoluteUri, 
+                    ClaimConstants.Manage, timeoutHelper.RemainingTime()).ConfigureAwait(false);
+
                 string serviceClientAddress = AmqpClientConstants.ManagementAddress;
-
-                string entityType = AmqpClientConstants.ManagementEventHubEntityTypeValue;
-                SecurityToken token = await this.TokenProvider.GetTokenAsync(this.ConnectionStringBuilder.Endpoint.AbsoluteUri, ClaimConstants.Manage, timeoutHelper.RemainingTime()).ConfigureAwait(false);
-
                 var serviceClient = this.GetManagementServiceClient(serviceClientAddress);
-                var eventHubRuntimeInformation = await serviceClient.Channel.GetRuntimeInfoAsync<EventHubRuntimeInformation>(
-                    entityType, this.ConnectionStringBuilder.EntityPath, null, token.TokenValue.ToString(), this.ConnectionStringBuilder.OperationTimeout).ConfigureAwait(false);
+                var eventHubRuntimeInformation = await serviceClient.GetRuntimeInformationAsync(token.TokenValue.ToString()).ConfigureAwait(false);
 
                 return eventHubRuntimeInformation;
             }
@@ -138,7 +136,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
             }
         }
 
-        internal AmqpServiceClient<IAmqpEntityManagement> GetManagementServiceClient(string address)
+        internal AmqpServiceClient GetManagementServiceClient(string address)
         {
             if (this.managementServiceClient == null)
             {
@@ -146,10 +144,11 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 {
                     if (this.managementServiceClient == null)
                     {
-                        this.managementServiceClient = new AmqpServiceClient<IAmqpEntityManagement>(this, address);
+                        this.managementServiceClient = new AmqpServiceClient(this, address);
                     }
 
-                    Fx.Assert(string.Equals(this.managementServiceClient.Address, address, StringComparison.OrdinalIgnoreCase), "The address should match the address of managementServiceClient");
+                    Fx.Assert(string.Equals(this.managementServiceClient.Address, address, StringComparison.OrdinalIgnoreCase),
+                        "The address should match the address of managementServiceClient");
                 }
             }
 

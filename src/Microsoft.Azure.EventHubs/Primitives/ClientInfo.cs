@@ -25,7 +25,9 @@ namespace Microsoft.Azure.EventHubs
                 framework = GetAssemblyAttributeValue<TargetFrameworkAttribute>(assembly, f => f.FrameworkName);
 #if NETSTANDARD1_3
                 platform = System.Runtime.InteropServices.RuntimeInformation.OSDescription;
-#else
+#elif UAP10_0
+                platform = "UAP";
+#elif NET451
                 platform = Environment.OSVersion.VersionString;
 #endif
             }

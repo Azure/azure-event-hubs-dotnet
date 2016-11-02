@@ -25,14 +25,17 @@
   },
 
   "frameworks": {
+    "uap10.0": {
+      "dependencies": {
+        "Microsoft.NETCore.UniversalWindowsPlatform": "5.2.2",
+      }
+    },
     "net451": {
     },
     "netstandard1.3": {
       "imports": "dnxcore50",
       "dependencies": {
         "NETStandard.Library": "1.6.0",
-        "System.Reflection": "4.1.0",
-        "System.Reflection.Emit": "4.0.1",
         "System.Reflection.TypeExtensions": "4.1.0",
         "System.Runtime.Serialization.Primitives": "4.1.1"
       }
