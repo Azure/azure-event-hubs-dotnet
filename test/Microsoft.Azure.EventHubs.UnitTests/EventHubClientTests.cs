@@ -66,7 +66,7 @@
         }
 
         [Fact]
-        void ConnectionStringBuilderTestDefaultDomain()
+        void ConnectionStringBuilderWithDefaultDomain()
         {
             var endpointFormat = "Endpoint=amqps://{0}.servicebus.windows";
             var myNamespace = "mynamespace";
@@ -111,7 +111,7 @@
         }
 
         [Fact]
-        void ConnectionStringBuilderTestCustomDomain()
+        void ConnectionStringBuilderWithCustomDomain()
         {
             var endpointFormat = "Endpoint=amqps://{0}.{1}";
             var customDomain = "servicebus.someotherregion.com";
