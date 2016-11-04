@@ -30,35 +30,40 @@ namespace Microsoft.Azure.EventHubs
     /// </example>
     public class EventHubsConnectionStringBuilder
     {
+        const char KeyValueSeparator = '=';
+        const char KeyValuePairDelimiter = ';';
+
         static readonly TimeSpan DefaultOperationTimeout = TimeSpan.FromMinutes(1);
         static readonly string EndpointScheme = "amqps";
-        static readonly string EndpointFormat = EndpointScheme + "://{0}.servicebus.windows.net";
+        static readonly string DefaultDomain = "servicebus.windows.net";
+        static readonly string EndpointFormat = EndpointScheme + "://{0}.{1}";
         static readonly string EndpointConfigName = "Endpoint";
         static readonly string SharedAccessKeyNameConfigName = "SharedAccessKeyName";
         static readonly string SharedAccessKeyConfigName = "SharedAccessKey";
         static readonly string EntityPathConfigName = "EntityPath";
         static readonly string OperationTimeoutName = "OperationTimeout";
-        const char KeyValueSeparator = '=';
-        const char KeyValuePairDelimiter = ';';
 
         /// <summary>
-        /// Build a connection string consumable by <see cref="EventHubClient.Create(string)"/>
+        /// Build a connection string consumable by <see cref="EventHubClient.CreateFromConnectionString(string)"/>
         /// </summary>
         /// <param name="namespaceName">Namespace name (the dns suffix, ex: .servicebus.windows.net, is not required)</param>
         /// <param name="entityPath">Entity path. For eventHubs case specify eventHub name.</param>
         /// <param name="sharedAccessKeyName">Shared Access Key name</param>
         /// <param name="sharedAccessKey">Shared Access Key</param>
         public EventHubsConnectionStringBuilder(string namespaceName, string entityPath, string sharedAccessKeyName, string sharedAccessKey)
-            : this(namespaceName, entityPath, sharedAccessKeyName, sharedAccessKey, DefaultOperationTimeout)
+            : this(namespaceName, entityPath, sharedAccessKeyName, sharedAccessKey, DefaultDomain)
         {
         }
 
-        EventHubsConnectionStringBuilder(
-            string namespaceName,
-            string entityPath,
-            string sharedAccessKeyName,
-            string sharedAccessKey,
-            TimeSpan operationTimeout)
+        /// <summary>
+        /// Build a connection string consumable by <see cref="EventHubClient.CreateFromConnectionString(string)"/>
+        /// </summary>
+        /// <param name="namespaceName">Namespace name (the dns suffix, ex: .servicebus.windows.net, is not required)</param>
+        /// <param name="entityPath">Entity path. For eventHubs case specify eventHub name.</param>
+        /// <param name="sharedAccessKeyName">Shared Access Key name</param>
+        /// <param name="sharedAccessKey">Shared Access Key</param>
+        /// <param name="endpointDomain">Defines non-default domain name for building Event Hubs endpoint URL. Default is servicebus.windows.net</param>
+        public EventHubsConnectionStringBuilder(string namespaceName, string entityPath, string sharedAccessKeyName, string sharedAccessKey, string endpointDomain)
         {
             if (string.IsNullOrWhiteSpace(namespaceName) || string.IsNullOrWhiteSpace(entityPath))
             {
@@ -68,21 +73,12 @@ namespace Microsoft.Azure.EventHubs
             {
                 throw Fx.Exception.ArgumentNullOrWhiteSpace(string.IsNullOrWhiteSpace(sharedAccessKeyName) ? nameof(sharedAccessKeyName) : nameof(sharedAccessKey));
             }
-            
-            if (namespaceName.Contains("."))
-            {
-                // It appears to be a fully qualified host name, use it.
-                this.Endpoint = new Uri(EndpointScheme + "://" + namespaceName);
-            }
-            else
-            {
-                this.Endpoint = new Uri(EndpointFormat.FormatInvariant(namespaceName));
-            }
 
+            this.Endpoint = new Uri(EndpointFormat.FormatInvariant(namespaceName, endpointDomain));
             this.EntityPath = entityPath;
             this.SasKey = sharedAccessKey;
             this.SasKeyName = sharedAccessKeyName;
-            this.OperationTimeout = operationTimeout;
+            this.OperationTimeout = DefaultOperationTimeout;
         }
 
         /// <summary>
