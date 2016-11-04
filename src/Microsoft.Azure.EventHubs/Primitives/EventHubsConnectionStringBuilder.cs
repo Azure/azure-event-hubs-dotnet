@@ -30,17 +30,18 @@ namespace Microsoft.Azure.EventHubs
     /// </example>
     public class EventHubsConnectionStringBuilder
     {
+        const char KeyValueSeparator = '=';
+        const char KeyValuePairDelimiter = ';';
+
         static readonly TimeSpan DefaultOperationTimeout = TimeSpan.FromMinutes(1);
         static readonly string EndpointScheme = "amqps";
-        static readonly string DefaultSbDomain = "servicebus.windows.net";
+        static readonly string DefaultDomain = "servicebus.windows.net";
         static readonly string EndpointFormat = EndpointScheme + "://{0}.{1}";
         static readonly string EndpointConfigName = "Endpoint";
         static readonly string SharedAccessKeyNameConfigName = "SharedAccessKeyName";
         static readonly string SharedAccessKeyConfigName = "SharedAccessKey";
         static readonly string EntityPathConfigName = "EntityPath";
         static readonly string OperationTimeoutName = "OperationTimeout";
-        const char KeyValueSeparator = '=';
-        const char KeyValuePairDelimiter = ';';
 
         /// <summary>
         /// Build a connection string consumable by <see cref="EventHubClient.CreateFromConnectionString(string)"/>
@@ -50,7 +51,7 @@ namespace Microsoft.Azure.EventHubs
         /// <param name="sharedAccessKeyName">Shared Access Key name</param>
         /// <param name="sharedAccessKey">Shared Access Key</param>
         public EventHubsConnectionStringBuilder(string namespaceName, string entityPath, string sharedAccessKeyName, string sharedAccessKey)
-            : this(namespaceName, entityPath, sharedAccessKeyName, sharedAccessKey, DefaultSbDomain)
+            : this(namespaceName, entityPath, sharedAccessKeyName, sharedAccessKey, DefaultDomain)
         {
         }
 
