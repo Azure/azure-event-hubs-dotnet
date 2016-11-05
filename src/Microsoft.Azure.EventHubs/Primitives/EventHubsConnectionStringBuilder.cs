@@ -44,7 +44,7 @@ namespace Microsoft.Azure.EventHubs
         /// <summary>
         /// Build a connection string consumable by <see cref="EventHubClient.CreateFromConnectionString(string)"/>
         /// </summary>
-        /// <param name="endpointAddress">Endpoint address pointing subject Event Hubs namespace.</param>
+        /// <param name="endpointAddress">Endpoint address unique to subject Event Hubs namespace.</param>
         /// <param name="entityPath">Entity path. For eventHubs case specify eventHub name.</param>
         /// <param name="sharedAccessKeyName">Shared Access Key name</param>
         /// <param name="sharedAccessKey">Shared Access Key</param>
@@ -60,7 +60,7 @@ namespace Microsoft.Azure.EventHubs
         /// <summary>
         /// Build a connection string consumable by <see cref="EventHubClient.CreateFromConnectionString(string)"/>
         /// </summary>
-        /// <param name="endpointAddress">Endpoint address pointing subject Event Hubs namespace.</param>
+        /// <param name="endpointAddress">Endpoint address unique to subject Event Hubs namespace.</param>
         /// <param name="entityPath">Entity path. For eventHubs case specify eventHub name.</param>
         /// <param name="sharedAccessKeyName">Shared Access Key name</param>
         /// <param name="sharedAccessKey">Shared Access Key</param>
