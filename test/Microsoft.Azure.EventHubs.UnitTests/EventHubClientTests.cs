@@ -66,21 +66,21 @@
         }
 
         [Fact]
-        void ConnectionStringBuilderWithDefaultDomain()
+        void ConnectionStringBuilderWithCustomEndpoint()
         {
-            var endpointFormat = "Endpoint=amqps://{0}.servicebus.windows";
-            var myNamespace = "mynamespace";
+            // Use 'sb' scheme intentionally. Connection string builder will replace it with 'amqps'.
+            var endpoint = new Uri("sb://mynamespace.someotherregion.windows");
             var entityPath = "myentity";
             var sharedAccessKeyName = "mySAS";
             var sharedAccessKey = "mySASKey";
 
             // Create connection string builder instance and then generate connection string.
-            var csb = new EventHubsConnectionStringBuilder(myNamespace, entityPath, sharedAccessKeyName, sharedAccessKey);
+            var csb = new EventHubsConnectionStringBuilder(endpoint, entityPath, sharedAccessKeyName, sharedAccessKey);
             var generatedConnectionString = csb.ToString();
 
             // Validate generated connection string.
             // Endpoint validation.
-            var expectedLiteral = string.Format(CultureInfo.InvariantCulture, endpointFormat, myNamespace);
+            var expectedLiteral = $"Endpoint={endpoint.ToString().Replace("sb://", "amqps://")}";
             Assert.True(generatedConnectionString.Contains(expectedLiteral),
                 $"Generated connection string doesn't contain expected Endpoint. Expected: '{expectedLiteral}' in '{generatedConnectionString}'");
 
@@ -108,34 +108,6 @@
             Assert.True(csbNew.SasKeyName == csb.SasKeyName, $"Original and New CSB mismatch at SasKeyName. Original: {csb.SasKeyName} New: {csbNew.SasKeyName}");
             Assert.True(csbNew.SasKey == csb.SasKey, $"Original and New CSB mismatch at SasKey. Original: {csb.SasKey} New: {csbNew.SasKey}");
             Assert.True(csbNew.EntityPath == csb.EntityPath, $"Original and New CSB mismatch at EntityPath. Original: {csb.EntityPath} New: {csbNew.EntityPath}");
-        }
-
-        [Fact]
-        void ConnectionStringBuilderWithCustomDomain()
-        {
-            var endpointFormat = "Endpoint=amqps://{0}.{1}";
-            var customDomain = "servicebus.someotherregion.com";
-            var myNamespace = "mynamespace";
-            var entityPath = "myentity";
-            var sharedAccessKeyName = "mySAS";
-            var sharedAccessKey = "mySASKey";
-
-            // Create connection string builder instance and then generate connection string.
-            var csb = new EventHubsConnectionStringBuilder(myNamespace, entityPath, sharedAccessKeyName, sharedAccessKey, customDomain);
-            var generatedConnectionString = csb.ToString();
-
-            // Validate generated connection string.
-            // Endpoint validation.
-            var expectedLiteral = string.Format(CultureInfo.InvariantCulture, endpointFormat, myNamespace, customDomain);
-            Assert.True(generatedConnectionString.Contains(expectedLiteral),
-                $"Generated connection string doesn't contain expected Endpoint. Expected: '{expectedLiteral}' in '{generatedConnectionString}'");
-
-            // Now try creating a new ConnectionStringBuilder from generated connection string.
-            // This should not fail.
-            var csbNew = new EventHubsConnectionStringBuilder(generatedConnectionString);
-
-            // Validate new builder.
-            Assert.True(csbNew.Endpoint == csb.Endpoint, $"Original and New CSB mismatch at Endpoint. Original: {csb.Endpoint} New: {csbNew.Endpoint}");
         }
 
         [Fact]

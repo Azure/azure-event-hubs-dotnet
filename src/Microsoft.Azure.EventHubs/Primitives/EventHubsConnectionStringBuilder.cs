@@ -21,7 +21,7 @@ namespace Microsoft.Azure.EventHubs
     /// Sample code:
     /// <code>
     /// var connectionStringBuiler = new EventHubsConnectionStringBuilder(
-    ///     "EventHubsNamespaceName", 
+    ///     "amqps://EventHubsNamespaceName.servicebus.windows.net", 
     ///     "EventHubsEntityName", // Event Hub Name 
     ///     "SharedAccessSignatureKeyName", 
     ///     "SharedAccessSignatureKey");
@@ -35,8 +35,6 @@ namespace Microsoft.Azure.EventHubs
 
         static readonly TimeSpan DefaultOperationTimeout = TimeSpan.FromMinutes(1);
         static readonly string EndpointScheme = "amqps";
-        static readonly string DefaultDomain = "servicebus.windows.net";
-        static readonly string EndpointFormat = EndpointScheme + "://{0}.{1}";
         static readonly string EndpointConfigName = "Endpoint";
         static readonly string SharedAccessKeyNameConfigName = "SharedAccessKeyName";
         static readonly string SharedAccessKeyConfigName = "SharedAccessKey";
@@ -46,39 +44,58 @@ namespace Microsoft.Azure.EventHubs
         /// <summary>
         /// Build a connection string consumable by <see cref="EventHubClient.CreateFromConnectionString(string)"/>
         /// </summary>
-        /// <param name="namespaceName">Namespace name (the dns suffix, ex: .servicebus.windows.net, is not required)</param>
-        /// <param name="entityPath">Entity path. For eventHubs case specify eventHub name.</param>
+        /// <param name="endpointAddress">Fully qualified domain name for Event Hubs. Most likely, {yournamespace}.servicebus.windows.net</param>
+        /// <param name="entityPath">Entity path or Event Hub name.</param>
         /// <param name="sharedAccessKeyName">Shared Access Key name</param>
         /// <param name="sharedAccessKey">Shared Access Key</param>
-        public EventHubsConnectionStringBuilder(string namespaceName, string entityPath, string sharedAccessKeyName, string sharedAccessKey)
-            : this(namespaceName, entityPath, sharedAccessKeyName, sharedAccessKey, DefaultDomain)
+        public EventHubsConnectionStringBuilder(
+            Uri endpointAddress,
+            string entityPath,
+            string sharedAccessKeyName,
+            string sharedAccessKey)
+            : this (endpointAddress, entityPath, sharedAccessKeyName, sharedAccessKey, DefaultOperationTimeout)
         {
         }
 
         /// <summary>
         /// Build a connection string consumable by <see cref="EventHubClient.CreateFromConnectionString(string)"/>
         /// </summary>
-        /// <param name="namespaceName">Namespace name (the dns suffix, ex: .servicebus.windows.net, is not required)</param>
-        /// <param name="entityPath">Entity path. For eventHubs case specify eventHub name.</param>
+        /// <param name="endpointAddress">Fully qualified domain name for Event Hubs. Most likely, {yournamespace}.servicebus.windows.net</param>
+        /// <param name="entityPath">Entity path or Event Hub name.</param>
         /// <param name="sharedAccessKeyName">Shared Access Key name</param>
         /// <param name="sharedAccessKey">Shared Access Key</param>
-        /// <param name="endpointDomain">Defines non-default domain name for building Event Hubs endpoint URL. Default is servicebus.windows.net</param>
-        public EventHubsConnectionStringBuilder(string namespaceName, string entityPath, string sharedAccessKeyName, string sharedAccessKey, string endpointDomain)
+        /// <param name="operationTimeout">Operation timeout for Event Hubs operations</param>
+        public EventHubsConnectionStringBuilder(
+            Uri endpointAddress,
+            string entityPath,
+            string sharedAccessKeyName,
+            string sharedAccessKey,
+            TimeSpan operationTimeout)
         {
-            if (string.IsNullOrWhiteSpace(namespaceName) || string.IsNullOrWhiteSpace(entityPath))
+            if (endpointAddress == null)
             {
-                throw Fx.Exception.ArgumentNullOrWhiteSpace(string.IsNullOrWhiteSpace(namespaceName) ? nameof(namespaceName) : nameof(entityPath));
+                throw Fx.Exception.ArgumentNull(nameof(endpointAddress));
+            }
+            else if (string.IsNullOrWhiteSpace(entityPath))
+            {
+                throw Fx.Exception.ArgumentNullOrWhiteSpace(nameof(entityPath));
             }
             else if (string.IsNullOrWhiteSpace(sharedAccessKeyName) || string.IsNullOrWhiteSpace(sharedAccessKey))
             {
                 throw Fx.Exception.ArgumentNullOrWhiteSpace(string.IsNullOrWhiteSpace(sharedAccessKeyName) ? nameof(sharedAccessKeyName) : nameof(sharedAccessKey));
             }
 
-            this.Endpoint = new Uri(EndpointFormat.FormatInvariant(namespaceName, endpointDomain));
+            // Replace the scheme. We cannot really make sure that user passed an amps:// scheme to us.
+            var uriBuilder = new UriBuilder(endpointAddress.AbsoluteUri)
+            {
+                Scheme = EndpointScheme
+            };
+            this.Endpoint = uriBuilder.Uri;
+
             this.EntityPath = entityPath;
             this.SasKey = sharedAccessKey;
             this.SasKeyName = sharedAccessKeyName;
-            this.OperationTimeout = DefaultOperationTimeout;
+            this.OperationTimeout = operationTimeout;
         }
 
         /// <summary>
