@@ -15,7 +15,12 @@ namespace SampleSender
 
         public static void Main(string[] args)
         {
-            SendMessagesToEventHub(100).Wait();
+            MainAsync(args).GetAwaiter().GetResult();
+        }
+
+        private static async Task MainAsync(string[] args)
+        {
+            await SendMessagesToEventHub(100).ConfigureAwait(false);
             Console.WriteLine("Press any key to exit.");
             Console.ReadLine();
         }
@@ -39,14 +44,14 @@ namespace SampleSender
                 {
                     var message = $"Message {i}";
                     Console.WriteLine($"Sending message: {message}");
-                    await eventHubClient.SendAsync(new EventData(Encoding.UTF8.GetBytes(message)));
+                    await eventHubClient.SendAsync(new EventData(Encoding.UTF8.GetBytes(message))).ConfigureAwait(false);
                 }
                 catch (Exception exception)
                 {
                     Console.WriteLine($"{DateTime.Now} > Exception: {exception.Message}");
                 }
 
-                await Task.Delay(10);
+                await Task.Delay(10).ConfigureAwait(false);
             }
 
             Console.WriteLine($"{numMessagesToSend} messages sent.");
