@@ -19,6 +19,7 @@ namespace Microsoft.Azure.EventHubs.Processor
         EventProcessorHost host;
         readonly string storageConnectionString;
         string leaseContainerName = null;
+        string storageBlobPrefix;
 
         CloudBlobClient storageClient;
         CloudBlobContainer eventHubContainer;
@@ -29,7 +30,7 @@ namespace Microsoft.Azure.EventHubs.Processor
         static readonly TimeSpan leaseRenewInterval = TimeSpan.FromSeconds(10);
         readonly BlobRequestOptions renewRequestOptions = new BlobRequestOptions();
 
-        internal AzureStorageCheckpointLeaseManager(string storageConnectionString, string leaseContainerName)
+        internal AzureStorageCheckpointLeaseManager(string storageConnectionString, string leaseContainerName, string storageBlobPrefix)
         {
             if (string.IsNullOrEmpty(storageConnectionString))
             {
@@ -46,6 +47,10 @@ namespace Microsoft.Azure.EventHubs.Processor
 
             this.storageConnectionString = storageConnectionString;
             this.leaseContainerName = leaseContainerName;
+
+            // Convert all-whitespace prefix to empty string. Convert null prefix to empty string.
+            // Then the rest of the code only has one case to worry about.
+            this.storageBlobPrefix = (storageBlobPrefix != null) ? storageBlobPrefix.Trim() : "";
         }
 
         // The EventProcessorHost can't pass itself to the AzureStorageCheckpointLeaseManager constructor
@@ -59,7 +64,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             options.MaximumExecutionTime = AzureStorageCheckpointLeaseManager.storageMaximumExecutionTime;
             this.storageClient.DefaultRequestOptions = options;
             this.eventHubContainer = this.storageClient.GetContainerReference(this.leaseContainerName);
-            this.consumerGroupDirectory = this.eventHubContainer.GetDirectoryReference(this.host.ConsumerGroupName);
+            this.consumerGroupDirectory = this.eventHubContainer.GetDirectoryReference(this.storageBlobPrefix + this.host.ConsumerGroupName);
         }
 
         //
@@ -234,7 +239,8 @@ namespace Microsoft.Azure.EventHubs.Processor
                 ProcessorEventSource.Log.AzureStorageManagerInfo(
                     this.host.Id,
                     partitionId,
-                    "CreateLeaseIfNotExist - leaseContainerName: " + this.leaseContainerName + " consumerGroupName: " + this.host.ConsumerGroupName);
+                    "CreateLeaseIfNotExist - leaseContainerName: " + this.leaseContainerName + 
+                    " consumerGroupName: " + this.host.ConsumerGroupName + " storageBlobPrefix: " + this.storageBlobPrefix);
                 await leaseBlob.UploadTextAsync(jsonLease, null, AccessCondition.GenerateIfNoneMatchCondition("*"), null, null).ConfigureAwait(false);
             }
     	    catch (StorageException se)
@@ -253,7 +259,8 @@ namespace Microsoft.Azure.EventHubs.Processor
                     ProcessorEventSource.Log.AzureStorageManagerError(
                         this.host.Id,
                         partitionId,
-                        "CreateLeaseIfNotExist StorageException - leaseContainerName: " + this.leaseContainerName + " consumerGroupName: " + this.host.ConsumerGroupName,
+                        "CreateLeaseIfNotExist StorageException - leaseContainerName: " + this.leaseContainerName +
+                        " consumerGroupName: " + this.host.ConsumerGroupName + " storageBlobPrefix: " + this.storageBlobPrefix,
                         se.ToString());
     			    throw;
                 }
