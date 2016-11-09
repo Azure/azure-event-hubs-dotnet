@@ -38,7 +38,8 @@ namespace Microsoft.Azure.EventHubs.Processor
                 consumerGroupName,
                 eventHubConnectionString,
                 storageConnectionString,
-                leaseContainerName)
+                leaseContainerName,
+                null)
         {
         }
 
@@ -53,18 +54,20 @@ namespace Microsoft.Azure.EventHubs.Processor
         /// <param name="eventHubConnectionString">Connection string for the Event Hub to receive from.</param>
         /// <param name="storageConnectionString">Connection string to Azure Storage account used for leases and checkpointing.</param>
         /// <param name="leaseContainerName">Azure Storage container name for use by built-in lease and checkpoint manager.</param>
+        /// <param name="storageBlobPrefix">Prefix used when naming blobs within the storage container.</param>
         public EventProcessorHost(
             string hostName,
             string eventHubPath,
             string consumerGroupName,
             string eventHubConnectionString,
             string storageConnectionString,
-            string leaseContainerName)
+            string leaseContainerName,
+            string storageBlobPrefix = null)
             : this(hostName,
                 eventHubPath,
                 consumerGroupName,
                 eventHubConnectionString,
-                new AzureStorageCheckpointLeaseManager(storageConnectionString, leaseContainerName))
+                new AzureStorageCheckpointLeaseManager(storageConnectionString, leaseContainerName, storageBlobPrefix))
         {
             this.initializeLeaseManager = true;
         }
