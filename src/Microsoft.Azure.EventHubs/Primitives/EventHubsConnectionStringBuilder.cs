@@ -44,8 +44,8 @@ namespace Microsoft.Azure.EventHubs
         /// <summary>
         /// Build a connection string consumable by <see cref="EventHubClient.CreateFromConnectionString(string)"/>
         /// </summary>
-        /// <param name="endpointAddress">Endpoint address unique to subject Event Hubs namespace.</param>
-        /// <param name="entityPath">Entity path. For eventHubs case specify eventHub name.</param>
+        /// <param name="endpointAddress">Fully qualified domain name for Event Hubs. Most likely, {yournamespace}.servicebus.windows.net</param>
+        /// <param name="entityPath">Entity path or Event Hub name.</param>
         /// <param name="sharedAccessKeyName">Shared Access Key name</param>
         /// <param name="sharedAccessKey">Shared Access Key</param>
         public EventHubsConnectionStringBuilder(
@@ -60,8 +60,8 @@ namespace Microsoft.Azure.EventHubs
         /// <summary>
         /// Build a connection string consumable by <see cref="EventHubClient.CreateFromConnectionString(string)"/>
         /// </summary>
-        /// <param name="endpointAddress">Endpoint address unique to subject Event Hubs namespace.</param>
-        /// <param name="entityPath">Entity path. For eventHubs case specify eventHub name.</param>
+        /// <param name="endpointAddress">Fully qualified domain name for Event Hubs. Most likely, {yournamespace}.servicebus.windows.net</param>
+        /// <param name="entityPath">Entity path or Event Hub name.</param>
         /// <param name="sharedAccessKeyName">Shared Access Key name</param>
         /// <param name="sharedAccessKey">Shared Access Key</param>
         /// <param name="operationTimeout">Operation timeout for Event Hubs operations</param>
@@ -76,11 +76,11 @@ namespace Microsoft.Azure.EventHubs
             {
                 throw Fx.Exception.ArgumentNull(nameof(endpointAddress));
             }
-            else if (string.IsNullOrWhiteSpace(entityPath))
+            if (string.IsNullOrWhiteSpace(entityPath))
             {
                 throw Fx.Exception.ArgumentNullOrWhiteSpace(nameof(entityPath));
             }
-            else if (string.IsNullOrWhiteSpace(sharedAccessKeyName) || string.IsNullOrWhiteSpace(sharedAccessKey))
+            if (string.IsNullOrWhiteSpace(sharedAccessKeyName) || string.IsNullOrWhiteSpace(sharedAccessKey))
             {
                 throw Fx.Exception.ArgumentNullOrWhiteSpace(string.IsNullOrWhiteSpace(sharedAccessKeyName) ? nameof(sharedAccessKeyName) : nameof(sharedAccessKey));
             }
