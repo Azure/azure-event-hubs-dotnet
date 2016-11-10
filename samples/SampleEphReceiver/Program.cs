@@ -35,13 +35,13 @@ namespace SampleEphReceiver
                 StorageContainerName);
 
             // Registers the Event Processor Host and starts receiving messages
-            await eventProcessorHost.RegisterEventProcessorAsync<SimpleEventProcessor>().ConfigureAwait(false);
+            await eventProcessorHost.RegisterEventProcessorAsync<SimpleEventProcessor>();
 
             Console.WriteLine("Receiving. Press enter key to stop worker.");
             Console.ReadLine();
 
             // Disposes of the Event Processor Host
-            await eventProcessorHost.UnregisterEventProcessorAsync().ConfigureAwait(false);
+            await eventProcessorHost.UnregisterEventProcessorAsync();
         }
     }
 
