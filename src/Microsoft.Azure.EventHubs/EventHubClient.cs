@@ -402,6 +402,11 @@ namespace Microsoft.Azure.EventHubs
 
         public async Task<EventHubPartitionRuntimeInformation> GetPartitionRuntimeInformationAsync(string partitionId)
         {
+            if (string.IsNullOrWhiteSpace(partitionId))
+            {
+                throw Fx.Exception.ArgumentNullOrWhiteSpace(nameof(partitionId));
+            }
+
             EventHubsEventSource.Log.GetEventHubPartitionRuntimeInformationStart(this.ClientId, partitionId);
 
             try
