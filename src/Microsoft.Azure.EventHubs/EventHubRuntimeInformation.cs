@@ -18,7 +18,7 @@ namespace Microsoft.Azure.EventHubs
         /// <summary>Gets or sets the number of partitions in an Event Hub.</summary>
         public int PartitionCount { get; set; }
 
-        /// <summary>Gets or sets the partition ID for an Event Hub.</summary>
+        /// <summary>Gets or sets the partition IDs for an Event Hub.</summary>
         public string[] PartitionIds { get; set; }
     }
 }
