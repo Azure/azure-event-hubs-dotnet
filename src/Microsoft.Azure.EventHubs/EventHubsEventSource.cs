@@ -191,7 +191,7 @@ namespace Microsoft.Azure.EventHubs
             }
         }
 
-        [Event(20, Level = EventLevel.Error, Message = "{0}: GetEventHubPartitionRuntimeInformation Exception on partition {1}: {1}.")]
+        [Event(20, Level = EventLevel.Error, Message = "{0}: GetEventHubPartitionRuntimeInformation Exception on partition {1}: {2}.")]
         public void GetEventHubPartitionRuntimeInformationException(string clientId, string partitionId, string error)
         {
             if (IsEnabled())

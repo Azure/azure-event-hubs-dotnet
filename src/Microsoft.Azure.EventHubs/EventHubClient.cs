@@ -387,7 +387,7 @@ namespace Microsoft.Azure.EventHubs
 
             try
             {
-                return await this.OnGetRuntimeInformationAsync();
+                return await this.OnGetRuntimeInformationAsync().ConfigureAwait(false);
             }
             catch (Exception e)
             {
@@ -406,7 +406,7 @@ namespace Microsoft.Azure.EventHubs
 
             try
             {
-                return await this.OnGetPartitionRuntimeInformationAsync(partitionId);
+                return await this.OnGetPartitionRuntimeInformationAsync(partitionId).ConfigureAwait(false);
             }
             catch (Exception e)
             {
