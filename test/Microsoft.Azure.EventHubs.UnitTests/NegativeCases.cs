@@ -16,7 +16,7 @@
         async Task NonexistentEntity()
         {
             // Rebuild connection string with a nonexistent entity.
-            var csb = new EventHubsConnectionStringBuilder(this.EventHubConnectionString);
+            var csb = new EventHubsConnectionStringBuilder(this.EventHubsConnectionString);
             csb.EntityPath = Guid.NewGuid().ToString();
             var ehClient = EventHubClient.CreateFromConnectionString(csb.ToString());
 
@@ -51,7 +51,7 @@
             await receiver.CloseAsync();
 
             // Try receiving on an nonexistent consumer group.
-            ehClient = EventHubClient.CreateFromConnectionString(this.EventHubConnectionString);
+            ehClient = EventHubClient.CreateFromConnectionString(this.EventHubsConnectionString);
             await Assert.ThrowsAsync<MessagingEntityNotFoundException>(async () =>
             {
                 Log("Receiving from nonexistent consumer group.");
@@ -66,7 +66,7 @@
         Task CreateClientWithoutEntityPathShouldFail()
         {
             // Remove entity path from connection string.
-            var csb = new EventHubsConnectionStringBuilder(this.EventHubConnectionString);
+            var csb = new EventHubsConnectionStringBuilder(this.EventHubsConnectionString);
             csb.EntityPath = null;
 
             return Assert.ThrowsAsync<ArgumentException>(() =>

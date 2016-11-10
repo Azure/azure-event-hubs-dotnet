@@ -384,6 +384,7 @@ namespace Microsoft.Azure.EventHubs
         public async Task<EventHubRuntimeInformation> GetRuntimeInformationAsync()
         {
             EventHubsEventSource.Log.GetEventHubRuntimeInformationStart(this.ClientId);
+
             try
             {
                 return await this.OnGetRuntimeInformationAsync();
@@ -399,6 +400,25 @@ namespace Microsoft.Azure.EventHubs
             }
         }
 
+        public async Task<EventHubPartitionRuntimeInformation> GetPartitionRuntimeInformationAsync(string partitionId)
+        {
+            EventHubsEventSource.Log.GetEventHubPartitionRuntimeInformationStart(this.ClientId, partitionId);
+
+            try
+            {
+                return await this.OnGetPartitionRuntimeInformationAsync(partitionId);
+            }
+            catch (Exception e)
+            {
+                EventHubsEventSource.Log.GetEventHubPartitionRuntimeInformationException(this.ClientId, partitionId, e.ToString());
+                throw;
+            }
+            finally
+            {
+                EventHubsEventSource.Log.GetEventHubPartitionRuntimeInformationStop(this.ClientId, partitionId);
+            }
+        }
+
         internal EventDataSender CreateEventSender(string partitionId = null)
         {
             return this.OnCreateEventSender(partitionId);
@@ -409,6 +429,8 @@ namespace Microsoft.Azure.EventHubs
         protected abstract PartitionReceiver OnCreateReceiver(string consumerGroupName, string partitionId, string startOffset, bool offsetInclusive, DateTime? startTime, long? epoch);
 
         protected abstract Task<EventHubRuntimeInformation> OnGetRuntimeInformationAsync();
+
+        protected abstract Task<EventHubPartitionRuntimeInformation> OnGetPartitionRuntimeInformationAsync(string partitionId);
 
         protected abstract Task OnCloseAsync();
     }

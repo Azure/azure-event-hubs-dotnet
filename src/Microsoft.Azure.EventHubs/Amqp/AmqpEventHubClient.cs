@@ -118,14 +118,8 @@ namespace Microsoft.Azure.EventHubs.Amqp
         {
             try
             {
-                var timeoutHelper = new TimeoutHelper(this.ConnectionStringBuilder.OperationTimeout);
-                SecurityToken token = await this.TokenProvider.GetTokenAsync(
-                    this.ConnectionStringBuilder.Endpoint.AbsoluteUri, 
-                    ClaimConstants.Manage, timeoutHelper.RemainingTime()).ConfigureAwait(false);
-
-                string serviceClientAddress = AmqpClientConstants.ManagementAddress;
-                var serviceClient = this.GetManagementServiceClient(serviceClientAddress);
-                var eventHubRuntimeInformation = await serviceClient.GetRuntimeInformationAsync(token.TokenValue.ToString()).ConfigureAwait(false);
+                var serviceClient = await this.GetManagementServiceClient();
+                var eventHubRuntimeInformation = await serviceClient.GetRuntimeInformationAsync().ConfigureAwait(false);
 
                 return eventHubRuntimeInformation;
             }
@@ -136,18 +130,40 @@ namespace Microsoft.Azure.EventHubs.Amqp
             }
         }
 
-        internal AmqpServiceClient GetManagementServiceClient(string address)
+        protected override async Task<EventHubPartitionRuntimeInformation> OnGetPartitionRuntimeInformationAsync(string partitionId)
+        {
+            try
+            {
+                var serviceClient = await this.GetManagementServiceClient();
+                var eventHubPartitionRuntimeInformation = await serviceClient.
+                    GetPartitionRuntimeInformationAsync(partitionId).ConfigureAwait(false);
+
+                return eventHubPartitionRuntimeInformation;
+            }
+            catch (AggregateException aggregateException) when (aggregateException.InnerExceptions.Count == 1)
+            {
+                // The AmqpServiceClient for some reason wraps errors with an unnecessary AggregateException, unwrap here.
+                throw aggregateException.InnerException;
+            }
+        }
+
+        internal async Task<AmqpServiceClient> GetManagementServiceClient()
         {
             if (this.managementServiceClient == null)
             {
+                var timeoutHelper = new TimeoutHelper(this.ConnectionStringBuilder.OperationTimeout);
+                SecurityToken token = await this.TokenProvider.GetTokenAsync(
+                    this.ConnectionStringBuilder.Endpoint.AbsoluteUri,
+                    ClaimConstants.Manage, timeoutHelper.RemainingTime()).ConfigureAwait(false);
+
                 lock (ThisLock)
                 {
                     if (this.managementServiceClient == null)
                     {
-                        this.managementServiceClient = new AmqpServiceClient(this, address);
+                        this.managementServiceClient = new AmqpServiceClient(this, AmqpClientConstants.ManagementAddress, token.TokenValue.ToString());
                     }
 
-                    Fx.Assert(string.Equals(this.managementServiceClient.Address, address, StringComparison.OrdinalIgnoreCase),
+                    Fx.Assert(string.Equals(this.managementServiceClient.Address, AmqpClientConstants.ManagementAddress, StringComparison.OrdinalIgnoreCase),
                         "The address should match the address of managementServiceClient");
                 }
             }
