@@ -22,13 +22,13 @@
         Task IEventProcessor.CloseAsync(PartitionContext context, CloseReason reason)
         {
             this.OnClose?.Invoke(this, new Tuple<PartitionContext, CloseReason>(context, reason));
-            return Task.CompletedTask;
+            return Task.FromResult<object>(null);
         }
 
         Task IEventProcessor.ProcessErrorAsync(PartitionContext context, Exception error)
         {
             this.OnProcessError?.Invoke(this, new Tuple<PartitionContext, Exception>(context, error));
-            return Task.CompletedTask;
+            return Task.FromResult<object>(null);
         }
 
         Task IEventProcessor.ProcessEventsAsync(PartitionContext context, IEnumerable<EventData> events)
@@ -50,13 +50,13 @@
                 return context.CheckpointAsync();
             }
 
-            return Task.CompletedTask;
+            return Task.FromResult<object>(null);
         }
 
         Task IEventProcessor.OpenAsync(PartitionContext context)
         {
             this.OnOpen?.Invoke(this, context);
-            return Task.CompletedTask;
+            return Task.FromResult<object>(null);
         }
     }
 

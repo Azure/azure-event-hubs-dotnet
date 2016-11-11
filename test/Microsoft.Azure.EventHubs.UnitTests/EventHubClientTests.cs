@@ -879,13 +879,13 @@
             Task IPartitionReceiveHandler.ProcessErrorAsync(Exception error)
             {
                 this.ErrorReceived?.Invoke(this, error);
-                return Task.CompletedTask;
+                return Task.FromResult<object>(null);
             }
 
             Task IPartitionReceiveHandler.ProcessEventsAsync(IEnumerable<EventData> events)
             {
                 this.EventsReceived?.Invoke(this, events);
-                return Task.CompletedTask;
+                return Task.FromResult<object>(null);
             }
         }
 
