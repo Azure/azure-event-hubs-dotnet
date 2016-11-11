@@ -30,7 +30,6 @@
             // Update operation timeout on ConnectionStringBuilder.
             var cbs = new EventHubsConnectionStringBuilder(connectionString);
             cbs.OperationTimeout = TimeSpan.FromSeconds(15);
-            cbs.EntityPath = "eh7";
             this.EventHubsConnectionString = cbs.ToString();
 
             // Create default EH client.
