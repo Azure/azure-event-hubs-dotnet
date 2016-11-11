@@ -116,35 +116,19 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
         protected override async Task<EventHubRuntimeInformation> OnGetRuntimeInformationAsync()
         {
-            try
-            {
-                var serviceClient = await this.GetManagementServiceClient();
-                var eventHubRuntimeInformation = await serviceClient.GetRuntimeInformationAsync().ConfigureAwait(false);
+            var serviceClient = await this.GetManagementServiceClient();
+            var eventHubRuntimeInformation = await serviceClient.GetRuntimeInformationAsync().ConfigureAwait(false);
 
-                return eventHubRuntimeInformation;
-            }
-            catch (AggregateException aggregateException) when (aggregateException.InnerExceptions.Count == 1)
-            {
-                // The AmqpServiceClient for some reason wraps errors with an unnecessary AggregateException, unwrap here.
-                throw aggregateException.InnerException;
-            }
+            return eventHubRuntimeInformation;
         }
 
         protected override async Task<EventHubPartitionRuntimeInformation> OnGetPartitionRuntimeInformationAsync(string partitionId)
         {
-            try
-            {
-                var serviceClient = await this.GetManagementServiceClient();
-                var eventHubPartitionRuntimeInformation = await serviceClient.
-                    GetPartitionRuntimeInformationAsync(partitionId).ConfigureAwait(false);
+            var serviceClient = await this.GetManagementServiceClient().ConfigureAwait(false);
+            var eventHubPartitionRuntimeInformation = await serviceClient.
+                GetPartitionRuntimeInformationAsync(partitionId).ConfigureAwait(false);
 
-                return eventHubPartitionRuntimeInformation;
-            }
-            catch (AggregateException aggregateException) when (aggregateException.InnerExceptions.Count == 1)
-            {
-                // The AmqpServiceClient for some reason wraps errors with an unnecessary AggregateException, unwrap here.
-                throw aggregateException.InnerException;
-            }
+            return eventHubPartitionRuntimeInformation;
         }
 
         internal async Task<AmqpServiceClient> GetManagementServiceClient()
