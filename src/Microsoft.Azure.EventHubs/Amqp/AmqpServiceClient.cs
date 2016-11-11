@@ -21,16 +21,17 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
         readonly AmqpEventHubClient eventHubClient;
         readonly FaultTolerantAmqpObject<RequestResponseAmqpLink> link;
         readonly ActiveClientLinkManager clientLinkManager;
-        readonly string token;
 
-        public AmqpServiceClient(AmqpEventHubClient eventHubClient, string address, string token)
+        SecurityToken token;
+        AsyncLock tokenLock = new AsyncLock();
+
+        public AmqpServiceClient(AmqpEventHubClient eventHubClient, string address)
             : base("AmqpServiceClient-" + StringUtility.GetRandomString())
         {
             this.eventHubClient = eventHubClient;
             this.Address = address;
             this.link = new FaultTolerantAmqpObject<RequestResponseAmqpLink>(t => this.OpenLinkAsync(t), rrlink => rrlink.CloseAsync(TimeSpan.FromSeconds(10)));
             this.clientLinkManager = new ActiveClientLinkManager(this.eventHubClient);
-            this.token = token;
         }
 
         AmqpMessage CreateGetRuntimeInformationRequest()
@@ -62,7 +63,7 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
 
             // Create request and attach token.
             var request = this.CreateGetRuntimeInformationRequest();
-            request.ApplicationProperties.Map[AmqpClientConstants.ManagementSecurityTokenKey] = this.token;
+            request.ApplicationProperties.Map[AmqpClientConstants.ManagementSecurityTokenKey] = await GetTokenString().ConfigureAwait(false);
 
             var response = await requestLink.RequestAsync(request, TimeSpan.FromMinutes(1)).ConfigureAwait(false);
             int statusCode = (int)response.ApplicationProperties.Map[AmqpClientConstants.ResponseStatusCode];
@@ -101,7 +102,7 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
 
             // Create request and attach token.
             var request = this.CreateGetPartitionRuntimeInformationRequest(partitionId);
-            request.ApplicationProperties.Map[AmqpClientConstants.ManagementSecurityTokenKey] = this.token;
+            request.ApplicationProperties.Map[AmqpClientConstants.ManagementSecurityTokenKey] = await GetTokenString().ConfigureAwait(false);
 
             var response = await requestLink.RequestAsync(request, TimeSpan.FromMinutes(1)).ConfigureAwait(false);
             int statusCode = (int)response.ApplicationProperties.Map[AmqpClientConstants.ResponseStatusCode];
@@ -141,6 +142,24 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
         public override Task CloseAsync()
         {
             return this.link.CloseAsync();
+        }
+
+        async Task<string> GetTokenString()
+        {
+            using (await this.tokenLock.LockAsync().ConfigureAwait(false))
+            {
+                // Expect maximum 5 minutes of clock skew between client and the service
+                // when checking for token expiry.
+                if (this.token == null || DateTime.UtcNow > this.token.ExpiresAtUtc.Subtract(TimeSpan.FromMinutes(5)))
+                {
+                    var timeoutHelper = new TimeoutHelper(this.eventHubClient.ConnectionStringBuilder.OperationTimeout);
+                    this.token = await this.eventHubClient.TokenProvider.GetTokenAsync(
+                        this.eventHubClient.ConnectionStringBuilder.Endpoint.AbsoluteUri,
+                        ClaimConstants.Manage, timeoutHelper.RemainingTime()).ConfigureAwait(false);
+                }
+
+                return this.token.TokenValue.ToString();
+            }
         }
 
         internal void OnAbort()
