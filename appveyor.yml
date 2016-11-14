@@ -22,27 +22,20 @@ before_test:
     "C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.6 Tools\sn.exe" -Vr src\Microsoft.Azure.EventHubs.Processor\bin\Debug\net451\Microsoft.Azure.EventHubs.Processor.dll
 test_script:
 - ps: >-
-    if (![bool]$env:APPVEYOR_PULL_REQUEST_NUMBER)
+    $xUnitConfig = "
     {
-        Write-Host "Build is not a pull request - running tests"
+        `"parallelizeAssembly`": false,
+        `"parallelizeTestCollections`": false
+    }"
 
-        $xUnitConfig = "
-        {
-            `"parallelizeAssembly`": false,
-            `"parallelizeTestCollections`": false
-        }"
+    New-Item test/Microsoft.Azure.EventHubs.UnitTests/bin/debug/netcoreapp1.0/xunit.runner.json -type file -force -value $xUnitConfig
+    
+    New-Item test/Microsoft.Azure.EventHubs.UnitTests/bin/Debug/net46/win7-x64/xunit.runner.json -type file -force -value $xUnitConfig
 
-        New-Item test/Microsoft.Azure.EventHubs.UnitTests/bin/debug/netcoreapp1.0/xunit.runner.json -type file -force -value $xUnitConfig
-        
-        New-Item test/Microsoft.Azure.EventHubs.Processor.UnitTests/bin/debug/netcoreapp1.0/xunit.runner.json -type file -force -value $xUnitConfig
+    New-Item test/Microsoft.Azure.EventHubs.Processor.UnitTests/bin/debug/netcoreapp1.0/xunit.runner.json -type file -force -value $xUnitConfig
 
+    New-Item test/Microsoft.Azure.EventHubs.Processor.UnitTests/bin/Debug/net46/win7-x64/xunit.runner.json -type file -force -value $xUnitConfig
 
-
-        dotnet test test/Microsoft.Azure.EventHubs.UnitTests/project.json
-        
-        dotnet test test/Microsoft.Azure.EventHubs.Processor.UnitTests/project.json
-    }
-    else
-    {
-        Write-Host "This is a pull request - skipping unit tests"
-    }
+    dotnet test test/Microsoft.Azure.EventHubs.UnitTests/project.json
+    
+    dotnet test test/Microsoft.Azure.EventHubs.Processor.UnitTests/project.json
