@@ -9,8 +9,6 @@
     "dotnet-test-xunit": "2.2.0-preview2-build1029"
   },
   "frameworks": {
-    "net46": {
-    },
     "netcoreapp1.0": {
       "dependencies": {
         "Microsoft.NETCore.App": {
@@ -20,7 +18,7 @@
       },
       "imports": [
         "dnxcore50",
-        "portable-net46+win8"
+        "portable-net45+win8"
       ]
     }
   }
