@@ -17,11 +17,7 @@ build_script:
     dotnet build test/Microsoft.Azure.EventHubs.Processor.UnitTests/project.json
 before_test:
 - cmd: >-
-    "C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.6 Tools\sn.exe" -Vr test\Microsoft.Azure.EventHubs.UnitTests\bin\Debug\net46\win7-x64\Microsoft.Azure.EventHubs.dll
-
-    "C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.6 Tools\sn.exe" -Vr test\Microsoft.Azure.EventHubs.Processor.UnitTests\bin\Debug\net46\win7-x64\Microsoft.Azure.EventHubs.dll
-
-    "C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.6 Tools\sn.exe" -Vr test\Microsoft.Azure.EventHubs.Processor.UnitTests\bin\Debug\net46\win7-x64\Microsoft.Azure.EventHubs.Processor.dll
+    "C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.6 Tools\sn.exe" -Vr *,31bf3856ad364e35
 - ps: >-
     $xUnitConfig = "
     {
