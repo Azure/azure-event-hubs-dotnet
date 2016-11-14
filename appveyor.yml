@@ -16,9 +16,9 @@ build_script:
     
     dotnet build test/Microsoft.Azure.EventHubs.Processor.UnitTests/project.json
 before_test:
-    sn -Vr \src\Microsoft.Azure.EventHubs\bin\Debug\net451\Microsoft.Azure.EventHubs.dll
+    "C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.6 Tools\sn.exe" -Vr \src\Microsoft.Azure.EventHubs\bin\Debug\net451\Microsoft.Azure.EventHubs.dll
 
-    sn -Vr \src\Microsoft.Azure.EventHubs.Processor\bin\Debug\net451\Microsoft.Azure.EventHubs.Processor.dll
+    "C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.6 Tools\sn.exe" -Vr \src\Microsoft.Azure.EventHubs.Processor\bin\Debug\net451\Microsoft.Azure.EventHubs.Processor.dll
 test_script:
 - ps: >-
     if (![bool]$env:APPVEYOR_PULL_REQUEST_NUMBER)
