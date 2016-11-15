@@ -513,8 +513,8 @@
         {
             var cbs = new EventHubsConnectionStringBuilder(EventHubsConnectionString);
 
-            Log("Getting EventHubPartitionRuntimeInformation on each partition");
-            foreach (var pid in this.PartitionIds)
+            Log("Getting EventHubPartitionRuntimeInformation on each partition in parallel");
+            var tasks = this.PartitionIds.Select(async(pid) =>
             {
                 // Send some messages so we can have meaningful data returned from service call.
                 PartitionSender partitionSender = this.EventHubClient.CreatePartitionSender(pid);
@@ -538,7 +538,9 @@
                 Assert.True(p.BeginSequenceNumber >= 0, $"Returned BeginSequenceNumber is {p.BeginSequenceNumber}");
                 Assert.True(p.LastEnqueuedSequenceNumber >= 0, $"Returned LastEnqueuedSequenceNumber is {p.LastEnqueuedSequenceNumber}");
                 Assert.True(p.LastEnqueuedTimeUtc >= DateTime.UtcNow.AddSeconds(-60), $"Returned LastEnqueuedTimeUtc is {p.LastEnqueuedTimeUtc}");
-            }
+            });
+
+            await Task.WhenAll(tasks);
         }
 
         [Fact]
