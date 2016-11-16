@@ -39,7 +39,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
         uint MaxFrameSize { get; }
 
-        TokenProvider TokenProvider { get; }
+        internal TokenProvider TokenProvider { get; }
 
         internal override EventDataSender OnCreateEventSender(string partitionId)
         {
@@ -116,7 +116,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
         protected override async Task<EventHubRuntimeInformation> OnGetRuntimeInformationAsync()
         {
-            var serviceClient = await this.GetManagementServiceClient();
+            var serviceClient = this.GetManagementServiceClient();
             var eventHubRuntimeInformation = await serviceClient.GetRuntimeInformationAsync().ConfigureAwait(false);
 
             return eventHubRuntimeInformation;
@@ -124,27 +124,22 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
         protected override async Task<EventHubPartitionRuntimeInformation> OnGetPartitionRuntimeInformationAsync(string partitionId)
         {
-            var serviceClient = await this.GetManagementServiceClient().ConfigureAwait(false);
+            var serviceClient = this.GetManagementServiceClient();
             var eventHubPartitionRuntimeInformation = await serviceClient.
                 GetPartitionRuntimeInformationAsync(partitionId).ConfigureAwait(false);
 
             return eventHubPartitionRuntimeInformation;
         }
 
-        internal async Task<AmqpServiceClient> GetManagementServiceClient()
+        internal AmqpServiceClient GetManagementServiceClient()
         {
             if (this.managementServiceClient == null)
             {
-                var timeoutHelper = new TimeoutHelper(this.ConnectionStringBuilder.OperationTimeout);
-                SecurityToken token = await this.TokenProvider.GetTokenAsync(
-                    this.ConnectionStringBuilder.Endpoint.AbsoluteUri,
-                    ClaimConstants.Manage, timeoutHelper.RemainingTime()).ConfigureAwait(false);
-
                 lock (ThisLock)
                 {
                     if (this.managementServiceClient == null)
                     {
-                        this.managementServiceClient = new AmqpServiceClient(this, AmqpClientConstants.ManagementAddress, token.TokenValue.ToString());
+                        this.managementServiceClient = new AmqpServiceClient(this, AmqpClientConstants.ManagementAddress);
                     }
 
                     Fx.Assert(string.Equals(this.managementServiceClient.Address, AmqpClientConstants.ManagementAddress, StringComparison.OrdinalIgnoreCase),
