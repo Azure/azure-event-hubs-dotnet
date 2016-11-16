@@ -17,7 +17,7 @@ build_script:
     dotnet build test/Microsoft.Azure.EventHubs.Processor.UnitTests/project.json
 before_test:
 - cmd: >-
-    "C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.6 Tools\sn.exe" -Vr *
+    "C:\Program Files (x86)\Microsoft Visual Studio 14.0\sn.exe" -Vr *
 - ps: >-
     $xUnitConfig = "
     {
