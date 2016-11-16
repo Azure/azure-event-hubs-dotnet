@@ -33,7 +33,16 @@ before_test:
 
     New-Item test/Microsoft.Azure.EventHubs.Processor.UnitTests/bin/Debug/net46/win7-x64/xunit.runner.json -type file -force -value $xUnitConfig
 test_script:
-- cmd: >-
-    dotnet test test/Microsoft.Azure.EventHubs.UnitTests/project.json
+- ps: >-
+    if ([bool]$env:EVENTHUBCONNECTIONSTRING -and [bool]$env:EVENTPROCESSORSTORAGECONNECTIONSTRING)
+    {
+        Write-Host "Running unit tests."
+
+        dotnet test test/Microsoft.Azure.EventHubs.UnitTests/project.json
     
-    dotnet test test/Microsoft.Azure.EventHubs.Processor.UnitTests/project.json
+        dotnet test test/Microsoft.Azure.EventHubs.Processor.UnitTests/project.json
+    }
+    else
+    {
+        Write-Host "No environment variables present. Skipping unit tests."
+    }
