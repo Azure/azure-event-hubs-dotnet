@@ -143,7 +143,7 @@
                 this.StorageConnectionString,
                 this.LeaseContainerName);
 
-            return RunGenericScenario(eventProcessorHost, totalNumberOfEventsToSend: 10000);
+            return RunGenericScenario(eventProcessorHost);
         }
 
         [Fact]
