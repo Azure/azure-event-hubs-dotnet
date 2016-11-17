@@ -70,6 +70,14 @@
             this.OnCreateProcessor?.Invoke(this, new Tuple<PartitionContext, TestEventProcessor>(context, processor));
             return processor;
         }
+
+        public static void ErrorNotificationHandler(ExceptionReceivedEventArgs t)
+        {
+            String identifier = "Host:" + t.Hostname + "Partition:" + t.PartitionId + " Action:" + t.Action;
+            var log = string.Format("{0} Exception caught (Identifier: {0}): {1}", identifier, t.Exception);
+            Debug.WriteLine(log);
+            Console.WriteLine(log);
+        }
     }
 
     class ReceivedEventArgs

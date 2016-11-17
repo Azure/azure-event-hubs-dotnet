@@ -135,6 +135,7 @@ namespace Microsoft.Azure.EventHubs.Processor
         class PartitionReceiveHandler : IPartitionReceiveHandler
         {
             readonly EventHubPartitionPump eventHubPartitionPump;
+
             public PartitionReceiveHandler(EventHubPartitionPump eventHubPartitionPump)
             {
                 this.eventHubPartitionPump = eventHubPartitionPump;

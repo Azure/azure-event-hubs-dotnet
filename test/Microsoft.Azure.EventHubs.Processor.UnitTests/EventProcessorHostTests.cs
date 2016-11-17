@@ -143,7 +143,7 @@
                 this.StorageConnectionString,
                 this.LeaseContainerName);
 
-            return RunGenericScenario(eventProcessorHost);
+            return RunGenericScenario(eventProcessorHost, totalNumberOfEventsToSend: 10000);
         }
 
         [Fact]
@@ -742,8 +742,10 @@
                 epo = new EventProcessorOptions
                 {
                     ReceiveTimeout = TimeSpan.FromSeconds(15),
-                    MaxBatchSize = 100
+                    MaxBatchSize = 100                    
                 };
+
+                epo.SetExceptionHandler(TestEventProcessorFactory.ErrorNotificationHandler);
             }
 
             try
