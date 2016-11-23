@@ -541,6 +541,11 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
         {
             // Send and receive single message so we can find out offset of the last message.
             var lastEvents = await SendAndReceiveSingleEvent();
+            Log("Discovered last event offsets on each partition as below:");
+            foreach (var lastEvent in lastEvents)
+            {
+                Log($"Partition {lastEvent.Key}: {lastEvent.Value.SystemProperties.Offset}");
+            }
 
             // Use a randomly generated container name so that initial offset provider will be respected.
             var eventProcessorHost = new EventProcessorHost(
@@ -714,7 +719,7 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
                     var receiver = ehClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, PartitionReceiver.StartOfStream);
                     while (true)
                     {
-                        var messages = await receiver.ReceiveAsync(100, TimeSpan.FromSeconds(10));
+                        var messages = await receiver.ReceiveAsync(100);
                         if (messages == null)
                         {
                             break;
@@ -728,7 +733,7 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
             await Task.WhenAll(receiveTasks);
 
             // Assert we have received at least one event from each partition.
-            Assert.True(lastEvents.Count == PartitionIds.Count(), "SendAndReceiveSingleEvent didn't receive expected number of events");
+            Assert.True(lastEvents.Count == PartitionIds.Count(), "SendAndReceiveSingleEvent didn't receive from all partitions");
 
             return lastEvents.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
         }
@@ -842,8 +847,8 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
         {
             var log = string.Format("{0} {1}", DateTime.Now.TimeOfDay, message);
             output.WriteLine(log);
-            Debug.WriteLine(message);
-            Console.WriteLine(message);
+            Debug.WriteLine(log);
+            Console.WriteLine(log);
         }
     }
 }
