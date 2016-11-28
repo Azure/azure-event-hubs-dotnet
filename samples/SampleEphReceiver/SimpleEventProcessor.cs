@@ -15,19 +15,19 @@ namespace SampleEphReceiver
         public Task CloseAsync(PartitionContext context, CloseReason reason)
         {
             Console.WriteLine($"Processor Shutting Down. Partition '{context.PartitionId}', Reason: '{reason}'.");
-            return Task.FromResult<object>(null);
+            return Task.CompletedTask;
         }
 
         public Task OpenAsync(PartitionContext context)
         {
             Console.WriteLine($"SimpleEventProcessor initialized. Partition: '{context.PartitionId}'");
-            return Task.FromResult<object>(null);
+            return Task.CompletedTask;
         }
 
         public Task ProcessErrorAsync(PartitionContext context, Exception error)
         {
             Console.WriteLine($"Error on Partition: {context.PartitionId}, Error: {error.Message}");
-            return Task.FromResult<object>(null);
+            return Task.CompletedTask;
         }
 
         public Task ProcessEventsAsync(PartitionContext context, IEnumerable<EventData> messages)

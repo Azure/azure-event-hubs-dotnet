@@ -275,7 +275,7 @@ namespace Microsoft.Azure.EventHubs.UnitTests
             Log($"Randomly picked partition {partitionId}");
 
             // Send and receive a message to identify the end of stream.
-            var lastMessage = await SendAndReceiveSingleEvent(partitionId);
+            var lastMessage = await DiscoverEndOfStreamForPartition(partitionId);
 
             // Send a new message which is expected to go to the end of stream.
             // We are expecting to receive only this message.
@@ -285,8 +285,8 @@ namespace Microsoft.Azure.EventHubs.UnitTests
             await this.EventHubClient.CreatePartitionSender(partitionId).SendAsync(eventSent);
 
             // Create a new receiver which will start reading from the last message on the stream.
-            Log($"Creating a new receiver with offset {lastMessage.SystemProperties.Offset}");
-            var receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, lastMessage.SystemProperties.Offset);
+            Log($"Creating a new receiver with offset {lastMessage.Item1}");
+            var receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, lastMessage.Item1);
             var receivedMessages = await receiver.ReceiveAsync(100);
 
             // We should have received only 1 message from this call.
@@ -313,7 +313,7 @@ namespace Microsoft.Azure.EventHubs.UnitTests
             Log($"Randomly picked partition {partitionId}");
 
             // Send and receive a message to identify the end of stream.
-            var lastMessage = await SendAndReceiveSingleEvent(partitionId);
+            var lastMessage = await DiscoverEndOfStreamForPartition(partitionId);
 
             // Send a new message which is expected to go to the end of stream.
             // We are expecting to receive only this message.
@@ -323,8 +323,8 @@ namespace Microsoft.Azure.EventHubs.UnitTests
             await this.EventHubClient.CreatePartitionSender(partitionId).SendAsync(eventSent);
 
             // Create a new receiver which will start reading from the last message on the stream.
-            Log($"Creating a new receiver with date-time {lastMessage.SystemProperties.EnqueuedTimeUtc}");
-            var receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, lastMessage.SystemProperties.EnqueuedTimeUtc);
+            Log($"Creating a new receiver with date-time {lastMessage.Item2}");
+            var receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, lastMessage.Item2);
             var receivedMessages = await receiver.ReceiveAsync(100);
 
             // We should have received only 1 message from this call.
@@ -683,9 +683,9 @@ namespace Microsoft.Azure.EventHubs.UnitTests
             Log("Discovering end of stream on each partition.");
             foreach (var partitionId in this.PartitionIds)
             {
-                var lastEvent = await SendAndReceiveSingleEvent(partitionId);
-                partitionOffsets.Add(partitionId, lastEvent.SystemProperties.Offset);
-                Log($"Partition {partitionId} has last message with offset {lastEvent.SystemProperties.Offset}");
+                var lastEvent = await DiscoverEndOfStreamForPartition(partitionId);
+                partitionOffsets.Add(partitionId, lastEvent.Item1);
+                Log($"Partition {partitionId} has last message with offset {lastEvent.Item1}");
             }
 
             // Now send a set of messages with different partition keys.
@@ -794,55 +794,11 @@ namespace Microsoft.Azure.EventHubs.UnitTests
 
             Log("All GetRuntimeInformationAsync tasks have completed.");
         }
-        
-        // Sends single message to given partition and returns it after receiving.
-        async Task<EventData> SendAndReceiveSingleEvent(string partitionId)
+
+        async Task<Tuple<string, DateTime>> DiscoverEndOfStreamForPartition(string pid)
         {
-            var eDataToSend = new EventData(new byte[1]);
-
-            // Stamp this message so we can recognize it when received.
-            var stampValue = Guid.NewGuid().ToString();
-            var sendEvent = new EventData(Encoding.UTF8.GetBytes("Hello EventHub!"));
-            eDataToSend.Properties = new Dictionary<string, object>
-            {
-                {"stamp", stampValue}
-            };
-            PartitionSender partitionSender = this.EventHubClient.CreatePartitionSender(partitionId);
-            Log($"Sending single event to partition {partitionId} with stamp {stampValue}");
-            await partitionSender.SendAsync(eDataToSend);
-
-            Log($"Receiving all messages from partition {partitionId}");
-            PartitionReceiver receiver = null;
-            try
-            {
-                receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName,
-                    partitionId, PartitionReceiver.StartOfStream);
-                while (true)
-                {
-                    var receivedEvents = await receiver.ReceiveAsync(100);
-                    if (receivedEvents == null || receivedEvents.Count() == 0)
-                    {
-                        throw new Exception("Not able to receive stamped message!");
-                    }
-
-                    Log($"Received {receivedEvents.Count()} event(s) in batch where last event is sent on {receivedEvents.Last().SystemProperties.EnqueuedTimeUtc}");
-
-                    // Continue until we locate stamped message.
-                    foreach (var receivedEvent in receivedEvents)
-                    {
-                        if (receivedEvent.Properties != null &&
-                            receivedEvent.Properties.ContainsKey("stamp") &&
-                            receivedEvent.Properties["stamp"].ToString() == eDataToSend.Properties["stamp"].ToString())
-                        {
-                            return receivedEvent;
-                        }
-                    }
-                }
-            }
-            finally
-            {
-                await receiver.CloseAsync();
-            }
+            var pInfo = await this.EventHubClient.GetPartitionRuntimeInformationAsync(pid);
+            return Tuple.Create(pInfo.LastEnqueuedOffset, pInfo.LastEnqueuedTimeUtc);
         }
 
         // Receives all messages on the given receiver.

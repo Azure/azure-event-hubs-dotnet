@@ -4,6 +4,7 @@
 namespace SampleEphReceiver
 {
     using System;
+    using System.Threading.Tasks;
     using Microsoft.Azure.EventHubs;
     using Microsoft.Azure.EventHubs.Processor;
 
@@ -19,6 +20,11 @@ namespace SampleEphReceiver
 
         public static void Main(string[] args)
         {
+            MainAsync(args).GetAwaiter().GetResult();
+        }
+
+        private static async Task MainAsync(string[] args)
+        {
             Console.WriteLine("Registering EventProcessor...");
 
             var eventProcessorHost = new EventProcessorHost(
@@ -29,13 +35,13 @@ namespace SampleEphReceiver
                 StorageContainerName);
 
             // Registers the Event Processor Host and starts receiving messages
-            eventProcessorHost.RegisterEventProcessorAsync<SimpleEventProcessor>().Wait();
+            await eventProcessorHost.RegisterEventProcessorAsync<SimpleEventProcessor>();
 
             Console.WriteLine("Receiving. Press enter key to stop worker.");
             Console.ReadLine();
 
             // Disposes of the Event Processor Host
-            eventProcessorHost.UnregisterEventProcessorAsync().Wait();
+            await eventProcessorHost.UnregisterEventProcessorAsync();
         }
     }
 }

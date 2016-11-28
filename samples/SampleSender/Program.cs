@@ -10,18 +10,16 @@ namespace SampleSender
 
     public class Program
     {
+        private static EventHubClient eventHubClient;
         private const string EhConnectionString = "{Event Hubs connection string}";
         private const string EhEntityPath = "{Event Hub path/name}";
 
         public static void Main(string[] args)
         {
-            SendMessagesToEventHub(100).Wait();
-            Console.WriteLine("Press any key to exit.");
-            Console.ReadLine();
+            MainAsync(args).GetAwaiter().GetResult();
         }
 
-        // Creates an Event Hub client and sends 100 messages to the event hub.
-        private static async Task SendMessagesToEventHub(int numMessagesToSend)
+        private static async Task MainAsync(string[] args)
         {
             // Creates an EventHubsConnectionStringBuilder object from a the connection string, and sets the EntityPath.
             // Typically the connection string should have the Entity Path in it, but for the sake of this simple scenario
@@ -31,8 +29,19 @@ namespace SampleSender
                 EntityPath = EhEntityPath
             };
 
-            var eventHubClient = EventHubClient.CreateFromConnectionString(connectionStringBuilder.ToString());
+            eventHubClient = EventHubClient.CreateFromConnectionString(connectionStringBuilder.ToString());
 
+            await SendMessagesToEventHub(100);
+
+            await eventHubClient.CloseAsync();
+
+            Console.WriteLine("Press any key to exit.");
+            Console.ReadLine();
+        }
+
+        // Creates an Event Hub client and sends 100 messages to the event hub.
+        private static async Task SendMessagesToEventHub(int numMessagesToSend)
+        {
             for (var i = 0; i < numMessagesToSend; i++)
             {
                 try
