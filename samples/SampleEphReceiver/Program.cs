@@ -44,5 +44,4 @@ namespace SampleEphReceiver
             await eventProcessorHost.UnregisterEventProcessorAsync();
         }
     }
-
 }
