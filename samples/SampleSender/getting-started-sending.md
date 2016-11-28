@@ -1,4 +1,4 @@
-# Get started sending messages to Event Hubs in .NET Core
+﻿# Get started sending messages to Event Hubs in .NET Core
 
 ## What will be accomplished
 
@@ -41,14 +41,15 @@ To send messages to an Event Hub, we will write a C# console application using V
 2. Add constants to the `Program` class for the Event Hubs connection string and entity path (individual Event Hub name). Replace the placeholders in brackets with the proper values that were obtained when creating the Event Hub.
 
     ```cs
+    private static EventHubClient eventHubClient;
     private const string EhConnectionString = "{Event Hubs connection string}";
     private const string EhEntityPath = "{Event Hub path/name}";
     ```
 
-3. Add a new method to the `Program` class like the following:
+3. Add a new method named `MainAsync` to the `Program` class like the following:
 
     ```cs
-    private static async Task SendMessagesToEventHub(int numMessagesToSend)
+    private static async Task MainAsync(string[] args)
     {
         // Creates an EventHubsConnectionStringBuilder object from a the connection string, and sets the EntityPath.
         // Typically the connection string should have the Entity Path in it, but for the sake of this simple scenario
@@ -58,8 +59,23 @@ To send messages to an Event Hub, we will write a C# console application using V
             EntityPath = EhEntityPath
         };
 
-        var eventHubClient = EventHubClient.CreateFromConnectionString(connectionStringBuilder.ToString());
+        eventHubClient = EventHubClient.CreateFromConnectionString(connectionStringBuilder.ToString());
 
+        await SendMessagesToEventHub(100);
+
+        await eventHubClient.CloseAsync();
+
+        Console.WriteLine("Press any key to exit.");
+        Console.ReadLine();
+    }
+    ```
+    
+4. Add a new method named `SendMessagesToEventHub` to the `Program` class like the following:
+
+    ```cs
+    // Creates an Event Hub client and sends 100 messages to the event hub.
+    private static async Task SendMessagesToEventHub(int numMessagesToSend)
+    {
         for (var i = 0; i < numMessagesToSend; i++)
         {
             try
@@ -80,12 +96,10 @@ To send messages to an Event Hub, we will write a C# console application using V
     }
     ```
 
-4. Add the following code to the `Main` method in the `Program` class.
+5. Add the following code to the `Main` method in the `Program` class.
 
     ```cs
-    SendMessagesToEventHub(100).Wait();
-    Console.WriteLine("Press any key to exit.");
-    Console.ReadLine();
+    MainAsync(args).GetAwaiter().GetResult();
     ```
 
     Here is what your Program.cs should look like.
@@ -97,21 +111,19 @@ To send messages to an Event Hub, we will write a C# console application using V
         using System.Text;
         using System.Threading.Tasks;
         using Microsoft.Azure.EventHubs;
-
+    
         public class Program
         {
+            private static EventHubClient eventHubClient;
             private const string EhConnectionString = "{Event Hubs connection string}";
             private const string EhEntityPath = "{Event Hub path/name}";
-
+    
             public static void Main(string[] args)
             {
-                SendMessagesToEventHub(100).Wait();
-                Console.WriteLine("Press any key to exit.");
-                Console.ReadLine();
+                MainAsync(args).GetAwaiter().GetResult();
             }
-
-            // Creates an Event Hub client and sends 100 messages to the event hub.
-            private static async Task SendMessagesToEventHub(int numMessagesToSend)
+    
+            private static async Task MainAsync(string[] args)
             {
                 // Creates an EventHubsConnectionStringBuilder object from a the connection string, and sets the EntityPath.
                 // Typically the connection string should have the Entity Path in it, but for the sake of this simple scenario
@@ -120,9 +132,20 @@ To send messages to an Event Hub, we will write a C# console application using V
                 {
                     EntityPath = EhEntityPath
                 };
-
-                var eventHubClient = EventHubClient.CreateFromConnectionString(connectionStringBuilder.ToString());
-
+    
+                eventHubClient = EventHubClient.CreateFromConnectionString(connectionStringBuilder.ToString());
+    
+                await SendMessagesToEventHub(100);
+    
+                await eventHubClient.CloseAsync();
+    
+                Console.WriteLine("Press any key to exit.");
+                Console.ReadLine();
+            }
+    
+            // Creates an Event Hub client and sends 100 messages to the event hub.
+            private static async Task SendMessagesToEventHub(int numMessagesToSend)
+            {
                 for (var i = 0; i < numMessagesToSend; i++)
                 {
                     try
@@ -135,16 +158,16 @@ To send messages to an Event Hub, we will write a C# console application using V
                     {
                         Console.WriteLine($"{DateTime.Now} > Exception: {exception.Message}");
                     }
-
+    
                     await Task.Delay(10);
                 }
-
+    
                 Console.WriteLine($"{numMessagesToSend} messages sent.");
             }
         }
     }
     ```
   
-5. Run the program, and ensure that there are no errors thrown.
+6. Run the program, and ensure that there are no errors thrown.
   
-Congratulations! You have now created an Event Hub and sent messages to it.
+Congratulations! You have now sent messages to an Event Hub.

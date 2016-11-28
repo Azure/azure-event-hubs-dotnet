@@ -1,4 +1,4 @@
-# Get started receiving messages with the EventProcessorHost in .NET Core
+﻿# Get started receiving messages with the EventProcessorHost in .NET Core
 
 ## What will be accomplished
 
@@ -36,13 +36,13 @@ In this tutorial, we will write a .NET Core console application to receive messa
 
     ```cs
     using Microsoft.Azure.EventHubs;
-	using Microsoft.Azure.EventHubs.Processor;
+    using Microsoft.Azure.EventHubs.Processor;
     ```
 
 3. Implement the `IEventProcessor` interface. The class should look like this:
 
     ```cs
-    namespace SampleReceiver
+    namespace SampleEphReceiver
     {
         using System;
         using System.Collections.Generic;
@@ -50,36 +50,36 @@ In this tutorial, we will write a .NET Core console application to receive messa
         using System.Threading.Tasks;
         using Microsoft.Azure.EventHubs;
         using Microsoft.Azure.EventHubs.Processor;
-
+    
         public class SimpleEventProcessor : IEventProcessor
         {
             public Task CloseAsync(PartitionContext context, CloseReason reason)
             {
                 Console.WriteLine($"Processor Shutting Down. Partition '{context.PartitionId}', Reason: '{reason}'.");
-                return Task.FromResult<object>(null);
+                return Task.CompletedTask;
             }
-
+    
             public Task OpenAsync(PartitionContext context)
             {
-                Console.WriteLine($"SimpleEventProcessor initialized.  Partition: '{context.PartitionId}'");
-                return Task.FromResult<object>(null);
+                Console.WriteLine($"SimpleEventProcessor initialized. Partition: '{context.PartitionId}'");
+                return Task.CompletedTask;
             }
-
+    
             public Task ProcessErrorAsync(PartitionContext context, Exception error)
             {
                 Console.WriteLine($"Error on Partition: {context.PartitionId}, Error: {error.Message}");
-                return Task.FromResult<object>(null);
+                return Task.CompletedTask;
             }
-
-            public async Task ProcessEventsAsync(PartitionContext context, IEnumerable<EventData> messages)
+    
+            public Task ProcessEventsAsync(PartitionContext context, IEnumerable<EventData> messages)
             {
                 foreach (var eventData in messages)
                 {
                     var data = Encoding.UTF8.GetString(eventData.Body.Array, eventData.Body.Offset, eventData.Body.Count);
-                    Console.WriteLine($"Message received.  Partition: '{context.PartitionId}', Data: '{data}'");
+                    Console.WriteLine($"Message received. Partition: '{context.PartitionId}', Data: '{data}'");
                 }
-
-                await context.CheckpointAsync();
+    
+                return context.CheckpointAsync();
             }
         }
     }
@@ -106,26 +106,34 @@ In this tutorial, we will write a .NET Core console application to receive messa
     private static readonly string StorageConnectionString = string.Format("DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1}", StorageAccountName, StorageAccountKey);
     ```   
 
-3. Add the following code to the `Main` method:
+3. Add a new method named `MainAsync` to the `Program` class like the following:
+    ```cs
+    private static async Task MainAsync(string[] args)
+    {
+        Console.WriteLine("Registering EventProcessor...");
+
+        var eventProcessorHost = new EventProcessorHost(
+            EhEntityPath,
+            PartitionReceiver.DefaultConsumerGroupName,
+            EhConnectionString,
+            StorageConnectionString,
+            StorageContainerName);
+
+        // Registers the Event Processor Host and starts receiving messages
+        await eventProcessorHost.RegisterEventProcessorAsync<SimpleEventProcessor>();
+
+        Console.WriteLine("Receiving. Press enter key to stop worker.");
+        Console.ReadLine();
+
+        // Disposes of the Event Processor Host
+        await eventProcessorHost.UnregisterEventProcessorAsync();
+    }
+    ```
+
+3. Add the following line of code to the `Main` method:
 
     ```cs
-    Console.WriteLine("Registering EventProcessor...");
-
-    var eventProcessorHost = new EventProcessorHost(
-	    EhEntityPath,
-        PartitionReceiver.DefaultConsumerGroupName,
-        EhConnectionString,
-        StorageConnectionString,
-        StorageContainerName);
-
-    // Registers the Event Processor Host and starts receiving messages
-    eventProcessorHost.RegisterEventProcessorAsync<SimpleEventProcessor>().Wait();
-
-    Console.WriteLine("Receiving. Press enter key to stop worker.");
-    Console.ReadLine();
-
-    // Disposes of the Event Processor Host
-    eventProcessorHost.UnregisterEventProcessorAsync().Wait();
+    MainAsync(args).GetAwaiter().GetResult();
     ```
 
 	Here is what your Program.cs file should look like:
@@ -134,9 +142,10 @@ In this tutorial, we will write a .NET Core console application to receive messa
     namespace SampleEphReceiver
     {
         using System;
+        using System.Threading.Tasks;
         using Microsoft.Azure.EventHubs;
         using Microsoft.Azure.EventHubs.Processor;
-
+    
         public class Program
         {
             private const string EhConnectionString = "{Event Hubs connection string}";
@@ -144,28 +153,33 @@ In this tutorial, we will write a .NET Core console application to receive messa
             private const string StorageContainerName = "{Storage account container name}";
             private const string StorageAccountName = "{Storage account name}";
             private const string StorageAccountKey = "{Storage account key}";
-
+    
             private static readonly string StorageConnectionString = string.Format("DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1}", StorageAccountName, StorageAccountKey);
-
+    
             public static void Main(string[] args)
             {
+                MainAsync(args).GetAwaiter().GetResult();
+            }
+    
+            private static async Task MainAsync(string[] args)
+            {
                 Console.WriteLine("Registering EventProcessor...");
-
+    
                 var eventProcessorHost = new EventProcessorHost(
-					EhEntityPath,
+                    EhEntityPath,
                     PartitionReceiver.DefaultConsumerGroupName,
                     EhConnectionString,
                     StorageConnectionString,
                     StorageContainerName);
-
+    
                 // Registers the Event Processor Host and starts receiving messages
-                eventProcessorHost.RegisterEventProcessorAsync<SimpleEventProcessor>().Wait();
-
+                await eventProcessorHost.RegisterEventProcessorAsync<SimpleEventProcessor>();
+    
                 Console.WriteLine("Receiving. Press enter key to stop worker.");
                 Console.ReadLine();
-
+    
                 // Disposes of the Event Processor Host
-                eventProcessorHost.UnregisterEventProcessorAsync().Wait();
+                await eventProcessorHost.UnregisterEventProcessorAsync();
             }
         }
     }
