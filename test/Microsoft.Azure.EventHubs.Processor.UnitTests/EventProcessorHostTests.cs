@@ -509,10 +509,10 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
         async Task InitialOffsetProviderWithDateTime()
         {
             // Send and receive single message so we can find out enqueue date-time of the last message.
-            var lastEvents = await SendAndReceiveSingleEvent();
+            var lastEvents = await DiscoverEndOfStream();
 
             // We will use last enqueued message's enqueue date-time so EPH will pick messages only after that point.
-            var lastEnqueueDateTime = lastEvents.Max(le => le.Value.SystemProperties.EnqueuedTimeUtc);
+            var lastEnqueueDateTime = lastEvents.Max(le => le.Value.Item2);
             Log($"Last message enqueued at {lastEnqueueDateTime}");
 
             // Use a randomly generated container name so that initial offset provider will be respected.
@@ -540,7 +540,7 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
         async Task InitialOffsetProviderWithOffset()
         {
             // Send and receive single message so we can find out offset of the last message.
-            var lastEvents = await SendAndReceiveSingleEvent();
+            var lastOffsets = await DiscoverEndOfStream();
 
             // Use a randomly generated container name so that initial offset provider will be respected.
             var eventProcessorHost = new EventProcessorHost(
@@ -553,7 +553,7 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
             var processorOptions = new EventProcessorOptions
             {
                 ReceiveTimeout = TimeSpan.FromSeconds(15),
-                InitialOffsetProvider = partitionId => lastEvents[partitionId].SystemProperties.Offset,
+                InitialOffsetProvider = partitionId => lastOffsets[partitionId].Item1,
                 MaxBatchSize = 100
             };
 
@@ -694,41 +694,16 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
                 $"Second host received {receivedEvents2} events where as first host receive {receivedEvents1} events.");
         }
 
-        async Task<Dictionary<string, EventData>> SendAndReceiveSingleEvent()
+        async Task<Dictionary<string, Tuple<string, DateTime>>> DiscoverEndOfStream()
         {
-            // Send single event to each partition.
-            Log("Sending an event to each partition");
-            var sendTasks = new List<Task>();
-            foreach (var partitionId in PartitionIds)
+            var ehClient = EventHubClient.CreateFromConnectionString(this.EventHubConnectionString);
+            var lastEvents = new Dictionary<string, Tuple<string, DateTime>>();
+
+            foreach (var pid in this.PartitionIds)
             {
-                sendTasks.Add(this.SendToPartitionAsync(partitionId, $"{partitionId} event.", this.ConnectionStringBuilder.ToString()));
+                var pInfo = await ehClient.GetPartitionRuntimeInformationAsync(pid);
+                lastEvents.Add(pid, Tuple.Create(pInfo.LastEnqueuedOffset, pInfo.LastEnqueuedTimeUtc));
             }
-
-            await Task.WhenAll(sendTasks);
-
-            // Receive all events including last events from each partition.
-            var ehClient = EventHubClient.CreateFromConnectionString(this.ConnectionStringBuilder.ToString());
-            ConcurrentDictionary<string, EventData> lastEvents = new ConcurrentDictionary<string, EventData>();
-            var receiveTasks = PartitionIds.Select(async partitionId =>
-                {
-                    var receiver = ehClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, PartitionReceiver.StartOfStream);
-                    while (true)
-                    {
-                        var messages = await receiver.ReceiveAsync(100, TimeSpan.FromSeconds(10));
-                        if (messages == null)
-                        {
-                            break;
-                        }
-
-                        Log($"Received {messages.Count()} events from partition {receiver.PartitionId}");
-                        lastEvents[receiver.PartitionId] = messages.Last();
-                    }
-                });
-
-            await Task.WhenAll(receiveTasks);
-
-            // Assert we have received at least one event from each partition.
-            Assert.True(lastEvents.Count == PartitionIds.Count(), "SendAndReceiveSingleEvent didn't receive expected number of events");
 
             return lastEvents.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
         }
