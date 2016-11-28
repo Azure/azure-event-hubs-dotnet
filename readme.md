@@ -1,4 +1,4 @@
-<p align="center">
+﻿<p align="center">
   <img src="event-hubs.png" alt="Microsoft Azure Event Hubs" width="100"/>
 </p>
 
@@ -7,8 +7,8 @@
 |Build/Package|Status|
 |------|-------------|
 |master|[![Build status](https://ci.appveyor.com/api/projects/status/p71xb6o7233m7gi3/branch/master?svg=true)](https://ci.appveyor.com/project/jtaubensee/azure-event-hubs-dotnet/branch/master)|
-|Microsoft.Azure.EventHubs|[![NuGet Version and Downloads count](https://buildstats.info/nuget/Microsoft.Azure.EventHubs)](https://www.nuget.org/packages/Microsoft.Azure.EventHubs/)|
-|Microsoft.Azure.EventHubs.Processor|[![NuGet Version and Downloads count](https://buildstats.info/nuget/Microsoft.Azure.EventHubs.Processor)](https://www.nuget.org/packages/Microsoft.Azure.EventHubs.Processor/)|
+|Microsoft.Azure.EventHubs|[![NuGet Version and Downloads count](https://buildstats.info/nuget/Microsoft.Azure.EventHubs?includePreReleases=true)](https://www.nuget.org/packages/Microsoft.Azure.EventHubs/)|
+|Microsoft.Azure.EventHubs.Processor|[![NuGet Version and Downloads count](https://buildstats.info/nuget/Microsoft.Azure.EventHubs.Processor?includePreReleases=true)](https://www.nuget.org/packages/Microsoft.Azure.EventHubs.Processor/)|
 
 This library is built using .NET Standard 1.3. For more information on what platforms are supported see [.NET Platforms Support](https://docs.microsoft.com/en-us/dotnet/articles/standard/library#net-platforms-support).
 
