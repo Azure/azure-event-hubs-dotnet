@@ -21,7 +21,7 @@
   },
 
   "dependencies": {
-    "Microsoft.Azure.Amqp": "2.0.0"
+    "Microsoft.Azure.Amqp": "2.0.2"
   },
 
   "frameworks": {
