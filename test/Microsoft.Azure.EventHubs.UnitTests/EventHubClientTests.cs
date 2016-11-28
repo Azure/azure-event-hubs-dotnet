@@ -1,4 +1,7 @@
-﻿namespace Microsoft.Azure.EventHubs.UnitTests
+﻿// Copyright (c) Microsoft. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+
+namespace Microsoft.Azure.EventHubs.UnitTests
 {
     using System;
     using System.Collections.Generic;
@@ -14,7 +17,7 @@
     public class EventHubClientTests
     {
         ITestOutputHelper output;
-        protected string EventHubConnectionString;
+        protected string EventHubsConnectionString;
         protected string[] PartitionIds;
         protected EventHubClient EventHubClient;
 
@@ -30,10 +33,10 @@
             // Update operation timeout on ConnectionStringBuilder.
             var cbs = new EventHubsConnectionStringBuilder(connectionString);
             cbs.OperationTimeout = TimeSpan.FromSeconds(15);
-            this.EventHubConnectionString = cbs.ToString();
+            this.EventHubsConnectionString = cbs.ToString();
 
             // Create default EH client.
-            this.EventHubClient = EventHubClient.CreateFromConnectionString(this.EventHubConnectionString);
+            this.EventHubClient = EventHubClient.CreateFromConnectionString(this.EventHubsConnectionString);
 
             // Discover partition ids.
             var eventHubInfo = this.EventHubClient.GetRuntimeInformationAsync().Result;
@@ -44,7 +47,7 @@
         [Fact]
         void ConnectionStringBuilderTest()
         {
-            var csb = new EventHubsConnectionStringBuilder(this.EventHubConnectionString);
+            var csb = new EventHubsConnectionStringBuilder(this.EventHubsConnectionString);
 
             // Try update settings and rebuild the connection string.
             csb.Endpoint = new Uri("sb://newendpoint");
@@ -509,6 +512,41 @@
         }
 
         [Fact]
+        async Task GetEventHubPartitionRuntimeInformation()
+        {
+            var cbs = new EventHubsConnectionStringBuilder(EventHubsConnectionString);
+
+            Log("Getting EventHubPartitionRuntimeInformation on each partition in parallel");
+            var tasks = this.PartitionIds.Select(async(pid) =>
+            {
+                // Send some messages so we can have meaningful data returned from service call.
+                PartitionSender partitionSender = this.EventHubClient.CreatePartitionSender(pid);
+                Log($"Sending single event to partition {pid}");
+                var eDataToSend = new EventData(new byte[1]);
+                await partitionSender.SendAsync(eDataToSend);
+
+                Log($"Getting partition runtime information on partition {pid}");
+                var p = await this.EventHubClient.GetPartitionRuntimeInformationAsync(pid);
+                Log($"Path:{p.Path} PartitionId:{p.PartitionId} BeginSequenceNumber:{p.BeginSequenceNumber} LastEnqueuedOffset:{p.LastEnqueuedOffset} LastEnqueuedTimeUtc:{p.LastEnqueuedTimeUtc} LastEnqueuedSequenceNumber:{p.LastEnqueuedSequenceNumber}");
+
+                // Validations.
+                Assert.True(p.Path == cbs.EntityPath, $"Returned path {p.Path} is different than {cbs.EntityPath}");
+                Assert.True(p.PartitionId == pid, $"Returned partition id {p.PartitionId} is different than {pid}");
+                Assert.True(p.LastEnqueuedOffset != null, "Returned LastEnqueuedOffset is null");
+                Assert.True(p.LastEnqueuedTimeUtc != null, "Returned LastEnqueuedTimeUtc is null");
+
+                // Validate returned data regarding recently sent event.
+                // Account 60 seconds of max clock skew.
+                Assert.True(p.LastEnqueuedOffset != "-1", $"Returned LastEnqueuedOffset is {p.LastEnqueuedOffset}");
+                Assert.True(p.BeginSequenceNumber >= 0, $"Returned BeginSequenceNumber is {p.BeginSequenceNumber}");
+                Assert.True(p.LastEnqueuedSequenceNumber >= 0, $"Returned LastEnqueuedSequenceNumber is {p.LastEnqueuedSequenceNumber}");
+                Assert.True(p.LastEnqueuedTimeUtc >= DateTime.UtcNow.AddSeconds(-60), $"Returned LastEnqueuedTimeUtc is {p.LastEnqueuedTimeUtc}");
+            });
+
+            await Task.WhenAll(tasks);
+        }
+
+        [Fact]
         void ValidateRetryPolicyBuiltIn()
         {
             String clientId = "someClientEntity";
@@ -713,7 +751,7 @@
                 var task = Task.Run(async () =>
                 {
                     syncEvent.Wait();
-                    var ehClient = EventHubClient.CreateFromConnectionString(this.EventHubConnectionString);
+                    var ehClient = EventHubClient.CreateFromConnectionString(this.EventHubsConnectionString);
                     await ehClient.SendAsync(new EventData(Encoding.UTF8.GetBytes("Hello EventHub!")));
                 });
 
@@ -742,7 +780,7 @@
                 var task = Task.Run(async () =>
                 {
                     syncEvent.Wait();
-                    var ehClient = EventHubClient.CreateFromConnectionString(this.EventHubConnectionString);
+                    var ehClient = EventHubClient.CreateFromConnectionString(this.EventHubsConnectionString);
                     await ehClient.GetRuntimeInformationAsync();
                 });
 

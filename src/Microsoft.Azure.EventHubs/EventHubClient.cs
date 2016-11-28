@@ -384,9 +384,10 @@ namespace Microsoft.Azure.EventHubs
         public async Task<EventHubRuntimeInformation> GetRuntimeInformationAsync()
         {
             EventHubsEventSource.Log.GetEventHubRuntimeInformationStart(this.ClientId);
+
             try
             {
-                return await this.OnGetRuntimeInformationAsync();
+                return await this.OnGetRuntimeInformationAsync().ConfigureAwait(false);
             }
             catch (Exception e)
             {
@@ -396,6 +397,30 @@ namespace Microsoft.Azure.EventHubs
             finally
             {
                 EventHubsEventSource.Log.GetEventHubRuntimeInformationStop(this.ClientId);
+            }
+        }
+
+        public async Task<EventHubPartitionRuntimeInformation> GetPartitionRuntimeInformationAsync(string partitionId)
+        {
+            if (string.IsNullOrWhiteSpace(partitionId))
+            {
+                throw Fx.Exception.ArgumentNullOrWhiteSpace(nameof(partitionId));
+            }
+
+            EventHubsEventSource.Log.GetEventHubPartitionRuntimeInformationStart(this.ClientId, partitionId);
+
+            try
+            {
+                return await this.OnGetPartitionRuntimeInformationAsync(partitionId).ConfigureAwait(false);
+            }
+            catch (Exception e)
+            {
+                EventHubsEventSource.Log.GetEventHubPartitionRuntimeInformationException(this.ClientId, partitionId, e.ToString());
+                throw;
+            }
+            finally
+            {
+                EventHubsEventSource.Log.GetEventHubPartitionRuntimeInformationStop(this.ClientId, partitionId);
             }
         }
 
@@ -409,6 +434,8 @@ namespace Microsoft.Azure.EventHubs
         protected abstract PartitionReceiver OnCreateReceiver(string consumerGroupName, string partitionId, string startOffset, bool offsetInclusive, DateTime? startTime, long? epoch);
 
         protected abstract Task<EventHubRuntimeInformation> OnGetRuntimeInformationAsync();
+
+        protected abstract Task<EventHubPartitionRuntimeInformation> OnGetPartitionRuntimeInformationAsync(string partitionId);
 
         protected abstract Task OnCloseAsync();
     }

@@ -1,4 +1,7 @@
-﻿namespace Microsoft.Azure.EventHubs.Processor.UnitTests
+﻿// Copyright (c) Microsoft. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+
+namespace Microsoft.Azure.EventHubs.Processor.UnitTests
 {
     using System;
     using System.Collections.Concurrent;
@@ -165,7 +168,7 @@
                 {
                 Log("Creating EventProcessorHost");
                     var eventProcessorHost = new EventProcessorHost(
-                        string.Empty,
+                        string.Empty, // Passing empty as entity path here rsince path is already in EH connection string.
                         PartitionReceiver.DefaultConsumerGroupName,
                         this.EventHubConnectionString,
                         this.StorageConnectionString,
@@ -175,7 +178,8 @@
                     var processorOptions = new EventProcessorOptions
                     {
                         ReceiveTimeout = TimeSpan.FromSeconds(10),
-                        InvokeProcessorAfterReceiveTimeout = true
+                        InvokeProcessorAfterReceiveTimeout = true,
+                        MaxBatchSize = 100
                     };
 
                     var processorFactory = new TestEventProcessorFactory();
@@ -235,6 +239,46 @@
         }
 
         [Fact]
+        async Task WithBlobPrefix()
+        {
+            // Generate a new lease container name that will use through out the test.
+            string leaseContainerName = Guid.NewGuid().ToString();
+
+            // Consume all messages with first host.
+            // Create host with 'firsthost' prefix.
+            var eventProcessorHostFirst = new EventProcessorHost(
+                "host1",
+                string.Empty,
+                PartitionReceiver.DefaultConsumerGroupName,
+                this.EventHubConnectionString,
+                this.StorageConnectionString,
+                leaseContainerName,
+                "firsthost");
+            var setOfMessages1 = await RunGenericScenario(eventProcessorHostFirst);
+
+            // Consume all messages with second host.
+            // Create host with 'secondhost' prefix.
+            // Although on the same lease container, this second host should receive exactly the same set of messages
+            // as the first host.
+            var eventProcessorHostSecond = new EventProcessorHost(
+                "host2",
+                string.Empty,
+                PartitionReceiver.DefaultConsumerGroupName,
+                this.EventHubConnectionString,
+                this.StorageConnectionString,
+                leaseContainerName,
+                "secondhost");
+            var setOfMessages2 = await RunGenericScenario(eventProcessorHostSecond, totalNumberOfEventsToSend: 0);
+
+            // Confirm that we are looking at 2 identical sets of messages in the end.
+            foreach (var kvp in setOfMessages1)
+            {
+                Assert.True(kvp.Value.Count() == setOfMessages2[kvp.Key].Count,
+                    $"The sets of messages returned from first host and the second host are different for partition {kvp.Key}.");
+            }
+        }
+
+        [Fact]
         async Task InvokeAfterReceiveTimeoutTrue()
         {
             const int ReceiveTimeoutInSeconds = 15;
@@ -254,9 +298,11 @@
                 this.StorageConnectionString,
                 this.LeaseContainerName);
 
-            var processorOptions = new EventProcessorOptions {
+            var processorOptions = new EventProcessorOptions
+            {
                 ReceiveTimeout = TimeSpan.FromSeconds(ReceiveTimeoutInSeconds),
-                InvokeProcessorAfterReceiveTimeout = true
+                InvokeProcessorAfterReceiveTimeout = true,
+                MaxBatchSize = 100
             };
 
             var processorFactory = new TestEventProcessorFactory();
@@ -312,7 +358,8 @@
             var processorOptions = new EventProcessorOptions
             {
                 ReceiveTimeout = TimeSpan.FromSeconds(ReceiveTimeoutInSeconds),
-                InvokeProcessorAfterReceiveTimeout = false
+                InvokeProcessorAfterReceiveTimeout = false,
+                MaxBatchSize = 100
             };
 
             var emptyBatchReceiveEvent = new AsyncAutoResetEvent(false);
@@ -359,7 +406,11 @@
             string leaseContainerName = Guid.NewGuid().ToString();
 
             var consumerGroupNames = new[]  { PartitionReceiver.DefaultConsumerGroupName, customConsumerGroupName };
-            var processorOptions = new EventProcessorOptions { ReceiveTimeout = TimeSpan.FromSeconds(15) };
+            var processorOptions = new EventProcessorOptions
+            {
+                ReceiveTimeout = TimeSpan.FromSeconds(15),
+                MaxBatchSize = 100
+            };
             var processorFactory = new TestEventProcessorFactory();
             var partitionReceiveEvents = new ConcurrentDictionary<string, AsyncAutoResetEvent>();
             var hosts = new List<EventProcessorHost>();
@@ -475,7 +526,8 @@
             var processorOptions = new EventProcessorOptions
             {
                 ReceiveTimeout = TimeSpan.FromSeconds(15),
-                InitialOffsetProvider = partitionId => lastEnqueueDateTime
+                InitialOffsetProvider = partitionId => lastEnqueueDateTime,
+                MaxBatchSize = 100
             };
 
             var receivedEvents = await this.RunGenericScenario(eventProcessorHost, processorOptions);
@@ -501,7 +553,8 @@
             var processorOptions = new EventProcessorOptions
             {
                 ReceiveTimeout = TimeSpan.FromSeconds(15),
-                InitialOffsetProvider = partitionId => lastEvents[partitionId].SystemProperties.Offset
+                InitialOffsetProvider = partitionId => lastEvents[partitionId].SystemProperties.Offset,
+                MaxBatchSize = 100
             };
 
             var receivedEvents = await this.RunGenericScenario(eventProcessorHost, processorOptions);
@@ -538,7 +591,8 @@
             var processorOptions = new EventProcessorOptions
             {
                 ReceiveTimeout = TimeSpan.FromSeconds(15),
-                InitialOffsetProvider = partitionId => PartitionReceiver.StartOfStream
+                InitialOffsetProvider = partitionId => PartitionReceiver.StartOfStream,
+                MaxBatchSize = 100
             };
             var receivedEvents = await this.RunGenericScenario(eventProcessorHost, processorOptions, checkPointLastEvent: false);
 
@@ -688,7 +742,11 @@
 
             if (epo == null)
             {
-                epo = new EventProcessorOptions { ReceiveTimeout = TimeSpan.FromSeconds(15) };
+                epo = new EventProcessorOptions
+                {
+                    ReceiveTimeout = TimeSpan.FromSeconds(15),
+                    MaxBatchSize = 100
+                };
             }
 
             try
@@ -787,3 +845,4 @@
         }
     }
 }
+

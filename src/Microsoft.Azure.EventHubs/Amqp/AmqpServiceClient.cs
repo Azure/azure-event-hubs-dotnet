@@ -22,6 +22,9 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
         readonly FaultTolerantAmqpObject<RequestResponseAmqpLink> link;
         readonly ActiveClientLinkManager clientLinkManager;
 
+        SecurityToken token;
+        AsyncLock tokenLock = new AsyncLock();
+
         public AmqpServiceClient(AmqpEventHubClient eventHubClient, string address)
             : base("AmqpServiceClient-" + StringUtility.GetRandomString())
         {
@@ -42,13 +45,25 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
             return getRuntimeInfoRequest;
         }
 
-        public async Task<EventHubRuntimeInformation> GetRuntimeInformationAsync(string token)
+        AmqpMessage CreateGetPartitionRuntimeInformationRequest(string partitionKey)
+        {
+            AmqpMessage getRuntimeInfoRequest = AmqpMessage.Create();
+            getRuntimeInfoRequest.ApplicationProperties = new ApplicationProperties();
+            getRuntimeInfoRequest.ApplicationProperties.Map[AmqpClientConstants.EntityNameKey] = this.eventHubClient.EventHubName;
+            getRuntimeInfoRequest.ApplicationProperties.Map[AmqpClientConstants.PartitionNameKey] = partitionKey;
+            getRuntimeInfoRequest.ApplicationProperties.Map[AmqpClientConstants.ManagementOperationKey] = AmqpClientConstants.ReadOperationValue;
+            getRuntimeInfoRequest.ApplicationProperties.Map[AmqpClientConstants.ManagementEntityTypeKey] = AmqpClientConstants.ManagementPartitionEntityTypeValue;
+
+            return getRuntimeInfoRequest;
+        }
+
+        public async Task<EventHubRuntimeInformation> GetRuntimeInformationAsync()
         {
             RequestResponseAmqpLink requestLink = await this.link.GetOrCreateAsync(TimeSpan.FromMinutes(1)).ConfigureAwait(false);
 
             // Create request and attach token.
             var request = this.CreateGetRuntimeInformationRequest();
-            request.ApplicationProperties.Map[AmqpClientConstants.ManagementSecurityTokenKey] = token;
+            request.ApplicationProperties.Map[AmqpClientConstants.ManagementSecurityTokenKey] = await GetTokenString().ConfigureAwait(false);
 
             var response = await requestLink.RequestAsync(request, TimeSpan.FromMinutes(1)).ConfigureAwait(false);
             int statusCode = (int)response.ApplicationProperties.Map[AmqpClientConstants.ResponseStatusCode];
@@ -81,11 +96,69 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
             };
         }
 
+        public async Task<EventHubPartitionRuntimeInformation> GetPartitionRuntimeInformationAsync(string partitionId)
+        {
+            RequestResponseAmqpLink requestLink = await this.link.GetOrCreateAsync(TimeSpan.FromMinutes(1)).ConfigureAwait(false);
+
+            // Create request and attach token.
+            var request = this.CreateGetPartitionRuntimeInformationRequest(partitionId);
+            request.ApplicationProperties.Map[AmqpClientConstants.ManagementSecurityTokenKey] = await GetTokenString().ConfigureAwait(false);
+
+            var response = await requestLink.RequestAsync(request, TimeSpan.FromMinutes(1)).ConfigureAwait(false);
+            int statusCode = (int)response.ApplicationProperties.Map[AmqpClientConstants.ResponseStatusCode];
+            string statusDescription = (string)response.ApplicationProperties.Map[AmqpClientConstants.ResponseStatusDescription];
+            if (statusCode != (int)AmqpResponseStatusCode.Accepted && statusCode != (int)AmqpResponseStatusCode.OK)
+            {
+                AmqpSymbol errorCondition = AmqpExceptionHelper.GetResponseErrorCondition(response, (AmqpResponseStatusCode)statusCode);
+                Error error = new Error { Condition = errorCondition, Description = statusDescription };
+                throw AmqpExceptionHelper.ToMessagingContract(error);
+            }
+
+            AmqpMap infoMap = null;
+            if (response.ValueBody != null)
+            {
+                infoMap = response.ValueBody.Value as AmqpMap;
+            }
+
+            if (infoMap == null)
+            {
+                throw new InvalidOperationException($"Return type mismatch in GetPartitionRuntimeInformationAsync. Response returned NULL or response isn't AmqpMap.");
+            }
+
+            return new EventHubPartitionRuntimeInformation()
+            {
+                Type = (string)infoMap[new MapKey("type")],
+                Path = (string)infoMap[new MapKey("name")],
+                PartitionId = (string)infoMap[new MapKey("partition")],
+                BeginSequenceNumber = (long)infoMap[new MapKey("begin_sequence_number")],
+                LastEnqueuedSequenceNumber = (long)infoMap[new MapKey("last_enqueued_sequence_number")],
+                LastEnqueuedOffset = (string)infoMap[new MapKey("last_enqueued_offset")],
+                LastEnqueuedTimeUtc = (DateTime)infoMap[new MapKey("last_enqueued_time_utc")]
+            };
+        }
+
         public string Address { get; }
 
         public override Task CloseAsync()
         {
             return this.link.CloseAsync();
+        }
+
+        async Task<string> GetTokenString()
+        {
+            using (await this.tokenLock.LockAsync().ConfigureAwait(false))
+            {
+                // Expect maximum 5 minutes of clock skew between client and the service
+                // when checking for token expiry.
+                if (this.token == null || DateTime.UtcNow > this.token.ExpiresAtUtc.Subtract(TimeSpan.FromMinutes(5)))
+                {
+                    this.token = await this.eventHubClient.TokenProvider.GetTokenAsync(
+                        this.eventHubClient.ConnectionStringBuilder.Endpoint.AbsoluteUri,
+                        ClaimConstants.Listen, this.eventHubClient.ConnectionStringBuilder.OperationTimeout).ConfigureAwait(false);
+                }
+
+                return this.token.TokenValue.ToString();
+            }
         }
 
         internal void OnAbort()

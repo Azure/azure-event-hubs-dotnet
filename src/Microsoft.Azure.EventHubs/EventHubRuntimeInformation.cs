@@ -7,14 +7,18 @@ namespace Microsoft.Azure.EventHubs
 
     public class EventHubRuntimeInformation
     {
-        public string Path { get; set; }
-
         internal string Type { get; set; }
 
+        /// <summary>Gets or sets the path to the Event Hub.</summary>
+        public string Path { get; set; }
+
+        /// <summary>Gets or sets the time at which the Event Hub was created.</summary>
         public DateTime CreatedAt { get; set; }
 
+        /// <summary>Gets or sets the number of partitions in an Event Hub.</summary>
         public int PartitionCount { get; set; }
 
+        /// <summary>Gets or sets the partition IDs for an Event Hub.</summary>
         public string[] PartitionIds { get; set; }
     }
 }

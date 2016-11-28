@@ -39,7 +39,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
         uint MaxFrameSize { get; }
 
-        TokenProvider TokenProvider { get; }
+        internal TokenProvider TokenProvider { get; }
 
         internal override EventDataSender OnCreateEventSender(string partitionId)
         {
@@ -116,27 +116,22 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
         protected override async Task<EventHubRuntimeInformation> OnGetRuntimeInformationAsync()
         {
-            try
-            {
-                var timeoutHelper = new TimeoutHelper(this.ConnectionStringBuilder.OperationTimeout);
-                SecurityToken token = await this.TokenProvider.GetTokenAsync(
-                    this.ConnectionStringBuilder.Endpoint.AbsoluteUri, 
-                    ClaimConstants.Manage, timeoutHelper.RemainingTime()).ConfigureAwait(false);
+            var serviceClient = this.GetManagementServiceClient();
+            var eventHubRuntimeInformation = await serviceClient.GetRuntimeInformationAsync().ConfigureAwait(false);
 
-                string serviceClientAddress = AmqpClientConstants.ManagementAddress;
-                var serviceClient = this.GetManagementServiceClient(serviceClientAddress);
-                var eventHubRuntimeInformation = await serviceClient.GetRuntimeInformationAsync(token.TokenValue.ToString()).ConfigureAwait(false);
-
-                return eventHubRuntimeInformation;
-            }
-            catch (AggregateException aggregateException) when (aggregateException.InnerExceptions.Count == 1)
-            {
-                // The AmqpServiceClient for some reason wraps errors with an unnecessary AggregateException, unwrap here.
-                throw aggregateException.InnerException;
-            }
+            return eventHubRuntimeInformation;
         }
 
-        internal AmqpServiceClient GetManagementServiceClient(string address)
+        protected override async Task<EventHubPartitionRuntimeInformation> OnGetPartitionRuntimeInformationAsync(string partitionId)
+        {
+            var serviceClient = this.GetManagementServiceClient();
+            var eventHubPartitionRuntimeInformation = await serviceClient.
+                GetPartitionRuntimeInformationAsync(partitionId).ConfigureAwait(false);
+
+            return eventHubPartitionRuntimeInformation;
+        }
+
+        internal AmqpServiceClient GetManagementServiceClient()
         {
             if (this.managementServiceClient == null)
             {
@@ -144,10 +139,10 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 {
                     if (this.managementServiceClient == null)
                     {
-                        this.managementServiceClient = new AmqpServiceClient(this, address);
+                        this.managementServiceClient = new AmqpServiceClient(this, AmqpClientConstants.ManagementAddress);
                     }
 
-                    Fx.Assert(string.Equals(this.managementServiceClient.Address, address, StringComparison.OrdinalIgnoreCase),
+                    Fx.Assert(string.Equals(this.managementServiceClient.Address, AmqpClientConstants.ManagementAddress, StringComparison.OrdinalIgnoreCase),
                         "The address should match the address of managementServiceClient");
                 }
             }

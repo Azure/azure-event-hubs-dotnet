@@ -173,6 +173,33 @@ namespace Microsoft.Azure.EventHubs
             }
         }
 
+        [Event(18, Level = EventLevel.Informational, Message = "{0}: GetEventHubPartitionRuntimeInformation start on partition {1}.")]
+        public void GetEventHubPartitionRuntimeInformationStart(string clientId, string partitionId)
+        {
+            if (IsEnabled())
+            {
+                WriteEvent(18, clientId, partitionId);
+            }
+        }
+
+        [Event(19, Level = EventLevel.Informational, Message = "{0}: GetEventHubPartitionRuntimeInformation done on partition {1}.")]
+        public void GetEventHubPartitionRuntimeInformationStop(string clientId, string partitionId)
+        {
+            if (IsEnabled())
+            {
+                WriteEvent(19, clientId, partitionId);
+            }
+        }
+
+        [Event(20, Level = EventLevel.Error, Message = "{0}: GetEventHubPartitionRuntimeInformation Exception on partition {1}: {2}.")]
+        public void GetEventHubPartitionRuntimeInformationException(string clientId, string partitionId, string error)
+        {
+            if (IsEnabled())
+            {
+                WriteEvent(20, clientId, partitionId, error);
+            }
+        }
+        
         // TODO: Add Keywords if desired.
         //public class Keywords   // This is a bitvector
         //{
