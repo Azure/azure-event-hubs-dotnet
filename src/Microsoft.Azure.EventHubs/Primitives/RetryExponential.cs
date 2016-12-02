@@ -45,13 +45,15 @@ namespace Microsoft.Azure.EventHubs
             double nextRetryInterval = Math.Pow(this.retryFactor, (double)currentRetryCount);
             long nextRetryIntervalSeconds = (long)nextRetryInterval;
             long nextRetryIntervalMilliseconds = (long)((nextRetryInterval - (double)nextRetryIntervalSeconds) * 1000);
-            if (remainingTime.TotalSeconds < Math.Max(nextRetryInterval, ClientConstants.TimerToleranceInSeconds))
-            {
-                return null;
-            }
 
             TimeSpan retryAfter = this.minimumBackoff.Add(TimeSpan.FromMilliseconds(nextRetryIntervalSeconds * 1000 + nextRetryIntervalMilliseconds));
             retryAfter = retryAfter.Add(TimeSpan.FromSeconds(baseWaitTimeSecs));
+
+            // Don't retry if remaining time isn't enough.
+            if (remainingTime.TotalSeconds < Math.Max(retryAfter.TotalSeconds, ClientConstants.TimerToleranceInSeconds))
+            {
+                return null;
+            }
 
             return retryAfter;
         }
