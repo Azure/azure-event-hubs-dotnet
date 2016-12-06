@@ -150,11 +150,8 @@ namespace Microsoft.Azure.EventHubs.Processor
                 }
                 catch (Exception e)
                 {
-                    // TODO -- do we pass errors from IEventProcessor.ProcessEventsAsync to IEventProcessor.ProcessErrorAsync?
-                    // Depending on how you look at it, that's either pointless (if the user's code throws, the user's code should already know about it) or
-                    // a convenient way of centralizing error handling.
-                    // For the meantime just trace it.
                     ProcessorEventSource.Log.PartitionPumpInvokeProcessorEventsError(this.Host.Id, this.PartitionContext.PartitionId, e.ToString());
+                    await this.ProcessErrorAsync(e);
                 }
                 finally
                 {

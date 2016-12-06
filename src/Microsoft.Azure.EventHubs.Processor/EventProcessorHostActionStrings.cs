@@ -17,6 +17,7 @@ namespace Microsoft.Azure.EventHubs.Processor
         public static readonly string PartitionManagerCleanup = "Partition Manager Cleanup";
         public static readonly string PartitionManagerMainLoop = "Partition Manager Main Loop";
         public static readonly string StealingLease = "Stealing Lease";
+        public static readonly string PartitionPumpManagement = "Managing Partition Pumps";
     }
 
 }
