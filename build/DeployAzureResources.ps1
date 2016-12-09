@@ -4,6 +4,7 @@
     -and [bool]$env:APPVEYOR_BUILD_NUMBER)
 {
     $ErrorActionPreference = 'Stop'
+    Enable-AzureDataCollection
     $BuildVersion = ($env:APPVEYOR_BUILD_NUMBER).Replace(".", "")
     
     $env:ResourceGroupName = "eh-dotnet-av-$BuildVersion-rg"
@@ -21,6 +22,7 @@
  
     New-AzureRmResourceGroup -Name $env:ResourceGroupName -Location $Location -Force
 
+	$EventHubName = 'EventHub1'
     $ArmParameters = @{
         namespaceName = $NamespaceName;
         eventhubName = 'EventHub1';
@@ -36,7 +38,7 @@
        -TemplateParameterObject $ArmParameters `
        -Force
 
-    $env:EVENTHUBCONNECTIONSTRING = $settings.Outputs.Get_Item("namespaceConnectionString").Value
+    $env:EVENTHUBCONNECTIONSTRING = $settings.Outputs.Get_Item("namespaceConnectionString").Value + ";EntityPath=$EventHubName"
     $env:EVENTPROCESSORSTORAGECONNECTIONSTRING = $settings.Outputs.Get_Item("storageAccountConnectionString").Value
 }
 else
