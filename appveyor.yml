@@ -8,17 +8,17 @@ environment:
     secure: c+H140oRJfHtmFHZxSRLWocv5AU0q33X7kgMcTcXxhJvtVhk2WAk1dRQkSN+SyoA
 build_script:
 - ps: >-
-	.\build\BuildSolution.ps1
+    .\build\BuildSolution.ps1
 before_test:
 - cmd: >-
     "C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.6.1 Tools\x64\sn.exe" -Vr *,*
 - ps: >-
-	.\build\SetXunitConfig.ps1
-		
-	.\build\DeployAzureResources.ps1
+    .\build\SetXunitConfig.ps1
+
+    .\build\DeployAzureResources.ps1
 test_script:
 - ps: >-
-	.\build\RunTests.ps1
+    .\build\RunTests.ps1
 after_test:
 - ps: >-
-	.\build\DeleteAzureResources.ps1
+    .\build\DeleteAzureResources.ps1
