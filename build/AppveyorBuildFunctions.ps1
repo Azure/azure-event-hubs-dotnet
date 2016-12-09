@@ -13,7 +13,7 @@ function Build-Solution
 
 function Add-StrongNameEntry
 {
-    #& 'C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.6.1 Tools\x64\sn.exe' -Vr *,*
+    &'C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.6.1 Tools\x64\sn.exe' -Vr *,*
 }
 
 function Set-XUnitConfig
@@ -75,7 +75,7 @@ function Deploy-AzureResources
         # https://docs.microsoft.com/en-us/azure/azure-resource-manager/resource-group-authenticate-service-principal
         Add-AzureRmAccount -Credential $Credentials -ServicePrincipal -TenantId $env:TenantId | Out-Null
  
-        $ResourceGroup = New-AzureRmResourceGroup -Name $env:ResourceGroupName -Location $Location -Force
+        $ResourceGroup = New-AzureRmResourceGroup -Name $env:ResourceGroupName -Location $Location -Force -WarningAction SilentlyContinue
         Write-Host ("Resource group name: " + $ResourceGroup.ResourceGroupName)
 
 	    $EventHubName = 'EventHub1'
@@ -92,7 +92,8 @@ function Deploy-AzureResources
            -ResourceGroupName $env:ResourceGroupName `
            -TemplateFile $TemplatePath `
            -TemplateParameterObject $ArmParameters `
-           -Force
+           -Force `
+           -WarningAction SilentlyContinue
 
         Write-Host "Event Hubs namespace: $NamespaceName"
         Write-Host "Storage account name: $StorageAccountName"
