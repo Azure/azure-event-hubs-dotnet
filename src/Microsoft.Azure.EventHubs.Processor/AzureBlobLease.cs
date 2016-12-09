@@ -4,51 +4,51 @@
 namespace Microsoft.Azure.EventHubs.Processor
 {
     using System.Threading.Tasks;
-	using Newtonsoft.Json;
-	using WindowsAzure.Storage.Blob;
+    using Newtonsoft.Json;
+    using WindowsAzure.Storage.Blob;
 
-	class AzureBlobLease : Lease
-	{
-	    // ctor needed for deserialization
+    class AzureBlobLease : Lease
+    {
+        // ctor needed for deserialization
+        internal AzureBlobLease()
+        {
+        }
 
-	    internal AzureBlobLease()
-		{
-		}
+        internal AzureBlobLease(string partitionId, CloudBlockBlob blob)
+            : base(partitionId)
+        {
+            this.Blob = blob;
+        }
 
-	    internal AzureBlobLease(string partitionId, CloudBlockBlob blob) : base(partitionId)
-		{
-			this.Blob = blob;
-		}
+        internal AzureBlobLease(AzureBlobLease source)
+            : base(source)
+        {
+            this.Offset = source.Offset;
+            this.SequenceNumber = source.SequenceNumber;
+            this.Blob = source.Blob;
+        }
 
-	    internal AzureBlobLease(AzureBlobLease source)
-			: base(source)
-		{
-			this.Offset = source.Offset;
-			this.SequenceNumber = source.SequenceNumber;
-			this.Blob = source.Blob;
-		}
+        internal AzureBlobLease(AzureBlobLease source, CloudBlockBlob blob)
+            : base(source)
+        {
+            this.Offset = source.Offset;
+            this.SequenceNumber = source.SequenceNumber;
+            this.Blob = blob;
+        }
 
-	    internal AzureBlobLease(AzureBlobLease source, CloudBlockBlob blob) : base(source)
-		{
-			this.Offset = source.Offset;
-			this.SequenceNumber = source.SequenceNumber;
-			this.Blob = blob;
-		}
+        // do not serialize
+        [JsonIgnore]
+        public CloudBlockBlob Blob { get; }
 
-	    // do not serialize
+        public string Offset { get; set; }
 
-	    [JsonIgnore]
-		public CloudBlockBlob Blob { get; }
+        public long SequenceNumber { get; set; }
 
-	    public string Offset { get; set; }
-
-	    public long SequenceNumber { get; set; }
-
-	    public override async Task<bool> IsExpired()
-		{
-			await this.Blob.FetchAttributesAsync().ConfigureAwait(false); // Get the latest metadata
-			var currentState = this.Blob.Properties.LeaseState;
-			return currentState != LeaseState.Leased;
-		}
-	}
+        public override async Task<bool> IsExpired()
+        {
+            await this.Blob.FetchAttributesAsync().ConfigureAwait(false); // Get the latest metadata
+            var currentState = this.Blob.Properties.LeaseState;
+            return currentState != LeaseState.Leased;
+        }
+    }
 }

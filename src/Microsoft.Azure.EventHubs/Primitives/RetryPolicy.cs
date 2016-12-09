@@ -15,26 +15,29 @@ namespace Microsoft.Azure.EventHubs
 
         // Same retry policy may be used by multiple senders and receivers.
         // Because of this we keep track of retry counters in a concurrent dictionary.
-        ConcurrentDictionary<String, int> retryCounts;
+        ConcurrentDictionary<string, int> retryCounts;
         object serverBusySync;
 
         protected RetryPolicy()
         {
             this.retryCounts = new ConcurrentDictionary<string, int>();
-            this.serverBusySync = new Object();
+            this.serverBusySync = new object();
         }
 
-        public void IncrementRetryCount(string clientId)
+        public static RetryPolicy Default
         {
-            int retryCount;
-            this.retryCounts.TryGetValue(clientId, out retryCount);
-            this.retryCounts[clientId] = retryCount + 1;
+            get
+            {
+                return new RetryExponential(DefaultRetryMinBackoff, DefaultRetryMaxBackoff, DefaultRetryMaxCount);
+            }
         }
 
-        public void ResetRetryCount(string clientId)
+        public static RetryPolicy NoRetry
         {
-            int currentRetryCount;
-            this.retryCounts.TryRemove(clientId, out currentRetryCount);
+            get
+            {
+                return new RetryExponential(TimeSpan.Zero, TimeSpan.Zero, 0);
+            }
         }
 
         public static bool IsRetryableException(Exception exception)
@@ -56,20 +59,41 @@ namespace Microsoft.Azure.EventHubs
             return false;
         }
 
-        public static RetryPolicy Default
+        public void IncrementRetryCount(string clientId)
         {
-            get
-            {
-                return new RetryExponential(DefaultRetryMinBackoff, DefaultRetryMaxBackoff, DefaultRetryMaxCount);
-            }
+            int retryCount;
+            this.retryCounts.TryGetValue(clientId, out retryCount);
+            this.retryCounts[clientId] = retryCount + 1;
         }
 
-        public static RetryPolicy NoRetry
+        public void ResetRetryCount(string clientId)
         {
-            get
+            int currentRetryCount;
+            this.retryCounts.TryRemove(clientId, out currentRetryCount);
+        }
+
+        public TimeSpan? GetNextRetryInterval(string clientId, Exception lastException, TimeSpan remainingTime)
+        {
+            int baseWaitTime = 0;
+            lock (this.serverBusySync)
             {
-                return new RetryExponential(TimeSpan.Zero, TimeSpan.Zero, 0);
+                if (lastException != null &&
+                        (lastException is ServerBusyException || (lastException.InnerException != null && lastException.InnerException is ServerBusyException)))
+                {
+                    baseWaitTime += ClientConstants.ServerBusyBaseSleepTimeInSecs;
+                }
             }
+
+            var retryAfter = this.OnGetNextRetryInterval(clientId, lastException, remainingTime, baseWaitTime);
+
+            // Don't retry if remaining time isn't enough.
+            if (retryAfter == null ||
+                remainingTime.TotalSeconds < Math.Max(retryAfter.Value.TotalSeconds, ClientConstants.TimerToleranceInSeconds))
+            {
+                return null;
+            }
+
+            return retryAfter;
         }
 
         protected int GetRetryCount(string clientId)
@@ -81,30 +105,6 @@ namespace Microsoft.Azure.EventHubs
             return retryCount;
         }
 
-        protected abstract TimeSpan? OnGetNextRetryInterval(String clientId, Exception lastException, TimeSpan remainingTime, int baseWaitTime);
-
-        public TimeSpan? GetNextRetryInterval(string clientId, Exception lastException, TimeSpan remainingTime)
-        {
-            int baseWaitTime = 0;
-            lock(this.serverBusySync)
-            {
-                if (lastException != null &&
-                        (lastException is ServerBusyException || (lastException.InnerException != null && lastException.InnerException is ServerBusyException)))
-			    {
-                    baseWaitTime += ClientConstants.ServerBusyBaseSleepTimeInSecs;
-                }
-            }
-
-            var retryAfter = this.OnGetNextRetryInterval(clientId, lastException, remainingTime, baseWaitTime);
-
-            // Don't retry if remaining time isn't enough.
-            if (retryAfter == null || 
-                remainingTime.TotalSeconds < Math.Max(retryAfter.Value.TotalSeconds, ClientConstants.TimerToleranceInSeconds))
-            {
-                return null;
-            }
-
-            return retryAfter;
-        }
+        protected abstract TimeSpan? OnGetNextRetryInterval(string clientId, Exception lastException, TimeSpan remainingTime, int baseWaitTime);
     }
 }

@@ -39,7 +39,10 @@ namespace Microsoft.Azure.EventHubs
             this.audience = audience;
         }
 
-        [SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors", Justification = "Existing public class, changes will be breaking. Current usage is safe.")]
+        [SuppressMessage(
+            "Microsoft.Usage",
+            "CA2214:DoNotCallOverridableMethodsInConstructors",
+            Justification = "Existing public class, changes will be breaking. Current usage is safe.")]
         public SecurityToken(string tokenString, DateTime expiresAtUtc)
         {
             if (tokenString == null)
@@ -49,10 +52,12 @@ namespace Microsoft.Azure.EventHubs
 
             this.token = tokenString;
             this.expiresAtUtc = expiresAtUtc;
-            this.audience = GetAudienceFromToken(tokenString);
+            this.audience = this.GetAudienceFromToken(tokenString);
         }
 
-        [SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors",
+        [SuppressMessage(
+            "Microsoft.Usage",
+            "CA2214:DoNotCallOverridableMethodsInConstructors",
             Justification = "Existing public class, changes will be breaking. Current usage is safe.")]
         public SecurityToken(string tokenString)
         {
@@ -62,12 +67,14 @@ namespace Microsoft.Azure.EventHubs
             }
 
             this.token = tokenString;
-            GetExpirationDateAndAudienceFromToken(tokenString, out this.expiresAtUtc, out this.audience);
+            this.GetExpirationDateAndAudienceFromToken(tokenString, out this.expiresAtUtc, out this.audience);
         }
 
         public string Audience => this.audience;
 
         public DateTime ExpiresAtUtc => this.expiresAtUtc;
+
+        public object TokenValue => this.token;
 
         protected virtual string ExpiresOnFieldName => InternalExpiresOnFieldName;
 
@@ -76,37 +83,6 @@ namespace Microsoft.Azure.EventHubs
         protected virtual string KeyValueSeparator => InternalKeyValueSeparator;
 
         protected virtual string PairSeparator => InternalPairSeparator;
-
-        public object TokenValue => this.token;
-
-        string GetAudienceFromToken(string token)
-        {
-            string audience;
-            IDictionary<string, string> decodedToken = Decode(token, Decoder, Decoder, this.KeyValueSeparator, this.PairSeparator);
-            if (!decodedToken.TryGetValue(AudienceFieldName, out audience))
-            {
-                throw new FormatException(Resources.TokenMissingAudience);
-            }
-
-            return audience;
-        }
-
-        void GetExpirationDateAndAudienceFromToken(string token, out DateTime expiresOn, out string audience)
-        {
-            string expiresIn;
-            IDictionary<string, string> decodedToken = Decode(token, Decoder, Decoder, this.KeyValueSeparator, this.PairSeparator);
-            if (!decodedToken.TryGetValue(ExpiresOnFieldName, out expiresIn))
-            {
-                throw new FormatException(Resources.TokenMissingExpiresOn);
-            }
-
-            if (!decodedToken.TryGetValue(AudienceFieldName, out audience))
-            {
-                throw new FormatException(Resources.TokenMissingAudience);
-            }
-
-            expiresOn = (EpochTime + TimeSpan.FromSeconds(double.Parse(expiresIn, CultureInfo.InvariantCulture)));
-        }
 
         static IDictionary<string, string> Decode(string encodedString, Func<string, string> keyDecoder, Func<string, string> valueDecoder, string keyValueSeparator, string pairSeparator)
         {
@@ -125,6 +101,34 @@ namespace Microsoft.Azure.EventHubs
 
             return dictionary;
         }
-    }
 
+        string GetAudienceFromToken(string token)
+        {
+            string audience;
+            IDictionary<string, string> decodedToken = Decode(token, Decoder, Decoder, this.KeyValueSeparator, this.PairSeparator);
+            if (!decodedToken.TryGetValue(this.AudienceFieldName, out audience))
+            {
+                throw new FormatException(Resources.TokenMissingAudience);
+            }
+
+            return audience;
+        }
+
+        void GetExpirationDateAndAudienceFromToken(string token, out DateTime expiresOn, out string audience)
+        {
+            string expiresIn;
+            IDictionary<string, string> decodedToken = Decode(token, Decoder, Decoder, this.KeyValueSeparator, this.PairSeparator);
+            if (!decodedToken.TryGetValue(this.ExpiresOnFieldName, out expiresIn))
+            {
+                throw new FormatException(Resources.TokenMissingExpiresOn);
+            }
+
+            if (!decodedToken.TryGetValue(this.AudienceFieldName, out audience))
+            {
+                throw new FormatException(Resources.TokenMissingAudience);
+            }
+
+            expiresOn = (EpochTime + TimeSpan.FromSeconds(double.Parse(expiresIn, CultureInfo.InvariantCulture)));
+        }
+    }
 }

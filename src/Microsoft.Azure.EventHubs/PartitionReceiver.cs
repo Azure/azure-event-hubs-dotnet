@@ -14,7 +14,7 @@ namespace Microsoft.Azure.EventHubs
     /// <para>
     /// A PartitionReceiver is tied to a ConsumerGroup + Partition combination. If you are creating an epoch based
     /// PartitionReceiver (i.e. PartitionReceiver.Epoch != 0) you cannot have more than one active receiver per
-    /// ConsumerGroup + Partition combo. You can have multiple receivers per ConsumerGroup + Partition combination with 
+    /// ConsumerGroup + Partition combo. You can have multiple receivers per ConsumerGroup + Partition combination with
     /// non-epoch receivers.
     /// </para>
     /// </summary>
@@ -104,7 +104,7 @@ namespace Microsoft.Azure.EventHubs
         /// EventHubClient client = EventHubClient.Create("__connectionString__");
         /// PartitionReceiver receiver = client.CreateReceiver("ConsumerGroup1", "1");
         /// IEnumerable&lt;EventData&gt; receivedEvents = await receiver.ReceiveAsync(BatchSize);
-        ///      
+        ///
         /// while (true)
         /// {
         ///     int batchSize = 0;
@@ -113,14 +113,14 @@ namespace Microsoft.Azure.EventHubs
         ///         foreach (EventData receivedEvent in receivedEvents)
         ///         {
         ///             Console.WriteLine("Message Payload: {0}", Encoding.UTF8.GetString(receivedEvent.Body));
-        ///             Console.WriteLine("Offset: {0}, SeqNo: {1}, EnqueueTime: {2}", 
-        ///                 receivedEvent.SystemProperties.Offset, 
-        ///                 receivedEvent.SystemProperties.SequenceNumber, 
+        ///             Console.WriteLine("Offset: {0}, SeqNo: {1}, EnqueueTime: {2}",
+        ///                 receivedEvent.SystemProperties.Offset,
+        ///                 receivedEvent.SystemProperties.SequenceNumber,
         ///                 receivedEvent.SystemProperties.EnqueuedTime);
         ///             batchSize++;
         ///         }
         ///     }
-        ///          
+        ///
         ///     Console.WriteLine("ReceivedBatch Size: {0}", batchSize);
         ///     receivedEvents = await receiver.ReceiveAsync();
         /// }
@@ -194,7 +194,7 @@ namespace Microsoft.Azure.EventHubs
         string FormatTraceDetails()
         {
             StringBuilder sb = new StringBuilder();
-            sb.AppendFormat("ConsumerGroup:{0}, PartitionId:{1}", this.ConsumerGroupName, PartitionId);
+            sb.AppendFormat("ConsumerGroup:{0}, PartitionId:{1}", this.ConsumerGroupName, this.PartitionId);
             if (!string.IsNullOrEmpty(this.StartOffset))
             {
                 sb.AppendFormat(", StartOffset:{0}, OffsetInclusive:{1}", this.StartOffset, this.OffsetInclusive);

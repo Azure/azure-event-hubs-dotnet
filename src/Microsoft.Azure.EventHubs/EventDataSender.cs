@@ -25,8 +25,6 @@ namespace Microsoft.Azure.EventHubs
             return this.OnSendAsync(eventDatas, partitionKey);
         }
 
-        protected abstract Task OnSendAsync(IEnumerable<EventData> eventDatas, string partitionKey);
-
         internal static int ValidateEvents(IEnumerable<EventData> eventDatas, string partitionId, string partitionKey)
         {
             int count;
@@ -42,5 +40,7 @@ namespace Microsoft.Azure.EventHubs
 
             return count;
         }
+
+        protected abstract Task OnSendAsync(IEnumerable<EventData> eventDatas, string partitionKey);
     }
 }

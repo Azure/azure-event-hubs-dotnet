@@ -95,7 +95,7 @@ namespace Microsoft.Azure.EventHubs.UnitTests
             }
 
             // Some invalid partition values. These will fail on the client side.
-            invalidPartitions = new List<string>() { "", " ", null };
+            invalidPartitions = new List<string>() { string.Empty, " ", null };
             foreach (var invalidPartitionId in invalidPartitions)
             {
                 await Assert.ThrowsAsync<ArgumentException>(async () =>

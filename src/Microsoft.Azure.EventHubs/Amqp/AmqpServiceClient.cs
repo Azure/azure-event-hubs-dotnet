@@ -4,11 +4,6 @@
 namespace Microsoft.Azure.EventHubs.Amqp.Management
 {
     using System;
-    using System.Collections.Concurrent;
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Reflection;
-    using System.Runtime.Serialization;
     using System.Threading.Tasks;
     using Microsoft.Azure.Amqp;
     using Microsoft.Azure.Amqp.Encoding;
@@ -34,28 +29,7 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
             this.clientLinkManager = new ActiveClientLinkManager(this.eventHubClient);
         }
 
-        AmqpMessage CreateGetRuntimeInformationRequest()
-        {
-            AmqpMessage getRuntimeInfoRequest = AmqpMessage.Create();
-            getRuntimeInfoRequest.ApplicationProperties = new ApplicationProperties();
-            getRuntimeInfoRequest.ApplicationProperties.Map[AmqpClientConstants.EntityNameKey] = this.eventHubClient.EventHubName;
-            getRuntimeInfoRequest.ApplicationProperties.Map[AmqpClientConstants.ManagementOperationKey] = AmqpClientConstants.ReadOperationValue;
-            getRuntimeInfoRequest.ApplicationProperties.Map[AmqpClientConstants.ManagementEntityTypeKey] = AmqpClientConstants.ManagementEventHubEntityTypeValue;
-
-            return getRuntimeInfoRequest;
-        }
-
-        AmqpMessage CreateGetPartitionRuntimeInformationRequest(string partitionKey)
-        {
-            AmqpMessage getRuntimeInfoRequest = AmqpMessage.Create();
-            getRuntimeInfoRequest.ApplicationProperties = new ApplicationProperties();
-            getRuntimeInfoRequest.ApplicationProperties.Map[AmqpClientConstants.EntityNameKey] = this.eventHubClient.EventHubName;
-            getRuntimeInfoRequest.ApplicationProperties.Map[AmqpClientConstants.PartitionNameKey] = partitionKey;
-            getRuntimeInfoRequest.ApplicationProperties.Map[AmqpClientConstants.ManagementOperationKey] = AmqpClientConstants.ReadOperationValue;
-            getRuntimeInfoRequest.ApplicationProperties.Map[AmqpClientConstants.ManagementEntityTypeKey] = AmqpClientConstants.ManagementPartitionEntityTypeValue;
-
-            return getRuntimeInfoRequest;
-        }
+        public string Address { get; }
 
         public async Task<EventHubRuntimeInformation> GetRuntimeInformationAsync()
         {
@@ -63,7 +37,7 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
 
             // Create request and attach token.
             var request = this.CreateGetRuntimeInformationRequest();
-            request.ApplicationProperties.Map[AmqpClientConstants.ManagementSecurityTokenKey] = await GetTokenString().ConfigureAwait(false);
+            request.ApplicationProperties.Map[AmqpClientConstants.ManagementSecurityTokenKey] = await this.GetTokenString().ConfigureAwait(false);
 
             var response = await requestLink.RequestAsync(request, TimeSpan.FromMinutes(1)).ConfigureAwait(false);
             int statusCode = (int)response.ApplicationProperties.Map[AmqpClientConstants.ResponseStatusCode];
@@ -102,7 +76,7 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
 
             // Create request and attach token.
             var request = this.CreateGetPartitionRuntimeInformationRequest(partitionId);
-            request.ApplicationProperties.Map[AmqpClientConstants.ManagementSecurityTokenKey] = await GetTokenString().ConfigureAwait(false);
+            request.ApplicationProperties.Map[AmqpClientConstants.ManagementSecurityTokenKey] = await this.GetTokenString().ConfigureAwait(false);
 
             var response = await requestLink.RequestAsync(request, TimeSpan.FromMinutes(1)).ConfigureAwait(false);
             int statusCode = (int)response.ApplicationProperties.Map[AmqpClientConstants.ResponseStatusCode];
@@ -137,11 +111,41 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
             };
         }
 
-        public string Address { get; }
-
         public override Task CloseAsync()
         {
             return this.link.CloseAsync();
+        }
+
+        internal void OnAbort()
+        {
+            RequestResponseAmqpLink innerLink;
+            if (this.link.TryGetOpenedObject(out innerLink))
+            {
+                innerLink?.Abort();
+            }
+        }
+
+        AmqpMessage CreateGetRuntimeInformationRequest()
+        {
+            AmqpMessage getRuntimeInfoRequest = AmqpMessage.Create();
+            getRuntimeInfoRequest.ApplicationProperties = new ApplicationProperties();
+            getRuntimeInfoRequest.ApplicationProperties.Map[AmqpClientConstants.EntityNameKey] = this.eventHubClient.EventHubName;
+            getRuntimeInfoRequest.ApplicationProperties.Map[AmqpClientConstants.ManagementOperationKey] = AmqpClientConstants.ReadOperationValue;
+            getRuntimeInfoRequest.ApplicationProperties.Map[AmqpClientConstants.ManagementEntityTypeKey] = AmqpClientConstants.ManagementEventHubEntityTypeValue;
+
+            return getRuntimeInfoRequest;
+        }
+
+        AmqpMessage CreateGetPartitionRuntimeInformationRequest(string partitionKey)
+        {
+            AmqpMessage getRuntimeInfoRequest = AmqpMessage.Create();
+            getRuntimeInfoRequest.ApplicationProperties = new ApplicationProperties();
+            getRuntimeInfoRequest.ApplicationProperties.Map[AmqpClientConstants.EntityNameKey] = this.eventHubClient.EventHubName;
+            getRuntimeInfoRequest.ApplicationProperties.Map[AmqpClientConstants.PartitionNameKey] = partitionKey;
+            getRuntimeInfoRequest.ApplicationProperties.Map[AmqpClientConstants.ManagementOperationKey] = AmqpClientConstants.ReadOperationValue;
+            getRuntimeInfoRequest.ApplicationProperties.Map[AmqpClientConstants.ManagementEntityTypeKey] = AmqpClientConstants.ManagementPartitionEntityTypeValue;
+
+            return getRuntimeInfoRequest;
         }
 
         async Task<string> GetTokenString()
@@ -154,19 +158,11 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
                 {
                     this.token = await this.eventHubClient.TokenProvider.GetTokenAsync(
                         this.eventHubClient.ConnectionStringBuilder.Endpoint.AbsoluteUri,
-                        ClaimConstants.Listen, this.eventHubClient.ConnectionStringBuilder.OperationTimeout).ConfigureAwait(false);
+                        ClaimConstants.Listen,
+                        this.eventHubClient.ConnectionStringBuilder.OperationTimeout).ConfigureAwait(false);
                 }
 
                 return this.token.TokenValue.ToString();
-            }
-        }
-
-        internal void OnAbort()
-        {
-            RequestResponseAmqpLink innerLink;
-            if (this.link.TryGetOpenedObject(out innerLink))
-            {
-                innerLink?.Abort();
             }
         }
 

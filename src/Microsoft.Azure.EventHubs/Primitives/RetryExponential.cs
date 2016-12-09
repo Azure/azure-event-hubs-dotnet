@@ -46,7 +46,7 @@ namespace Microsoft.Azure.EventHubs
             long nextRetryIntervalSeconds = (long)nextRetryInterval;
             long nextRetryIntervalMilliseconds = (long)((nextRetryInterval - (double)nextRetryIntervalSeconds) * 1000);
 
-            TimeSpan retryAfter = this.minimumBackoff.Add(TimeSpan.FromMilliseconds(nextRetryIntervalSeconds * 1000 + nextRetryIntervalMilliseconds));
+            TimeSpan retryAfter = this.minimumBackoff.Add(TimeSpan.FromMilliseconds((nextRetryIntervalSeconds * 1000) + nextRetryIntervalMilliseconds));
             retryAfter = retryAfter.Add(TimeSpan.FromSeconds(baseWaitTimeSecs));
 
             return retryAfter;

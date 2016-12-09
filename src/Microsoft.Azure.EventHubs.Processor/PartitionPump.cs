@@ -9,14 +9,24 @@ namespace Microsoft.Azure.EventHubs.Processor
     using System.Threading.Tasks;
 
     abstract class PartitionPump
-    {   
-	    protected PartitionPump(EventProcessorHost host, Lease lease)
+    {
+        protected PartitionPump(EventProcessorHost host, Lease lease)
         {
             this.Host = host;
             this.Lease = lease;
             this.ProcessingAsyncLock = new AsyncLock();
             this.PumpStatus = PartitionPumpStatus.Uninitialized;
         }
+
+        internal bool IsClosing
+        {
+            get
+            {
+                return (this.PumpStatus == PartitionPumpStatus.Closing || this.PumpStatus == PartitionPumpStatus.Closed);
+            }
+        }
+
+        protected internal PartitionPumpStatus PumpStatus { get; protected set; }
 
         protected EventProcessorHost Host { get; }
 
@@ -27,11 +37,6 @@ namespace Microsoft.Azure.EventHubs.Processor
         protected PartitionContext PartitionContext { get; private set; }
 
         protected AsyncLock ProcessingAsyncLock { get; }
-
-        internal void SetLease(Lease newLease)
-        {
-            this.PartitionContext.Lease = newLease;
-        }
 
         public async Task OpenAsync()
         {
@@ -68,18 +73,6 @@ namespace Microsoft.Azure.EventHubs.Processor
             }
         }
 
-        protected abstract Task OnOpenAsync();
-
-        protected internal PartitionPumpStatus PumpStatus { get; protected set; }
-
-        internal bool IsClosing
-        {
-            get
-            {
-                return (this.PumpStatus == PartitionPumpStatus.Closing || this.PumpStatus == PartitionPumpStatus.Closed);
-            }
-        }
-
         public async Task CloseAsync(CloseReason reason)
         {
             ProcessorEventSource.Log.PartitionPumpCloseStart(this.Host.Id, this.PartitionContext.PartitionId, reason.ToString());
@@ -104,6 +97,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             catch (Exception e)
             {
                 ProcessorEventSource.Log.PartitionPumpCloseError(this.Host.Id, this.PartitionContext.PartitionId, e.ToString());
+
                 // If closing the processor has failed, the state of the processor is suspect.
                 // Report the failure to the general error handler instead.
                 this.Host.EventProcessorOptions.NotifyOfException(this.Host.HostName, this.PartitionContext.PartitionId, e, "Closing Event Processor");
@@ -111,13 +105,20 @@ namespace Microsoft.Azure.EventHubs.Processor
 
             if (reason != CloseReason.LeaseLost)
             {
-                // Since this pump is dead, release the lease. 
+                // Since this pump is dead, release the lease.
                 await this.Host.LeaseManager.ReleaseLeaseAsync(this.PartitionContext.Lease).ConfigureAwait(false);
             }
 
             this.PumpStatus = PartitionPumpStatus.Closed;
             ProcessorEventSource.Log.PartitionPumpCloseStop(this.Host.Id, this.PartitionContext.PartitionId);
         }
+
+        internal void SetLease(Lease newLease)
+        {
+            this.PartitionContext.Lease = newLease;
+        }
+
+        protected abstract Task OnOpenAsync();
 
         protected abstract Task OnClosingAsync(CloseReason reason);
 

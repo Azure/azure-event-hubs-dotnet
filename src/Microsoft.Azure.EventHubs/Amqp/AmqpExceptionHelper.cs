@@ -13,7 +13,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
     class AmqpExceptionHelper
     {
-        static readonly Dictionary<string, AmqpResponseStatusCode> conditionToStatusMap = new Dictionary<string, AmqpResponseStatusCode>()
+        static readonly Dictionary<string, AmqpResponseStatusCode> ConditionToStatusMap = new Dictionary<string, AmqpResponseStatusCode>()
         {
             { AmqpClientConstants.TimeoutError.Value, AmqpResponseStatusCode.RequestTimeout },
             { AmqpErrorCode.NotFound.Value, AmqpResponseStatusCode.NotFound },
@@ -47,7 +47,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
             else
             {
                 // Most of the time we should have an error condition
-                foreach (var kvp in conditionToStatusMap)
+                foreach (var kvp in ConditionToStatusMap)
                 {
                     if (kvp.Value == statusCode)
                     {

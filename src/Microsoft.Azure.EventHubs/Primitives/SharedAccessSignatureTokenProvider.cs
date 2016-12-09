@@ -96,7 +96,7 @@ namespace Microsoft.Azure.EventHubs
                 string targetUri,
                 TimeSpan timeToLive)
             {
-                // Note that target URI is not normalized because in IoT scenario it 
+                // Note that target URI is not normalized because in IoT scenario it
                 // is case sensitive.
                 string expiresOn = BuildExpiresOn(timeToLive);
                 string audienceUri = WebUtility.UrlEncode(targetUri);
@@ -109,14 +109,20 @@ namespace Microsoft.Azure.EventHubs
 
                 // Example returned string:
                 // SharedAccessKeySignature
-                // sr=ENCODED(http://mynamespace.servicebus.windows.net/a/b/c?myvalue1=a)&sig=<Signature>&se=<ExpiresOnValue>&skn=<KeyName>
+                //// sr=ENCODED(http://mynamespace.servicebus.windows.net/a/b/c?myvalue1=a)&sig=<Signature>&se=<ExpiresOnValue>&skn=<KeyName>
 
-                return string.Format(CultureInfo.InvariantCulture, "{0} {1}={2}&{3}={4}&{5}={6}&{7}={8}",
+                return string.Format(
+                    CultureInfo.InvariantCulture,
+                    "{0} {1}={2}&{3}={4}&{5}={6}&{7}={8}",
                     SharedAccessSignatureToken.SharedAccessSignature,
-                    SharedAccessSignatureToken.SignedResource, audienceUri,
-                    SharedAccessSignatureToken.Signature, WebUtility.UrlEncode(signature),
-                    SharedAccessSignatureToken.SignedExpiry, WebUtility.UrlEncode(expiresOn),
-                    SharedAccessSignatureToken.SignedKeyName, WebUtility.UrlEncode(keyName));
+                    SharedAccessSignatureToken.SignedResource,
+                    audienceUri,
+                    SharedAccessSignatureToken.Signature,
+                    WebUtility.UrlEncode(signature),
+                    SharedAccessSignatureToken.SignedExpiry,
+                    WebUtility.UrlEncode(expiresOn),
+                    SharedAccessSignatureToken.SignedKeyName,
+                    WebUtility.UrlEncode(keyName));
             }
 
             static string BuildExpiresOn(TimeSpan timeToLive)

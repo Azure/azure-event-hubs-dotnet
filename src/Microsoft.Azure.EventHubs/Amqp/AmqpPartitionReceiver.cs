@@ -113,7 +113,8 @@ namespace Microsoft.Azure.EventHubs.Amqp
                         throw;
                     }
                 }
-            } while (shouldRetry);
+            }
+            while (shouldRetry);
 
             // No messages to deliver.
             return null;
@@ -151,6 +152,14 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     }
                 }
             }
+        }
+
+        // This is equivalent to Microsoft.Azure.Amqp's internal API TimeStampEncoding.GetMilliseconds
+        static long TimeStampEncodingGetMilliseconds(DateTime value)
+        {
+            DateTime utcValue = value.ToUniversalTime();
+            double milliseconds = (utcValue - AmqpConstants.StartOfEpoch).TotalMilliseconds;
+            return (long)milliseconds;
         }
 
         async Task<ReceivingAmqpLink> CreateLinkAsync(TimeSpan timeout)
@@ -243,7 +252,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
             List<AmqpDescribed> filterMap = new List<AmqpDescribed>();
             if (!string.IsNullOrWhiteSpace(this.StartOffset) || this.StartTime.HasValue)
             {
-                // In the case of DateTime, we want to be amqp-compliant so 
+                // In the case of DateTime, we want to be amqp-compliant so
                 // we should transmit the DateTime in a amqp-timestamp format,
                 // which is defined as "64-bit two's-complement integer representing milliseconds since the unix epoch"
                 // ref: http://docs.oasis-open.org/amqp/core/v1.0/amqp-core-complete-v1.0.pdf
@@ -256,14 +265,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
             }
 
             return filterMap;
-        }
-
-        // This is equivalent to Microsoft.Azure.Amqp's internal API TimeStampEncoding.GetMilliseconds
-        static long TimeStampEncodingGetMilliseconds(DateTime value)
-        {
-            DateTime utcValue = value.ToUniversalTime();
-            double milliseconds = (utcValue - AmqpConstants.StartOfEpoch).TotalMilliseconds;
-            return (long)milliseconds;
         }
 
         async Task ReceivePumpAsync(CancellationToken cancellationToken)
@@ -283,7 +284,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                             // Pump has been shutdown, nothing more to do.
                             return;
                         }
-                        batchSize = receiveHandler.MaxBatchSize;
+                        batchSize = this.receiveHandler.MaxBatchSize;
                     }
 
                     receivedEvents = await this.ReceiveAsync(batchSize);

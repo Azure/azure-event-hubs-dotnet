@@ -1,7 +1,14 @@
 ﻿{
   "version": "1.0.0",
   "testRunner": "xunit",
+  "buildOptions": {
+    "additionalArguments": [ "/ruleset:./../../build/StyleCop.Analyzers.ruleset", "/additionalfile:./../../build/stylecop.json" ]
+  },
   "dependencies": {
+    "StyleCop.Analyzers": {
+      "version": "1.0.0",
+      "type": "build"
+    },
     "Microsoft.Azure.EventHubs.Processor": {
       "target": "project"
     },

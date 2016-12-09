@@ -16,19 +16,20 @@ namespace Microsoft.Azure.EventHubs.Processor
 
     sealed class AzureStorageCheckpointLeaseManager : ICheckpointManager, ILeaseManager
     {
-        EventProcessorHost host;
+        const int LeaseRenewIntervalInSeconds = 30;
+        const int LeaseDurationInSeconds = 30;
+
+        static readonly TimeSpan StorageMaximumExecutionTime = TimeSpan.FromMinutes(2);
+        readonly BlobRequestOptions renewRequestOptions = new BlobRequestOptions();
+
         readonly string storageConnectionString;
+        EventProcessorHost host;
         string leaseContainerName = null;
         string storageBlobPrefix;
 
         CloudBlobClient storageClient;
         CloudBlobContainer eventHubContainer;
         CloudBlobDirectory consumerGroupDirectory;
-
-        static readonly TimeSpan storageMaximumExecutionTime = TimeSpan.FromMinutes(2);
-        static readonly TimeSpan leaseDuration = TimeSpan.FromSeconds(30);
-        static readonly TimeSpan leaseRenewInterval = TimeSpan.FromSeconds(10);
-        readonly BlobRequestOptions renewRequestOptions = new BlobRequestOptions();
 
         internal AzureStorageCheckpointLeaseManager(string storageConnectionString, string leaseContainerName, string storageBlobPrefix)
         {
@@ -50,27 +51,11 @@ namespace Microsoft.Azure.EventHubs.Processor
 
             // Convert all-whitespace prefix to empty string. Convert null prefix to empty string.
             // Then the rest of the code only has one case to worry about.
-            this.storageBlobPrefix = (storageBlobPrefix != null) ? storageBlobPrefix.Trim() : "";
+            this.storageBlobPrefix = (storageBlobPrefix != null) ? storageBlobPrefix.Trim() : string.Empty;
         }
 
-        // The EventProcessorHost can't pass itself to the AzureStorageCheckpointLeaseManager constructor
-        // because it is still being constructed. Do other initialization here also because it might throw and
-        // hence we don't want it in the constructor.
-        internal void Initialize(EventProcessorHost host) // throws InvalidKeyException, URISyntaxException, StorageException
-        {
-            this.host = host;
-            this.storageClient = CloudStorageAccount.Parse(this.storageConnectionString).CreateCloudBlobClient();
-            BlobRequestOptions options = new BlobRequestOptions();
-            options.MaximumExecutionTime = AzureStorageCheckpointLeaseManager.storageMaximumExecutionTime;
-            this.storageClient.DefaultRequestOptions = options;
-            this.eventHubContainer = this.storageClient.GetContainerReference(this.leaseContainerName);
-            this.consumerGroupDirectory = this.eventHubContainer.GetDirectoryReference(this.storageBlobPrefix + this.host.ConsumerGroupName);
-        }
-
-        //
         // In this implementation, checkpoints are data that's actually in the lease blob, so checkpoint operations
         // turn into lease operations under the covers.
-        //
         public Task<bool> CheckpointStoreExistsAsync()
         {
             return LeaseStoreExistsAsync();
@@ -83,7 +68,7 @@ namespace Microsoft.Azure.EventHubs.Processor
 
         public async Task<Checkpoint> GetCheckpointAsync(string partitionId)
         {
-    	    AzureBlobLease lease = (AzureBlobLease)await GetLeaseAsync(partitionId).ConfigureAwait(false);
+            AzureBlobLease lease = (AzureBlobLease)await GetLeaseAsync(partitionId).ConfigureAwait(false);
             Checkpoint checkpoint = null;
             if (lease?.Offset != null)
             {
@@ -94,13 +79,13 @@ namespace Microsoft.Azure.EventHubs.Processor
                 };
             }
 
-    	    return checkpoint;
+            return checkpoint;
         }
 
         public async Task<Checkpoint> CreateCheckpointIfNotExistsAsync(string partitionId)
         {
-    	    // Normally the lease will already be created, checkpoint store is initialized after lease store.
-    	    AzureBlobLease lease = (AzureBlobLease)await CreateLeaseIfNotExistsAsync(partitionId).ConfigureAwait(false);
+            // Normally the lease will already be created, checkpoint store is initialized after lease store.
+            AzureBlobLease lease = (AzureBlobLease)await CreateLeaseIfNotExistsAsync(partitionId).ConfigureAwait(false);
             Checkpoint checkpoint = new Checkpoint(partitionId, lease.Offset, lease.SequenceNumber);
 
             return checkpoint;
@@ -124,21 +109,10 @@ namespace Microsoft.Azure.EventHubs.Processor
         //
         // Lease operations.
         //
-        public TimeSpan LeaseRenewInterval
-        {
-            get
-            {
-                return AzureStorageCheckpointLeaseManager.leaseRenewInterval;
-            }
-        }
+        public TimeSpan LeaseRenewInterval => TimeSpan.FromSeconds(LeaseRenewIntervalInSeconds);
 
-        public TimeSpan LeaseDuration
-        {
-            get
-            {
-                return AzureStorageCheckpointLeaseManager.leaseDuration;
-            }
-        }
+        public TimeSpan LeaseDuration => TimeSpan.FromSeconds(LeaseDurationInSeconds);
+
 
         public Task<bool> LeaseStoreExistsAsync()
         {
@@ -183,7 +157,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                         }
                         while (innerContinuationToken != null);
                     }
-    		        else if (blob is CloudBlockBlob)
+                    else if (blob is CloudBlockBlob)
                     {
                         try
                         {
@@ -204,13 +178,13 @@ namespace Microsoft.Azure.EventHubs.Processor
 
         public async Task<Lease> GetLeaseAsync(string partitionId) // throws URISyntaxException, IOException, StorageException
         {
-    	    AzureBlobLease retval = null;
+            AzureBlobLease retval = null;
 
             CloudBlockBlob leaseBlob = this.consumerGroupDirectory.GetBlockBlobReference(partitionId);
             if (await leaseBlob.ExistsAsync().ConfigureAwait(false))
-		    {
+            {
                 retval = await DownloadLeaseAsync(partitionId, leaseBlob).ConfigureAwait(false);
-		    }
+            }
 
             return retval;
         }
@@ -229,10 +203,10 @@ namespace Microsoft.Azure.EventHubs.Processor
 
         public async Task<Lease> CreateLeaseIfNotExistsAsync(string partitionId) // throws URISyntaxException, IOException, StorageException
         {
-        	AzureBlobLease returnLease;
-    	    try
-    	    {
-    		    CloudBlockBlob leaseBlob = this.consumerGroupDirectory.GetBlockBlobReference(partitionId);
+            AzureBlobLease returnLease;
+            try
+            {
+                CloudBlockBlob leaseBlob = this.consumerGroupDirectory.GetBlockBlobReference(partitionId);
                 returnLease = new AzureBlobLease(partitionId, leaseBlob);
                 string jsonLease = JsonConvert.SerializeObject(returnLease);
 
@@ -243,30 +217,30 @@ namespace Microsoft.Azure.EventHubs.Processor
                     " consumerGroupName: " + this.host.ConsumerGroupName + " storageBlobPrefix: " + this.storageBlobPrefix);
                 await leaseBlob.UploadTextAsync(jsonLease, null, AccessCondition.GenerateIfNoneMatchCondition("*"), null, null).ConfigureAwait(false);
             }
-    	    catch (StorageException se)
-    	    {
-    		    StorageExtendedErrorInformation extendedErrorInfo = se.RequestInformation.ExtendedErrorInformation;
-    		    if (extendedErrorInfo != null &&
-        		    (extendedErrorInfo.ErrorCode == BlobErrorCodeStrings.BlobAlreadyExists ||
-    	    	     extendedErrorInfo.ErrorCode == BlobErrorCodeStrings.LeaseIdMissing)) // occurs when somebody else already has leased the blob
-    		    {
+            catch (StorageException se)
+            {
+                StorageExtendedErrorInformation extendedErrorInfo = se.RequestInformation.ExtendedErrorInformation;
+                if (extendedErrorInfo != null &&
+                    (extendedErrorInfo.ErrorCode == BlobErrorCodeStrings.BlobAlreadyExists ||
+                     extendedErrorInfo.ErrorCode == BlobErrorCodeStrings.LeaseIdMissing)) // occurs when somebody else already has leased the blob
+                {
                     // The blob already exists.
                     ProcessorEventSource.Log.AzureStorageManagerInfo(this.host.Id, partitionId, "Lease already exists");
                     returnLease = (AzureBlobLease)await GetLeaseAsync(partitionId).ConfigureAwait(false);
                 }
-    		    else
-    		    {
+                else
+                {
                     ProcessorEventSource.Log.AzureStorageManagerError(
                         this.host.Id,
                         partitionId,
                         "CreateLeaseIfNotExist StorageException - leaseContainerName: " + this.leaseContainerName +
                         " consumerGroupName: " + this.host.ConsumerGroupName + " storageBlobPrefix: " + this.storageBlobPrefix,
                         se.ToString());
-    			    throw;
+                    throw;
                 }
-    	    }
-    	
-    	    return returnLease;
+            }
+        
+            return returnLease;
         }
 
         public Task DeleteLeaseAsync(Lease lease)
@@ -281,13 +255,27 @@ namespace Microsoft.Azure.EventHubs.Processor
             return AcquireLeaseCoreAsync((AzureBlobLease)lease);
         }
 
+        // The EventProcessorHost can't pass itself to the AzureStorageCheckpointLeaseManager constructor
+        // because it is still being constructed. Do other initialization here also because it might throw and
+        // hence we don't want it in the constructor.
+        internal void Initialize(EventProcessorHost host) // throws InvalidKeyException, URISyntaxException, StorageException
+        {
+            this.host = host;
+            this.storageClient = CloudStorageAccount.Parse(this.storageConnectionString).CreateCloudBlobClient();
+            BlobRequestOptions options = new BlobRequestOptions();
+            options.MaximumExecutionTime = AzureStorageCheckpointLeaseManager.StorageMaximumExecutionTime;
+            this.storageClient.DefaultRequestOptions = options;
+            this.eventHubContainer = this.storageClient.GetContainerReference(this.leaseContainerName);
+            this.consumerGroupDirectory = this.eventHubContainer.GetDirectoryReference(this.storageBlobPrefix + this.host.ConsumerGroupName);
+        }
+
         async Task<bool> AcquireLeaseCoreAsync(AzureBlobLease lease)
         {
             CloudBlockBlob leaseBlob = lease.Blob;
             bool retval = true;
             string newLeaseId = Guid.NewGuid().ToString();
             string partitionId = lease.PartitionId;
-        	try
+            try
             {
                 string newToken;
                 await leaseBlob.FetchAttributesAsync().ConfigureAwait(false);
@@ -299,7 +287,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                 else
                 {
                     ProcessorEventSource.Log.AzureStorageManagerInfo(this.host.Id, lease.PartitionId, "Need to AcquireLease");
-                    newToken = await leaseBlob.AcquireLeaseAsync(leaseDuration, newLeaseId).ConfigureAwait(false);
+                    newToken = await leaseBlob.AcquireLeaseAsync(LeaseDuration, newLeaseId).ConfigureAwait(false);
                 }
 
                 lease.Token = newToken;
@@ -307,7 +295,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                 lease.IncrementEpoch(); // Increment epoch each time lease is acquired or stolen by a new host
                 await leaseBlob.UploadTextAsync(JsonConvert.SerializeObject(lease), null, AccessCondition.GenerateLeaseCondition(lease.Token), null, null).ConfigureAwait(false);
             }
-    	    catch (StorageException se)
+            catch (StorageException se)
             {
                 if (WasLeaseLost(partitionId, se))
                 {
@@ -318,8 +306,8 @@ namespace Microsoft.Azure.EventHubs.Processor
                     throw;
                 }
             }
-    	
-    	    return retval;
+        
+            return retval;
         }
 
         public Task<bool> RenewLeaseAsync(Lease lease)
@@ -332,11 +320,11 @@ namespace Microsoft.Azure.EventHubs.Processor
             CloudBlockBlob leaseBlob = lease.Blob;
             bool retval = true;
             string partitionId = lease.PartitionId;
-    	    try
+            try
             {
                 await leaseBlob.RenewLeaseAsync(AccessCondition.GenerateLeaseCondition(lease.Token), this.renewRequestOptions, null).ConfigureAwait(false);
             }
-    	    catch (StorageException se)
+            catch (StorageException se)
             {
                 if (WasLeaseLost(partitionId, se))
                 {
@@ -347,8 +335,8 @@ namespace Microsoft.Azure.EventHubs.Processor
                     throw;
                 }
             }
-    	
- 	        return retval;
+        
+            return retval;
         }
 
         public Task<bool> ReleaseLeaseAsync(Lease lease)
@@ -363,7 +351,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             CloudBlockBlob leaseBlob = lease.Blob;
             bool retval = true;
             string partitionId = lease.PartitionId;
-        	try
+            try
             {
                 string leaseId = lease.Token;
                 AzureBlobLease releasedCopy = new AzureBlobLease(lease)
@@ -374,7 +362,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                 await leaseBlob.UploadTextAsync(JsonConvert.SerializeObject(releasedCopy), null, AccessCondition.GenerateLeaseCondition(leaseId), null, null).ConfigureAwait(false);
                 await leaseBlob.ReleaseLeaseAsync(AccessCondition.GenerateLeaseCondition(leaseId)).ConfigureAwait(false);
             }
-    	    catch (StorageException se)
+            catch (StorageException se)
             {
                 if (WasLeaseLost(partitionId, se))
                 {
@@ -385,8 +373,8 @@ namespace Microsoft.Azure.EventHubs.Processor
                     throw;
                 }
             }
-    	
-        	return retval;
+        
+            return retval;
         }
 
         public Task<bool> UpdateLeaseAsync(Lease lease)
@@ -396,7 +384,7 @@ namespace Microsoft.Azure.EventHubs.Processor
 
         async Task<bool> UpdateLeaseCoreAsync(AzureBlobLease lease)
         {
-    	    if (lease == null)
+            if (lease == null)
             {
                 return false;
             }
@@ -405,35 +393,35 @@ namespace Microsoft.Azure.EventHubs.Processor
             ProcessorEventSource.Log.AzureStorageManagerInfo(this.host.Id, partitionId, "Updating lease");
 
             string token = lease.Token;
-    	    if (string.IsNullOrEmpty(token))
+            if (string.IsNullOrEmpty(token))
             {
                 return false;
             }
-    	
-        	// First, renew the lease to make sure the update will go through.
-    	    if (!await this.RenewLeaseAsync(lease).ConfigureAwait(false))
+        
+            // First, renew the lease to make sure the update will go through.
+            if (!await this.RenewLeaseAsync(lease).ConfigureAwait(false))
             {
                 return false;
             }
 
             CloudBlockBlob leaseBlob = lease.Blob;
-    	    try
+            try
             {
                 string jsonToUpload = JsonConvert.SerializeObject(lease);
                 ProcessorEventSource.Log.AzureStorageManagerInfo(this.host.Id, lease.PartitionId, $"Raw JSON uploading: {jsonToUpload}");
                 await leaseBlob.UploadTextAsync(jsonToUpload, null, AccessCondition.GenerateLeaseCondition(token), null, null).ConfigureAwait(false);
             }
-    	    catch (StorageException se)
-	        {
-	            if (WasLeaseLost(partitionId, se))
+            catch (StorageException se)
+            {
+                if (WasLeaseLost(partitionId, se))
                 {
                     throw new LeaseLostException(lease, se);
                 }
 
                 throw;
-	        }
-    	
-        	return true;
+            }
+        
+            return true;
         }
 
         async Task<AzureBlobLease> DownloadLeaseAsync(string partitionId, CloudBlockBlob blob) // throws StorageException, IOException
@@ -442,8 +430,8 @@ namespace Microsoft.Azure.EventHubs.Processor
 
             ProcessorEventSource.Log.AzureStorageManagerInfo(this.host.Id, partitionId, "Raw JSON downloaded: " + jsonLease);
             AzureBlobLease rehydrated = (AzureBlobLease)JsonConvert.DeserializeObject(jsonLease, typeof(AzureBlobLease));
-    	    AzureBlobLease blobLease = new AzureBlobLease(rehydrated, blob);
-    	    return blobLease;
+            AzureBlobLease blobLease = new AzureBlobLease(rehydrated, blob);
+            return blobLease;
         }
     
         bool WasLeaseLost(string partitionId, StorageException se)
