@@ -13,7 +13,7 @@ function Build-Solution
 
 function Trust-Build
 {
-    "C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.6.1 Tools\x64\sn.exe" -Vr *,*
+    #& 'C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.6.1 Tools\x64\sn.exe' -Vr *,*
 }
 
 function Set-XUnitConfig
@@ -56,8 +56,10 @@ function Deploy-AzureResources
         -and [bool]$env:AppId `
         -and [bool]$env:APPVEYOR_BUILD_NUMBER)
     {
+        Write-Host "Creating Azure resources"
+
         $ErrorActionPreference = 'Stop'
-        Enable-AzureDataCollection | Out-Null
+        Enable-AzureDataCollection -WarningAction SilentlyContinue | Out-Null
         $BuildVersion = ($env:APPVEYOR_BUILD_NUMBER).Replace(".", "")
     
         $env:ResourceGroupName = "eh-dotnet-av-$BuildVersion-rg"
@@ -73,7 +75,8 @@ function Deploy-AzureResources
         # https://docs.microsoft.com/en-us/azure/azure-resource-manager/resource-group-authenticate-service-principal
         Add-AzureRmAccount -Credential $Credentials -ServicePrincipal -TenantId $env:TenantId | Out-Null
  
-        New-AzureRmResourceGroup -Name $env:ResourceGroupName -Location $Location -Force
+        $ResourceGroup = New-AzureRmResourceGroup -Name $env:ResourceGroupName -Location $Location -Force
+        Write-Host ("Resource group name: " + $ResourceGroup.ResourceGroupName)
 
 	    $EventHubName = 'EventHub1'
         $ArmParameters = @{
@@ -91,12 +94,17 @@ function Deploy-AzureResources
            -TemplateParameterObject $ArmParameters `
            -Force
 
+        Write-Host "Event Hubs namespace: $NamespaceName"
+        Write-Host "Storage account name: $StorageAccountName"
+
         $env:EVENTHUBCONNECTIONSTRING = $settings.Outputs.Get_Item("namespaceConnectionString").Value + ";EntityPath=$EventHubName"
         $env:EVENTPROCESSORSTORAGECONNECTIONSTRING = $settings.Outputs.Get_Item("storageAccountConnectionString").Value
+
+        Write-Host "Completed creating Azure resources"
     }
     else
     {
-        Write-Host "Environment Variables not found."
+        Write-Host "No environment variables present. Skipping Azure deployment."
     }
 
     # Remove-AzureRmResourceGroup -Name $ResourceGroupName -Force
@@ -125,6 +133,8 @@ function Delete-AzureResources
 {
     if ([bool]$env:ClientSecret -and [bool]$env:AppId)
     {
+        Write-Host "Deleting Azure resources"
+
         $ErrorActionPreference = 'Stop'
     
         $Password = ConvertTo-SecureString -AsPlainText -Force $env:ClientSecret
@@ -132,7 +142,9 @@ function Delete-AzureResources
             -TypeName System.Management.Automation.PSCredential `
             -ArgumentList $env:AppId, $Password
 
-        Remove-AzureRmResourceGroup -Name $env:ResourceGroupName -WarningAction SilentlyContinue -Force
+        Remove-AzureRmResourceGroup -Name $env:ResourceGroupName -WarningAction SilentlyContinue -Force | Out-Null
+
+        Write-Host "Completed deleting Azure resources"
     }
     else
     {
