@@ -1,48 +1,24 @@
 version: 1.0.{build}
 environment:
-  EVENTHUBCONNECTIONSTRING:
-    secure: aQ2/H108LCoNr+/hSNQWawR1mFoaps7FffvLJ9cEIGsC45bHqVXFkGzi6vDHjUkeTea9TPNrzpGbsfrbC7PFljVgBLiTcLCHOcyYf2zfybR7bEMPyRwMdlMLaxPyry8dFKFMdf5ftW3gzf2XdnsRs8865LpR6tS1wGLZ40HVEzzwhB8U/6MJjGIxqH+JBaY/3GUw7d5pYvZsJbGLxK6aDAM+C1U8iLfULIz67hpm/yw=
-  EVENTPROCESSORSTORAGECONNECTIONSTRING:
-    secure: 6fF17Wv8GKmLry9g039iI987R7ULu3z5XWdo2Q0ygOHr5+JKJNzyJWZUsJpJSoBw7JagCjsD4o+ISHQJDPYBmDKOm19Ub47/bvUJC7EUOF1Y79V7D2gMqIJvTZxlM5lsYbytbhVJO+rSL9VeVf3C4xf5BcQp+jKS1nWIdJIGjKkX1romtrar0Ttf5bo3pWgE2OaM2zoen/zVrZtq8M7QIA==
+  ClientSecret:
+    secure: /8H7C81iNS+gVi7LhJCEOPUlNaa30y4KcY4nw/g2C4HGxOv6SrcroyDvMnqD+5GN
+  TenantId:
+    secure: xohonz/X8PPLOVIdT3ch2C5XeSa30RwR6NuXFh4e85svXT1mJNGGO1HQEGxCk3wp
+  AppId:
+    secure: c+H140oRJfHtmFHZxSRLWocv5AU0q33X7kgMcTcXxhJvtVhk2WAk1dRQkSN+SyoA
 build_script:
-- cmd: >-
-    dotnet restore
-    
-    dotnet build src/Microsoft.Azure.EventHubs/project.json
-    
-    dotnet build src/Microsoft.Azure.EventHubs.Processor/project.json
-    
-    dotnet build test/Microsoft.Azure.EventHubs.UnitTests/project.json
-    
-    dotnet build test/Microsoft.Azure.EventHubs.Processor.UnitTests/project.json
+- ps: >-
+	.\build\BuildSolution.ps1
 before_test:
 - cmd: >-
     "C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.6.1 Tools\x64\sn.exe" -Vr *,*
 - ps: >-
-    $xUnitConfig = "
-    {
-        `"parallelizeAssembly`": false,
-        `"parallelizeTestCollections`": false
-    }"
-
-    New-Item test/Microsoft.Azure.EventHubs.UnitTests/bin/debug/netcoreapp1.0/xunit.runner.json -type file -force -value $xUnitConfig
-    
-    New-Item test/Microsoft.Azure.EventHubs.UnitTests/bin/Debug/net46/win7-x64/xunit.runner.json -type file -force -value $xUnitConfig
-
-    New-Item test/Microsoft.Azure.EventHubs.Processor.UnitTests/bin/debug/netcoreapp1.0/xunit.runner.json -type file -force -value $xUnitConfig
-
-    New-Item test/Microsoft.Azure.EventHubs.Processor.UnitTests/bin/Debug/net46/win7-x64/xunit.runner.json -type file -force -value $xUnitConfig
+	.\build\SetXunitConfig.ps1
+		
+	.\build\DeployAzureResources.ps1
 test_script:
 - ps: >-
-    if ([bool]$env:EVENTHUBCONNECTIONSTRING -and [bool]$env:EVENTPROCESSORSTORAGECONNECTIONSTRING)
-    {
-        Write-Host "Running unit tests."
-
-        dotnet test test/Microsoft.Azure.EventHubs.UnitTests/project.json
-    
-        dotnet test test/Microsoft.Azure.EventHubs.Processor.UnitTests/project.json
-    }
-    else
-    {
-        Write-Host "No environment variables present. Skipping unit tests."
-    }
+	.\build\RunTests.ps1
+after_test:
+- ps: >-
+	.\build\DeleteAzureResources.ps1
