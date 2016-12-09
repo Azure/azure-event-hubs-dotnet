@@ -87,7 +87,7 @@ namespace Microsoft.Azure.EventHubs
             var retryAfter = this.OnGetNextRetryInterval(clientId, lastException, remainingTime, baseWaitTime);
 
             // Don't retry if remaining time isn't enough.
-            if (retryAfter == null || 
+            if (retryAfter == null ||
                 remainingTime.TotalSeconds < Math.Max(retryAfter.Value.TotalSeconds, ClientConstants.TimerToleranceInSeconds))
             {
                 return null;

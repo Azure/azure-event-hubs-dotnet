@@ -10,12 +10,12 @@ namespace Microsoft.Azure.EventHubs.Processor
     class AzureBlobLease : Lease
     {
         // ctor needed for deserialization
-
         internal AzureBlobLease()
         {
         }
 
-        internal AzureBlobLease(string partitionId, CloudBlockBlob blob) : base(partitionId)
+        internal AzureBlobLease(string partitionId, CloudBlockBlob blob)
+            : base(partitionId)
         {
             this.Blob = blob;
         }
@@ -28,7 +28,8 @@ namespace Microsoft.Azure.EventHubs.Processor
             this.Blob = source.Blob;
         }
 
-        internal AzureBlobLease(AzureBlobLease source, CloudBlockBlob blob) : base(source)
+        internal AzureBlobLease(AzureBlobLease source, CloudBlockBlob blob)
+            : base(source)
         {
             this.Offset = source.Offset;
             this.SequenceNumber = source.SequenceNumber;
@@ -36,7 +37,6 @@ namespace Microsoft.Azure.EventHubs.Processor
         }
 
         // do not serialize
-
         [JsonIgnore]
         public CloudBlockBlob Blob { get; }
 

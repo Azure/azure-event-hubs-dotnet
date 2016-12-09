@@ -16,19 +16,20 @@ namespace Microsoft.Azure.EventHubs.Processor
 
     sealed class AzureStorageCheckpointLeaseManager : ICheckpointManager, ILeaseManager
     {
-        EventProcessorHost host;
+        const int LeaseRenewIntervalInSeconds = 30;
+        const int LeaseDurationInSeconds = 30;
+
+        static readonly TimeSpan StorageMaximumExecutionTime = TimeSpan.FromMinutes(2);
+        readonly BlobRequestOptions renewRequestOptions = new BlobRequestOptions();
+
         readonly string storageConnectionString;
+        EventProcessorHost host;
         string leaseContainerName = null;
         string storageBlobPrefix;
 
         CloudBlobClient storageClient;
         CloudBlobContainer eventHubContainer;
         CloudBlobDirectory consumerGroupDirectory;
-
-        static readonly TimeSpan storageMaximumExecutionTime = TimeSpan.FromMinutes(2);
-        static readonly TimeSpan leaseDuration = TimeSpan.FromSeconds(30);
-        static readonly TimeSpan leaseRenewInterval = TimeSpan.FromSeconds(10);
-        readonly BlobRequestOptions renewRequestOptions = new BlobRequestOptions();
 
         internal AzureStorageCheckpointLeaseManager(string storageConnectionString, string leaseContainerName, string storageBlobPrefix)
         {
@@ -50,27 +51,11 @@ namespace Microsoft.Azure.EventHubs.Processor
 
             // Convert all-whitespace prefix to empty string. Convert null prefix to empty string.
             // Then the rest of the code only has one case to worry about.
-            this.storageBlobPrefix = (storageBlobPrefix != null) ? storageBlobPrefix.Trim() : "";
+            this.storageBlobPrefix = (storageBlobPrefix != null) ? storageBlobPrefix.Trim() : string.Empty;
         }
 
-        // The EventProcessorHost can't pass itself to the AzureStorageCheckpointLeaseManager constructor
-        // because it is still being constructed. Do other initialization here also because it might throw and
-        // hence we don't want it in the constructor.
-        internal void Initialize(EventProcessorHost host) // throws InvalidKeyException, URISyntaxException, StorageException
-        {
-            this.host = host;
-            this.storageClient = CloudStorageAccount.Parse(this.storageConnectionString).CreateCloudBlobClient();
-            BlobRequestOptions options = new BlobRequestOptions();
-            options.MaximumExecutionTime = AzureStorageCheckpointLeaseManager.storageMaximumExecutionTime;
-            this.storageClient.DefaultRequestOptions = options;
-            this.eventHubContainer = this.storageClient.GetContainerReference(this.leaseContainerName);
-            this.consumerGroupDirectory = this.eventHubContainer.GetDirectoryReference(this.storageBlobPrefix + this.host.ConsumerGroupName);
-        }
-
-        //
         // In this implementation, checkpoints are data that's actually in the lease blob, so checkpoint operations
         // turn into lease operations under the covers.
-        //
         public Task<bool> CheckpointStoreExistsAsync()
         {
             return LeaseStoreExistsAsync();
@@ -124,21 +109,10 @@ namespace Microsoft.Azure.EventHubs.Processor
         //
         // Lease operations.
         //
-        public TimeSpan LeaseRenewInterval
-        {
-            get
-            {
-                return AzureStorageCheckpointLeaseManager.leaseRenewInterval;
-            }
-        }
+        public TimeSpan LeaseRenewInterval => TimeSpan.FromSeconds(LeaseRenewIntervalInSeconds);
 
-        public TimeSpan LeaseDuration
-        {
-            get
-            {
-                return AzureStorageCheckpointLeaseManager.leaseDuration;
-            }
-        }
+        public TimeSpan LeaseDuration => TimeSpan.FromSeconds(LeaseDurationInSeconds);
+
 
         public Task<bool> LeaseStoreExistsAsync()
         {
@@ -281,6 +255,20 @@ namespace Microsoft.Azure.EventHubs.Processor
             return AcquireLeaseCoreAsync((AzureBlobLease)lease);
         }
 
+        // The EventProcessorHost can't pass itself to the AzureStorageCheckpointLeaseManager constructor
+        // because it is still being constructed. Do other initialization here also because it might throw and
+        // hence we don't want it in the constructor.
+        internal void Initialize(EventProcessorHost host) // throws InvalidKeyException, URISyntaxException, StorageException
+        {
+            this.host = host;
+            this.storageClient = CloudStorageAccount.Parse(this.storageConnectionString).CreateCloudBlobClient();
+            BlobRequestOptions options = new BlobRequestOptions();
+            options.MaximumExecutionTime = AzureStorageCheckpointLeaseManager.StorageMaximumExecutionTime;
+            this.storageClient.DefaultRequestOptions = options;
+            this.eventHubContainer = this.storageClient.GetContainerReference(this.leaseContainerName);
+            this.consumerGroupDirectory = this.eventHubContainer.GetDirectoryReference(this.storageBlobPrefix + this.host.ConsumerGroupName);
+        }
+
         async Task<bool> AcquireLeaseCoreAsync(AzureBlobLease lease)
         {
             CloudBlockBlob leaseBlob = lease.Blob;
@@ -299,7 +287,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                 else
                 {
                     ProcessorEventSource.Log.AzureStorageManagerInfo(this.host.Id, lease.PartitionId, "Need to AcquireLease");
-                    newToken = await leaseBlob.AcquireLeaseAsync(leaseDuration, newLeaseId).ConfigureAwait(false);
+                    newToken = await leaseBlob.AcquireLeaseAsync(LeaseDuration, newLeaseId).ConfigureAwait(false);
                 }
 
                 lease.Token = newToken;

@@ -37,7 +37,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                     this.partitionIds = runtimeInfo.PartitionIds.ToList();
                 }
                 catch (Exception e)
-        	    {
+                {
                     throw new EventProcessorConfigurationException("Encountered error while fetching the list of EventHub PartitionIds", e);
                 }
                 finally
@@ -95,46 +95,57 @@ namespace Microsoft.Azure.EventHubs.Processor
                 await this.RemoveAllPumpsAsync(CloseReason.Shutdown).ConfigureAwait(false);
             }
             catch (Exception e)
-	    	{
+            {
                 ProcessorEventSource.Log.EventProcessorHostError(this.host.Id, "Failure during shutdown", e.ToString());
                 this.host.EventProcessorOptions.NotifyOfException(this.host.HostName, "N/A", e, EventProcessorHostActionStrings.PartitionManagerCleanup);
             }
         }
 
-        async Task InitializeStoresAsync() //throws InterruptedException, ExecutionException, ExceptionWithAction
+        async Task InitializeStoresAsync() // throws InterruptedException, ExecutionException, ExceptionWithAction
         {
             // Make sure the lease store exists
             ILeaseManager leaseManager = this.host.LeaseManager;
             if (!await leaseManager.LeaseStoreExistsAsync().ConfigureAwait(false))
             {
-                await RetryAsync(() => leaseManager.CreateLeaseStoreIfNotExistsAsync(), null, "Failure creating lease store for this Event Hub, retrying",
-        			    "Out of retries creating lease store for this Event Hub", EventProcessorHostActionStrings.CreatingLeaseStore, 5).ConfigureAwait(false);
+                await this.RetryAsync(
+                    () => leaseManager.CreateLeaseStoreIfNotExistsAsync(),
+                    null,
+                    "Failure creating lease store for this Event Hub, retrying",
+                    "Out of retries creating lease store for this Event Hub",
+                    EventProcessorHostActionStrings.CreatingLeaseStore,
+                    5).ConfigureAwait(false);
             }
             // else
-            //	lease store already exists, no work needed
-        
+            // lease store already exists, no work needed
+
             // Now make sure the leases exist
             foreach (string id in await this.GetPartitionIdsAsync().ConfigureAwait(false))
             {
-                await RetryAsync(() => leaseManager.CreateLeaseIfNotExistsAsync(id), id, "Failure creating lease for partition, retrying",
-        			    "Out of retries creating lease for partition", EventProcessorHostActionStrings.CreatingLease, 5).ConfigureAwait(false);
+                await this.RetryAsync(
+                    () => leaseManager.CreateLeaseIfNotExistsAsync(id),
+                    id,
+                    "Failure creating lease for partition, retrying",
+                    "Out of retries creating lease for partition",
+                    EventProcessorHostActionStrings.CreatingLease,
+                    5).ConfigureAwait(false);
             }
 
             // Make sure the checkpoint store exists
             ICheckpointManager checkpointManager = this.host.CheckpointManager;
             if (!await checkpointManager.CheckpointStoreExistsAsync().ConfigureAwait(false))
             {
-                await RetryAsync(() => checkpointManager.CreateCheckpointStoreIfNotExistsAsync(), null, "Failure creating checkpoint store for this Event Hub, retrying",
-        			    "Out of retries creating checkpoint store for this Event Hub", EventProcessorHostActionStrings.CreatingCheckpointStore, 5).ConfigureAwait(false);
+                await this.RetryAsync(() => checkpointManager.CreateCheckpointStoreIfNotExistsAsync(), null, "Failure creating checkpoint store for this Event Hub, retrying",
+                        "Out of retries creating checkpoint store for this Event Hub", EventProcessorHostActionStrings.CreatingCheckpointStore, 5).ConfigureAwait(false);
             }
+
             // else
-            //	checkpoint store already exists, no work needed
+            // checkpoint store already exists, no work needed
         
             // Now make sure the checkpoints exist
             foreach (string id in await this.GetPartitionIdsAsync().ConfigureAwait(false))
             {
                 await RetryAsync(() => checkpointManager.CreateCheckpointIfNotExistsAsync(id), id, "Failure creating checkpoint for partition, retrying",
-        			    "Out of retries creating checkpoint blob for partition", EventProcessorHostActionStrings.CreatingCheckpoint, 5).ConfigureAwait(false);
+                        "Out of retries creating checkpoint blob for partition", EventProcessorHostActionStrings.CreatingCheckpoint, 5).ConfigureAwait(false);
             }
         }
     
@@ -142,8 +153,8 @@ namespace Microsoft.Azure.EventHubs.Processor
         async Task RetryAsync(Func<Task> lambda, string partitionId, string retryMessage, string finalFailureMessage, string action, int maxRetries) // throws ExceptionWithAction
         {
             bool createdOK = false;
-    	    int retryCount = 0;
-    	    do
+            int retryCount = 0;
+            do
             {
                 try
                 {
@@ -182,7 +193,7 @@ namespace Microsoft.Azure.EventHubs.Processor
 
         async Task RunLoopAsync(CancellationToken cancellationToken) // throws Exception, ExceptionWithAction
         {
-    	    while (!cancellationToken.IsCancellationRequested)
+            while (!cancellationToken.IsCancellationRequested)
             {
                 ILeaseManager leaseManager = this.host.LeaseManager;
                 Dictionary<string, Lease> allLeases = new Dictionary<string, Lease>();
