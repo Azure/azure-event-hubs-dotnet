@@ -6,19 +6,22 @@ environment:
     secure: xohonz/X8PPLOVIdT3ch2C5XeSa30RwR6NuXFh4e85svXT1mJNGGO1HQEGxCk3wp
   AppId:
     secure: c+H140oRJfHtmFHZxSRLWocv5AU0q33X7kgMcTcXxhJvtVhk2WAk1dRQkSN+SyoA
+before_build:
+-ps: >-
+    . .\build\AppveyorBuildFunctions.ps1
 build_script:
 - ps: >-
-    .\build\BuildSolution.ps1
+    Build-Solution
 before_test:
-- cmd: >-
-    "C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.6.1 Tools\x64\sn.exe" -Vr *,*
 - ps: >-
-    .\build\SetXunitConfig.ps1
+    Trust-Build
+	
+	Set-XUnitConfig
 
-    .\build\DeployAzureResources.ps1
+    Deploy-AzureResources
 test_script:
 - ps: >-
-    .\build\RunTests.ps1
+    Run-UnitTests
 after_test:
 - ps: >-
-    .\build\DeleteAzureResources.ps1
+    Delete-AzureResources
