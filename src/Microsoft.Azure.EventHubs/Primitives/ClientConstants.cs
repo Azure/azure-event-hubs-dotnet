@@ -5,7 +5,7 @@ namespace Microsoft.Azure.EventHubs
 {
     static class ClientConstants
     {
-        public const int TimerToleranceInSeconds = 1;
+        public const int TimerToleranceInSeconds = 5;
         public const int ServerBusyBaseSleepTimeInSecs = 4;
     }
 }
