@@ -84,7 +84,16 @@ namespace Microsoft.Azure.EventHubs
                 }
             }
 
-            return this.OnGetNextRetryInterval(clientId, lastException, remainingTime, baseWaitTime);
+            var retryAfter = this.OnGetNextRetryInterval(clientId, lastException, remainingTime, baseWaitTime);
+
+            // Don't retry if remaining time isn't enough.
+            if (retryAfter == null || 
+                remainingTime.TotalSeconds < Math.Max(retryAfter.Value.TotalSeconds, ClientConstants.TimerToleranceInSeconds))
+            {
+                return null;
+            }
+
+            return retryAfter;
         }
 
         protected int GetRetryCount(string clientId)

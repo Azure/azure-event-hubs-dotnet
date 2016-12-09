@@ -54,16 +54,6 @@ namespace Microsoft.Azure.EventHubs.Processor
             return this.partitionIds;
         }
 
-        // Testability hook: called after stores are initialized.
-        protected virtual void OnInitializeComplete()
-        {
-        }
-
-        // Testability hook: called at the end of the main loop after all partition checks/stealing is complete.
-        protected virtual void OnPartitionCheckComplete()
-        {
-        }
-
         public async Task StartAsync()
         {
             if (this.runTask != null)
@@ -72,7 +62,6 @@ namespace Microsoft.Azure.EventHubs.Processor
             }
 
             await this.InitializeStoresAsync().ConfigureAwait(false);
-            this.OnInitializeComplete();
 
             this.runTask = this.RunAsync();
         }
@@ -243,7 +232,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                     }
                     catch (Exception e)
                     {
-                        ProcessorEventSource.Log.EventProcessorHostWarning(this.host.Id, "Failure getting/acquiring/renewing lease, skipping", e.ToString());
+                        ProcessorEventSource.Log.EventProcessorHostWarning(this.host.Id, "Failure during getting/acquiring/renewing lease, skipping", e.ToString());
                         this.host.EventProcessorOptions.NotifyOfException(this.host.HostName, "N/A", e, EventProcessorHostActionStrings.CheckingLeases);
                     }
                 }
@@ -272,7 +261,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                             }
                             catch (Exception e)
                             {
-                                ProcessorEventSource.Log.EventProcessorHostError(this.host.Id, "Exception stealing lease for partition " + stealee.PartitionId, e.ToString());
+                                ProcessorEventSource.Log.EventProcessorHostError(this.host.Id, "Exception during stealing lease for partition " + stealee.PartitionId, e.ToString());
                                 this.host.EventProcessorOptions.NotifyOfException(this.host.HostName, stealee.PartitionId, e, EventProcessorHostActionStrings.StealingLease);
                             }
                         }
@@ -282,19 +271,25 @@ namespace Microsoft.Azure.EventHubs.Processor
                 // Update pump with new state of leases.
                 foreach (string partitionId in allLeases.Keys)
                 {
-                    Lease updatedLease = allLeases[partitionId];
-                    ProcessorEventSource.Log.EventProcessorHostInfo(this.host.Id, $"Lease on partition {updatedLease.PartitionId} owned by {updatedLease.Owner}");
-                    if (updatedLease.Owner == this.host.HostName)
+                    try
                     {
-                        await this.AddPumpAsync(partitionId, updatedLease).ConfigureAwait(false);
+                        Lease updatedLease = allLeases[partitionId];
+                        ProcessorEventSource.Log.EventProcessorHostInfo(this.host.Id, $"Lease on partition {updatedLease.PartitionId} owned by {updatedLease.Owner}");
+                        if (updatedLease.Owner == this.host.HostName)
+                        {
+                            await this.CheckAndAddPumpAsync(partitionId, updatedLease).ConfigureAwait(false);
+                        }
+                        else
+                        {
+                            await this.RemovePumpAsync(partitionId, CloseReason.LeaseLost).ConfigureAwait(false);
+                        }
                     }
-                    else
+                    catch (Exception e)
                     {
-                        await this.RemovePumpAsync(partitionId, CloseReason.LeaseLost).ConfigureAwait(false);
+                        ProcessorEventSource.Log.EventProcessorHostError(this.host.Id, $"Exception during add/remove pump on partition {partitionId}", e.Message);
+                        this.host.EventProcessorOptions.NotifyOfException(this.host.HostName, partitionId, e, EventProcessorHostActionStrings.PartitionPumpManagement);
                     }
                 }
-
-                this.OnPartitionCheckComplete();
 
                 try
                 {
@@ -307,7 +302,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             }
         }
 
-        async Task AddPumpAsync(string partitionId, Lease lease)
+        async Task CheckAndAddPumpAsync(string partitionId, Lease lease)
         {
             PartitionPump capturedPump;
             if (this.partitionPumps.TryGetValue(partitionId, out capturedPump))
@@ -315,9 +310,8 @@ namespace Microsoft.Azure.EventHubs.Processor
                 // There already is a pump. Make sure the pump is working and replace the lease.
                 if (capturedPump.PumpStatus == PartitionPumpStatus.Errored || capturedPump.IsClosing)
                 {
-                    // The existing pump is bad. Remove it and create a new one.
+                    // The existing pump is bad. Remove it.
                     await RemovePumpAsync(partitionId, CloseReason.Shutdown).ConfigureAwait(false);
-                    await CreateNewPumpAsync(partitionId, lease).ConfigureAwait(false);
                 }
                 else
                 {

@@ -541,6 +541,11 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
         {
             // Send and receive single message so we can find out offset of the last message.
             var lastOffsets = await DiscoverEndOfStream();
+            Log("Discovered last event offsets on each partition as below:");
+            foreach (var lastEvent in lastOffsets)
+            {
+                Log($"Partition {lastEvent.Key}: {lastEvent.Value.Item1}");
+            }
 
             // Use a randomly generated container name so that initial offset provider will be respected.
             var eventProcessorHost = new EventProcessorHost(
@@ -720,8 +725,10 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
                 epo = new EventProcessorOptions
                 {
                     ReceiveTimeout = TimeSpan.FromSeconds(15),
-                    MaxBatchSize = 100
+                    MaxBatchSize = 100                    
                 };
+
+                epo.SetExceptionHandler(TestEventProcessorFactory.ErrorNotificationHandler);
             }
 
             try
@@ -815,8 +822,8 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
         {
             var log = string.Format("{0} {1}", DateTime.Now.TimeOfDay, message);
             output.WriteLine(log);
-            Debug.WriteLine(message);
-            Console.WriteLine(message);
+            Debug.WriteLine(log);
+            Console.WriteLine(log);
         }
     }
 }
