@@ -7,16 +7,16 @@ environment:
   AppId:
     secure: c+H140oRJfHtmFHZxSRLWocv5AU0q33X7kgMcTcXxhJvtVhk2WAk1dRQkSN+SyoA
 before_build:
--ps: >-
+- ps: >-
     . .\build\AppveyorBuildFunctions.ps1
 build_script:
 - ps: >-
     Build-Solution
 before_test:
 - ps: >-
-    Trust-Build
-	
-	Set-XUnitConfig
+    Add-StrongNameEntry
+
+    Set-XUnitConfig
 
     Deploy-AzureResources
 test_script:
