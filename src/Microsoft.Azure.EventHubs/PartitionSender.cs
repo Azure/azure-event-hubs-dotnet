@@ -71,7 +71,7 @@ namespace Microsoft.Azure.EventHubs
         /// <code>
         /// EventHubClient client = EventHubClient.Create("__connectionString__");
         /// PartitionSender senderToPartitionOne = client.CreatePartitionSender("1");
-        ///         
+        ///
         /// while (true)
         /// {
         ///     var events = new List&lt;EventData&gt;();
@@ -85,10 +85,10 @@ namespace Microsoft.Azure.EventHubs
         ///         sendEvent.Properties = applicationProperties;
         ///         events.Add(sendEvent);
         ///     }
-        ///         
+        ///
         ///     await senderToPartitionOne.SendAsync(events);
         ///     Console.WriteLine("Sent Batch... Size: {0}", events.Count);
-        ///     
+        ///
         /// }
         /// </code>
         /// </example>

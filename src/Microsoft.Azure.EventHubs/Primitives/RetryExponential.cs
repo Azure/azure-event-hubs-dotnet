@@ -50,7 +50,7 @@ namespace Microsoft.Azure.EventHubs
                 return null;
             }
 
-            TimeSpan retryAfter = this.minimumBackoff.Add(TimeSpan.FromMilliseconds(nextRetryIntervalSeconds * 1000 + nextRetryIntervalMilliseconds));
+            TimeSpan retryAfter = this.minimumBackoff.Add(TimeSpan.FromMilliseconds((nextRetryIntervalSeconds * 1000) + nextRetryIntervalMilliseconds));
             retryAfter = retryAfter.Add(TimeSpan.FromSeconds(baseWaitTimeSecs));
 
             return retryAfter;

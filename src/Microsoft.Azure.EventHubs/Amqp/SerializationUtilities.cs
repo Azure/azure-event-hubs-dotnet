@@ -5,7 +5,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
 {
     using System;
     using System.Collections.Generic;
-    
+
     // WARNING: Consult filter engine owner before modifying this enum.
     // Introducing a new member here has impact to filtering engine in data type precedence and data conversion.
     // ALWASYS insert new types before Unknown!
@@ -20,7 +20,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
     class SerializationUtilities
     {
-        readonly static Dictionary<Type, PropertyValueType> typeToIntMap = new Dictionary<Type, PropertyValueType>
+        static readonly Dictionary<Type, PropertyValueType> TypeToIntMap = new Dictionary<Type, PropertyValueType>
         {
             { typeof(byte), PropertyValueType.Byte },
             { typeof(sbyte), PropertyValueType.SByte },
@@ -52,7 +52,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
             }
 
             PropertyValueType typeId;
-            if (typeToIntMap.TryGetValue(value.GetType(), out typeId))
+            if (TypeToIntMap.TryGetValue(value.GetType(), out typeId))
             {
                 return typeId;
             }

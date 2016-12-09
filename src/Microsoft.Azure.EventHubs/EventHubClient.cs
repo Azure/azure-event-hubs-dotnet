@@ -3,10 +3,10 @@
 
 namespace Microsoft.Azure.EventHubs
 {
-    using Amqp;
     using System;
     using System.Collections.Generic;
     using System.Threading.Tasks;
+    using Microsoft.Azure.EventHubs.Amqp;
 
     /// <summary>
     /// Anchor class - all EventHub client operations start here.
@@ -60,19 +60,6 @@ namespace Microsoft.Azure.EventHubs
             return Create(csb);
         }
 
-        static EventHubClient Create(EventHubsConnectionStringBuilder csb)
-        {
-            if (string.IsNullOrWhiteSpace(csb.EntityPath))
-            {
-                throw Fx.Exception.ArgumentNullOrWhiteSpace(nameof(csb.EntityPath));
-            }
-
-            EventHubsEventSource.Log.EventHubClientCreateStart(csb.Endpoint.Host, csb.EntityPath);
-            EventHubClient eventHubClient = new AmqpEventHubClient(csb);
-            EventHubsEventSource.Log.EventHubClientCreateStop(eventHubClient.ClientId);
-            return eventHubClient;
-        }
-
         public sealed override async Task CloseAsync()
         {
             EventHubsEventSource.Log.ClientCloseStart(this.ClientId);
@@ -117,10 +104,10 @@ namespace Microsoft.Azure.EventHubs
         /// <summary>
         /// Send a batch of <see cref="EventData"/> to EventHub. The sent EventData will land on any arbitrarily chosen EventHub partition.
         /// This is the most recommended way to send to EventHub.
-        /// 
+        ///
         /// <para>There are 3 ways to send to EventHubs, to understand this particular type of send refer to the overload <see cref="SendAsync(EventData)"/>, which is used to send single <see cref="EventData"/>.
         /// Use this overload if you need to send a batch of <see cref="EventData"/>.</para>
-        /// 
+        ///
         /// Sending a batch of <see cref="EventData"/>'s is useful in the following cases:
         /// <para>i.    Efficient send - sending a batch of <see cref="EventData"/> maximizes the overall throughput by optimally using the number of sessions created to EventHub's service.</para>
         /// <para>ii.   Send multiple <see cref="EventData"/>'s in a Transaction. To acheieve ACID properties, the Gateway Service will forward all <see cref="EventData"/>'s in the batch to a single EventHub partition.</para>
@@ -142,7 +129,7 @@ namespace Microsoft.Azure.EventHubs
         ///         sendEvent.Properties = applicationProperties;
         ///         events.Add(sendEvent);
         ///     }
-        ///         
+        ///
         ///     await client.SendAsync(events);
         ///     Console.WriteLine("Sent Batch... Size: {0}", events.Count);
         /// }
@@ -169,7 +156,7 @@ namespace Microsoft.Azure.EventHubs
         ///  <para>a)  There is a need for correlation of events based on Sender instance; The sender can generate a UniqueId and set it as partitionKey - which on the received Message can be used for correlation</para>
         ///  <para>b) The client wants to take control of distribution of data across partitions.</para>
         ///  Multiple PartitionKeys could be mapped to one Partition. EventHubs service uses a proprietary Hash algorithm to map the PartitionKey to a PartitionId.
-        ///  Using this type of send (Sending using a specific partitionKey) could sometimes result in partitions which are not evenly distributed. 
+        ///  Using this type of send (Sending using a specific partitionKey) could sometimes result in partitions which are not evenly distributed.
         /// </summary>
         /// <param name="eventData">the <see cref="EventData"/> to be sent.</param>
         /// <param name="partitionKey">the partitionKey will be hashed to determine the partitionId to send the EventData to. On the Received message this can be accessed at <see cref="EventData.SystemProperties.PartitionKey"/>.</param>
@@ -246,9 +233,9 @@ namespace Microsoft.Azure.EventHubs
         /// <summary>
         /// Create a receiver for a specific EventHub partition from the specific consumer group.
         /// <para/>
-        /// NOTE: There can be a maximum number of receivers that can run in parallel per ConsumerGroup per Partition. 
-        /// The limit is enforced by the Event Hub service - current limit is 5 receivers in parallel. Having multiple receivers 
-        /// reading from offsets that are far apart on the same consumer group / partition combo will have significant performance Impact. 
+        /// NOTE: There can be a maximum number of receivers that can run in parallel per ConsumerGroup per Partition.
+        /// The limit is enforced by the Event Hub service - current limit is 5 receivers in parallel. Having multiple receivers
+        /// reading from offsets that are far apart on the same consumer group / partition combo will have significant performance Impact.
         /// </summary>
         /// <param name="consumerGroupName">the consumer group name that this receiver should be grouped under.</param>
         /// <param name="partitionId">the partition Id that the receiver belongs to. All data received will be from this partition only.</param>
@@ -323,7 +310,7 @@ namespace Microsoft.Azure.EventHubs
         /// <summary>
         ///  Create a Epoch based EventHub receiver with given partition id and start receiving from the beginning of the partition stream.
         ///  The receiver is created for a specific EventHub Partition from the specific consumer group.
-        ///  <para/> 
+        ///  <para/>
         ///  It is important to pay attention to the following when creating epoch based receiver:
         ///  <para/>- Ownership enforcement: Once you created an epoch based receiver, you cannot create a non-epoch receiver to the same consumerGroup-Partition combo until all receivers to the combo are closed.
         ///  <para/>- Ownership stealing: If a receiver with higher epoch value is created for a consumerGroup-Partition combo, any older epoch receiver to that combo will be force closed.
@@ -438,5 +425,18 @@ namespace Microsoft.Azure.EventHubs
         protected abstract Task<EventHubPartitionRuntimeInformation> OnGetPartitionRuntimeInformationAsync(string partitionId);
 
         protected abstract Task OnCloseAsync();
+
+        static EventHubClient Create(EventHubsConnectionStringBuilder csb)
+        {
+            if (string.IsNullOrWhiteSpace(csb.EntityPath))
+            {
+                throw Fx.Exception.ArgumentNullOrWhiteSpace(nameof(csb.EntityPath));
+            }
+
+            EventHubsEventSource.Log.EventHubClientCreateStart(csb.Endpoint.Host, csb.EntityPath);
+            EventHubClient eventHubClient = new AmqpEventHubClient(csb);
+            EventHubsEventSource.Log.EventHubClientCreateStop(eventHubClient.ClientId);
+            return eventHubClient;
+        }
     }
 }

@@ -52,8 +52,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
             try
             {
-                //DNX_TODO: MessagingClientEtwProvider.Provider.EventWriteAmqpManageLink("Before SendToken", thisPtr.activeClientLink.LinkObject, string.Empty);
-
+                // DNX_TODO: MessagingClientEtwProvider.Provider.EventWriteAmqpManageLink("Before SendToken", thisPtr.activeClientLink.LinkObject, string.Empty);
                 AmqpCbsLink cbsLink = thisPtr.activeClientLink.Connection.Extensions.Find<AmqpCbsLink>();
                 if (cbsLink == null)
                 {
@@ -63,12 +62,12 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 var validTo = await cbsLink.SendTokenAsync(
                     thisPtr.eventHubClient.CbsTokenProvider,
                     thisPtr.eventHubClient.ConnectionStringBuilder.Endpoint,
-                    thisPtr.activeClientLink.Audience, thisPtr.activeClientLink.EndpointUri,
+                    thisPtr.activeClientLink.Audience,
+                    thisPtr.activeClientLink.EndpointUri,
                     thisPtr.activeClientLink.RequiredClaims,
                     ActiveClientLinkManager.SendTokenTimeout).ConfigureAwait(false);
 
-                //DNX_TODO: MessagingClientEtwProvider.Provider.EventWriteAmqpManageLink("After SendToken", thisPtr.activeClientLink.LinkObject, validTo.ToString(CultureInfo.InvariantCulture));
-
+                // DNX_TODO: MessagingClientEtwProvider.Provider.EventWriteAmqpManageLink("After SendToken", thisPtr.activeClientLink.LinkObject, validTo.ToString(CultureInfo.InvariantCulture));
                 lock (thisPtr.syncRoot)
                 {
                     thisPtr.activeClientLink.AuthorizationValidToUtc = validTo;
@@ -77,13 +76,13 @@ namespace Microsoft.Azure.EventHubs.Amqp
             }
             catch
             {
-                //DNX_TODO: 
-                //if (Fx.IsFatal(exception))
-                //{
-                //    throw;
-                //}
+                // DNX_TODO:
+                ////if (Fx.IsFatal(exception))
+                ////{
+                ////    throw;
+                ////}
 
-                //DNX_TODO: MessagingClientEtwProvider.Provider.EventWriteAmqpLogError(thisPtr.activeClientLink.LinkObject, "BeginSendToken", exception.Message);
+                // DNX_TODO: MessagingClientEtwProvider.Provider.EventWriteAmqpLogError(thisPtr.activeClientLink.LinkObject, "BeginSendToken", exception.Message);
 
                 // failed to refresh token, no need to do anything since the server will shut the link itself
                 thisPtr.CancelValidityTimer();
@@ -103,7 +102,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
             this.validityTimer.Change(interval, Timeout.InfiniteTimeSpan);
 
-            //DNX_TODO: MessagingClientEtwProvider.Provider.EventWriteAmqpManageLink("SetTimer", this.activeClientLink.LinkObject, interval.ToString("c", CultureInfo.InvariantCulture));
+            // DNX_TODO: MessagingClientEtwProvider.Provider.EventWriteAmqpManageLink("SetTimer", this.activeClientLink.LinkObject, interval.ToString("c", CultureInfo.InvariantCulture));
         }
 
         void OnLinkClosed(object sender, EventArgs e)

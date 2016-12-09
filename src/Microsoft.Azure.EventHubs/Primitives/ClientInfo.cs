@@ -10,39 +10,42 @@ namespace Microsoft.Azure.EventHubs
 
     static class ClientInfo
     {
-        static readonly string product;
-        static readonly string version;
-        static readonly string framework;
-        static readonly string platform;
+        static readonly string Product;
+        static readonly string Version;
+        static readonly string Framework;
+        static readonly string Platform;
 
         static ClientInfo()
         {
             try
             {
                 Assembly assembly = typeof(ClientInfo).GetTypeInfo().Assembly;
-                product = GetAssemblyAttributeValue<AssemblyProductAttribute>(assembly, p => p.Product);
-                version = GetAssemblyAttributeValue<AssemblyFileVersionAttribute>(assembly, v => v.Version);
-                framework = GetAssemblyAttributeValue<TargetFrameworkAttribute>(assembly, f => f.FrameworkName);
+                Product = GetAssemblyAttributeValue<AssemblyProductAttribute>(assembly, p => p.Product);
+                Version = GetAssemblyAttributeValue<AssemblyFileVersionAttribute>(assembly, v => v.Version);
+                Framework = GetAssemblyAttributeValue<TargetFrameworkAttribute>(assembly, f => f.FrameworkName);
 #if NETSTANDARD1_3
-                platform = System.Runtime.InteropServices.RuntimeInformation.OSDescription;
+                Platform = System.Runtime.InteropServices.RuntimeInformation.OSDescription;
 #elif UAP10_0
-                platform = "UAP";
+                Platform = "UAP";
 #elif NET451
-                platform = Environment.OSVersion.VersionString;
+                Platform = Environment.OSVersion.VersionString;
 #endif
             }
-            catch { }
+            catch
+            {
+            }
         }
 
         public static void Add(AmqpConnectionSettings settings)
         {
-            settings.AddProperty("product", product);
-            settings.AddProperty("version", version);
-            settings.AddProperty("framework", framework);
-            settings.AddProperty("platform", platform);
+            settings.AddProperty("product", Product);
+            settings.AddProperty("version", Version);
+            settings.AddProperty("framework", Framework);
+            settings.AddProperty("platform", Platform);
         }
 
-        static string GetAssemblyAttributeValue<T>(Assembly assembly, Func<T, string> getter) where T : Attribute
+        static string GetAssemblyAttributeValue<T>(Assembly assembly, Func<T, string> getter)
+            where T : Attribute
         {
             var attribute = assembly.GetCustomAttribute(typeof(T)) as T;
             return attribute == null ? null : getter(attribute);

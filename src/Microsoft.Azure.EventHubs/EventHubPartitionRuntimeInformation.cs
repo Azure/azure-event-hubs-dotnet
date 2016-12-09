@@ -7,8 +7,6 @@ namespace Microsoft.Azure.EventHubs
 
     public class EventHubPartitionRuntimeInformation
     {
-        internal string Type { get; set; }
-
         /// <summary>Gets the path of the event hub.</summary>
         /// <value>The path of the event hub.</value>
         public string Path { get; set; }
@@ -32,5 +30,7 @@ namespace Microsoft.Azure.EventHubs
         /// <summary>Gets the enqueued UTC time of the last event.</summary>
         /// <value>The enqueued time of the last event.</value>
         public DateTime LastEnqueuedTimeUtc { get; set; }
+
+        internal string Type { get; set; }
     }
 }

@@ -12,8 +12,8 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
     class AmqpEventDataSender : EventDataSender
     {
-        int deliveryCount;
         readonly ActiveClientLinkManager clientLinkManager;
+        int deliveryCount;
 
         internal AmqpEventDataSender(AmqpEventHubClient eventHubClient, string partitionId)
             : base(eventHubClient, partitionId)
@@ -97,7 +97,8 @@ namespace Microsoft.Azure.EventHubs.Amqp
                         }
                     }
                 }
-            } while (shouldRetry);
+            }
+            while (shouldRetry);
         }
 
         ArraySegment<byte> GetNextDeliveryTag()

@@ -15,12 +15,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
     static class AmqpMessageConverter
     {
-        const SectionFlag ClientAmqpPropsSetOnSendToEventHub =
-            SectionFlag.ApplicationProperties |
-            SectionFlag.MessageAnnotations |
-            SectionFlag.DeliveryAnnotations |
-            SectionFlag.Properties;
-
         public const string EnqueuedTimeUtcName = "x-opt-enqueued-time";
         public const string SequenceNumberName = "x-opt-sequence-number";
         public const string OffsetName = "x-opt-offset";
@@ -30,6 +24,12 @@ namespace Microsoft.Azure.EventHubs.Amqp
         public const string TimeSpanName = AmqpConstants.Vendor + ":timespan";
         public const string UriName = AmqpConstants.Vendor + ":uri";
         public const string DateTimeOffsetName = AmqpConstants.Vendor + ":datetime-offset";
+
+        const SectionFlag ClientAmqpPropsSetOnSendToEventHub =
+            SectionFlag.ApplicationProperties |
+            SectionFlag.MessageAnnotations |
+            SectionFlag.DeliveryAnnotations |
+            SectionFlag.Properties;
 
         public static EventData AmqpMessageToEventData(AmqpMessage amqpMessage)
         {
@@ -46,7 +46,9 @@ namespace Microsoft.Azure.EventHubs.Amqp
         public static AmqpMessage EventDatasToAmqpMessage(IEnumerable<EventData> eventDatas, string partitionKey, bool batchable)
         {
             if (eventDatas == null)
+            {
                 throw new ArgumentNullException(nameof(eventDatas));
+            }
 
             AmqpMessage returnMessage = null;
             var dataCount = eventDatas.Count();
@@ -58,7 +60,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 {
                     if (firstEvent == null)
                     {
-                        //this.ProcessFaultInjectionInfo(data);
+                        ////this.ProcessFaultInjectionInfo(data);
                         firstEvent = data;
                     }
 
@@ -80,10 +82,12 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 returnMessage.MessageFormat = AmqpConstants.AmqpBatchedMessageFormat;
                 UpdateAmqpMessageHeadersAndProperties(returnMessage, null, partitionKey, firstEvent, copyUserProperties: false);
             }
-            else if (dataCount == 1) // ??? can't be null
+
+            // ??? can't be null
+            else if (dataCount == 1)
             {
                 var data = eventDatas.First();
-                //this.ProcessFaultInjectionInfo(data);
+                ////this.ProcessFaultInjectionInfo(data);
                 returnMessage = EventDataToAmqpMessage(data, partitionKey);
                 returnMessage.Batchable = batchable;
                 if ((returnMessage.Sections & ClientAmqpPropsSetOnSendToEventHub) == 0 &&
@@ -150,8 +154,8 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
         private static void UpdateEventDataHeaderAndProperties(AmqpMessage amqpMessage, EventData data)
         {
-            //Fx.AssertAndThrow(amqpMessage.DeliveryTag != null, "AmqpMessage should always contain delivery tag.");
-            //data.DeliveryTag = amqpMessage.DeliveryTag;
+            ////Fx.AssertAndThrow(amqpMessage.DeliveryTag != null, "AmqpMessage should always contain delivery tag.");
+            ////data.DeliveryTag = amqpMessage.DeliveryTag;
 
             SectionFlag sections = amqpMessage.Sections;
             if ((sections & SectionFlag.MessageAnnotations) != 0)
@@ -172,22 +176,22 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     }
                 }
 
-                // Custom override for EventHub scenario. Note that these 
+                // Custom override for EventHub scenario. Note that these
                 // "can" override existing properties, which is intentional as
                 // in the EH these system properties take precedence over Amqp data.
-                //string publisher;
-                //if (amqpMessage.MessageAnnotations.Map.TryGetValue<string>(PublisherName, out publisher))
-                //{
-                //    data.Publisher = publisher;
-                //}
+                ////string publisher;
+                ////if (amqpMessage.MessageAnnotations.Map.TryGetValue<string>(PublisherName, out publisher))
+                ////{
+                ////    data.Publisher = publisher;
+                ////}
 
-//#if DEBUG
-//                short partitionId;
-//                if (amqpMessage.MessageAnnotations.Map.TryGetValue<short>(PartitionIdName, out partitionId))
-//                {
-//                    data.PartitionId = partitionId;
-//                }
-//#endif
+////#if DEBUG
+////                short partitionId;
+////                if (amqpMessage.MessageAnnotations.Map.TryGetValue<short>(PartitionIdName, out partitionId))
+////                {
+////                    data.PartitionId = partitionId;
+////                }
+////#endif
 
                 if (data.SystemProperties == null)
                 {
@@ -236,23 +240,23 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 }
             }
 
-            //if ((sections & SectionFlag.Properties) != 0)
-            //{
-            //    var properties = amqpMessage.Properties;
-            //    AddIfTrue(data.SystemProperties, properties, p => p.MessageId != null, Properties.MessageIdName, p => p.MessageId.ToString());
-            //    AddIfTrue(data.SystemProperties, properties, p => p.UserId.Array != null, Properties.UserIdName, p => p.UserId);
-            //    AddIfTrue(data.SystemProperties, properties, p => p.To != null, Properties.ToName, p => p.To.ToString());
-            //    AddIfTrue(data.SystemProperties, properties, p => p.Subject != null, Properties.SubjectName, p => p.Subject);
-            //    AddIfTrue(data.SystemProperties, properties, p => p.ReplyTo != null, Properties.ReplyToName, p => p.ReplyTo.ToString());
-            //    AddIfTrue(data.SystemProperties, properties, p => p.CorrelationId != null, Properties.CorrelationIdName, p => p.CorrelationId.ToString());
-            //    AddIfTrue(data.SystemProperties, properties, p => p.ContentType.Value != null, Properties.ContentTypeName, p => p.ContentType.ToString());
-            //    AddIfTrue(data.SystemProperties, properties, p => p.ContentEncoding.Value != null, Properties.ContentEncodingName, p => p.ContentEncoding.ToString());
-            //    AddIfTrue(data.SystemProperties, properties, p => p.AbsoluteExpiryTime != null, Properties.AbsoluteExpiryTimeName, p => p.AbsoluteExpiryTime);
-            //    AddIfTrue(data.SystemProperties, properties, p => p.CreationTime != null, Properties.CreationTimeName, p => p.CreationTime);
-            //    AddIfTrue(data.SystemProperties, properties, p => p.GroupId != null, Properties.GroupIdName, p => p.GroupId);
-            //    AddIfTrue(data.SystemProperties, properties, p => p.GroupSequence != null, Properties.GroupSequenceName, p => p.GroupSequence);
-            //    AddIfTrue(data.SystemProperties, properties, p => p.ReplyToGroupId != null, Properties.ReplyToGroupIdName, p => p.ReplyToGroupId);
-            //}
+            ////if ((sections & SectionFlag.Properties) != 0)
+            ////{
+            ////    var properties = amqpMessage.Properties;
+            ////    AddIfTrue(data.SystemProperties, properties, p => p.MessageId != null, Properties.MessageIdName, p => p.MessageId.ToString());
+            ////    AddIfTrue(data.SystemProperties, properties, p => p.UserId.Array != null, Properties.UserIdName, p => p.UserId);
+            ////    AddIfTrue(data.SystemProperties, properties, p => p.To != null, Properties.ToName, p => p.To.ToString());
+            ////    AddIfTrue(data.SystemProperties, properties, p => p.Subject != null, Properties.SubjectName, p => p.Subject);
+            ////    AddIfTrue(data.SystemProperties, properties, p => p.ReplyTo != null, Properties.ReplyToName, p => p.ReplyTo.ToString());
+            ////    AddIfTrue(data.SystemProperties, properties, p => p.CorrelationId != null, Properties.CorrelationIdName, p => p.CorrelationId.ToString());
+            ////    AddIfTrue(data.SystemProperties, properties, p => p.ContentType.Value != null, Properties.ContentTypeName, p => p.ContentType.ToString());
+            ////    AddIfTrue(data.SystemProperties, properties, p => p.ContentEncoding.Value != null, Properties.ContentEncodingName, p => p.ContentEncoding.ToString());
+            ////    AddIfTrue(data.SystemProperties, properties, p => p.AbsoluteExpiryTime != null, Properties.AbsoluteExpiryTimeName, p => p.AbsoluteExpiryTime);
+            ////    AddIfTrue(data.SystemProperties, properties, p => p.CreationTime != null, Properties.CreationTimeName, p => p.CreationTime);
+            ////    AddIfTrue(data.SystemProperties, properties, p => p.GroupId != null, Properties.GroupIdName, p => p.GroupId);
+            ////    AddIfTrue(data.SystemProperties, properties, p => p.GroupSequence != null, Properties.GroupSequenceName, p => p.GroupSequence);
+            ////    AddIfTrue(data.SystemProperties, properties, p => p.ReplyToGroupId != null, Properties.ReplyToGroupIdName, p => p.ReplyToGroupId);
+            ////}
         }
 
         static ArraySegment<byte> StreamToBytes(Stream stream)
@@ -429,7 +433,5 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
             return netObject != null;
         }
-
-
     }
 }

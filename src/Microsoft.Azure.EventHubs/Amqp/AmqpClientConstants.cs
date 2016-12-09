@@ -9,6 +9,38 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
     class AmqpClientConstants
     {
+        // AMQP Management Operation
+        public const string ManagementAddress = "$management";
+        public const string EntityNameKey = "name";
+        public const string PartitionNameKey = "partition";
+        public const string ManagementOperationKey = "operation";
+        public const string ReadOperationValue = "READ";
+        public const string ManagementEntityTypeKey = "type";
+        public const string ManagementSecurityTokenKey = "security_token";
+        public const string ManagementEventHubEntityTypeValue = AmqpConstants.Vendor + ":eventhub";
+        public const string ManagementPartitionEntityTypeValue = AmqpConstants.Vendor + ":partition";
+        public const string ManagementEventHubCreatedAt = "created_at";
+        public const string ManagementEventHubPartitionCount = "partition_count";
+        public const string ManagementEventHubPartitionIds = "partition_ids";
+        public const string ResponseStatusCode = "status-code";
+        public const string ResponseErrorCondition = "error-condition";
+        public const string ResponseStatusDescription = "status-description";
+
+        // Filters
+        public const string FilterOffsetPartName = "amqp.annotation.x-opt-offset";
+        public const string FilterOffset = FilterOffsetPartName + " > ";
+        public const string FilterInclusiveOffset = FilterOffsetPartName + " >= ";
+        public const string FilterOffsetFormatString = FilterOffset + "'{0}'";
+        public const string FilterInclusiveOffsetFormatString = FilterInclusiveOffset + "'{0}'";
+        public const string FilterReceivedAtPartNameV1 = "amqp.annotation.x-opt-enqueuedtimeutc";
+        public const string FilterReceivedAtPartNameV2 = "amqp.annotation.x-opt-enqueued-time";
+        public const string FilterReceivedAt = FilterReceivedAtPartNameV2 + " > ";
+        public const string FilterReceivedAtFormatString = FilterReceivedAt + "{0}";
+        public static readonly AmqpSymbol SessionFilterName = AmqpConstants.Vendor + ":session-filter";
+        public static readonly AmqpSymbol MessageReceiptsFilterName = AmqpConstants.Vendor + ":message-receipts-filter";
+        public static readonly AmqpSymbol ClientSideCursorFilterName = AmqpConstants.Vendor + ":client-side-filter";
+        public static readonly TimeSpan ClientMinimumTokenRefreshInterval = TimeSpan.FromMinutes(4);
+
         // Properties
         public static readonly AmqpSymbol AttachEpoch = AmqpConstants.Vendor + ":epoch";
         public static readonly AmqpSymbol BatchFlushIntervalName = AmqpConstants.Vendor + ":batch-flush-interval";
@@ -35,40 +67,5 @@ namespace Microsoft.Azure.EventHubs.Amqp
         public static readonly AmqpSymbol EntityAlreadyExistsError = AmqpConstants.Vendor + ":entity-already-exists";
         public static readonly AmqpSymbol RelayNotFoundError = AmqpConstants.Vendor + ":relay-not-found";
         public static readonly AmqpSymbol MessageNotFoundError = AmqpConstants.Vendor + ":message-not-found";
-
-        // Filters
-        public static readonly AmqpSymbol SessionFilterName = AmqpConstants.Vendor + ":session-filter";
-        public static readonly AmqpSymbol MessageReceiptsFilterName = AmqpConstants.Vendor + ":message-receipts-filter";
-        public static readonly AmqpSymbol ClientSideCursorFilterName = AmqpConstants.Vendor + ":client-side-filter";
-        public static readonly TimeSpan ClientMinimumTokenRefreshInterval = TimeSpan.FromMinutes(4);
-        public const string FilterOffsetPartName = "amqp.annotation.x-opt-offset";
-        public const string FilterOffset = FilterOffsetPartName + " > ";
-        public const string FilterInclusiveOffset = FilterOffsetPartName + " >= ";
-        public const string FilterOffsetFormatString = FilterOffset + "'{0}'";
-        public const string FilterInclusiveOffsetFormatString = FilterInclusiveOffset + "'{0}'";
-        public const string FilterReceivedAtPartNameV1 = "amqp.annotation.x-opt-enqueuedtimeutc";
-        public const string FilterReceivedAtPartNameV2 = "amqp.annotation.x-opt-enqueued-time";
-        public const string FilterReceivedAt = FilterReceivedAtPartNameV2 + " > ";
-        public const string FilterReceivedAtFormatString = FilterReceivedAt + "{0}";
-
-        // AMQP Management Operation
-        public const string ManagementAddress = "$management";
-        public const string EntityNameKey = "name";
-        public const string PartitionNameKey = "partition";
-        public const string ManagementOperationKey = "operation";
-        public const string ReadOperationValue = "READ";
-        public const string ManagementEntityTypeKey = "type";
-        public const string ManagementSecurityTokenKey = "security_token";
-        public const string ManagementEventHubEntityTypeValue = AmqpConstants.Vendor + ":eventhub";
-        public const string ManagementPartitionEntityTypeValue = AmqpConstants.Vendor + ":partition";
-        public const string ManagementEventHubCreatedAt = "created_at";
-        public const string ManagementEventHubPartitionCount = "partition_count";
-        public const string ManagementEventHubPartitionIds = "partition_ids";
-
-        public const string ResponseStatusCode = "status-code";
-        public const string ResponseErrorCondition = "error-condition";
-        public const string ResponseStatusDescription = "status-description";
-
-
     }
 }

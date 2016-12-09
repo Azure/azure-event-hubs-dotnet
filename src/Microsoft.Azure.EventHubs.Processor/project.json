@@ -8,7 +8,8 @@
     "warningsAsErrors": true,
     "delaySign": true,
     "publicSign": false,
-    "keyFile": "../../build/MSSharedLibSN1024.snk"
+    "keyFile": "../../build/MSSharedLibSN1024.snk",
+    "additionalArguments": [ "/ruleset:./../../build/StyleCop.Analyzers.ruleset", "/additionalfile:./../../build/stylecop.json" ]
   },
 
   "packOptions": {
@@ -21,8 +22,12 @@
   },
 
   "dependencies": {
+    "StyleCop.Analyzers": {
+      "version": "1.0.0",
+      "type": "build"
+    },
     "Microsoft.Azure.EventHubs": {
-      "target": "project" 
+      "target": "project"
     },
     "Newtonsoft.Json": "9.0.1",
     "WindowsAzure.Storage": "7.2.1"

@@ -7,9 +7,9 @@ namespace Microsoft.Azure.EventHubs.Amqp
     using System.Linq;
     using System.Net;
     using System.Threading.Tasks;
-    using Microsoft.Azure.Amqp.Sasl;
     using Microsoft.Azure.Amqp;
     using Microsoft.Azure.Amqp.Framing;
+    using Microsoft.Azure.Amqp.Sasl;
     using Microsoft.Azure.Amqp.Transport;
     using Microsoft.Azure.EventHubs.Amqp.Management;
 
@@ -35,120 +35,11 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
         internal string ContainerId { get; }
 
+        internal TokenProvider TokenProvider { get; }
+
         Version AmqpVersion { get; }
 
         uint MaxFrameSize { get; }
-
-        internal TokenProvider TokenProvider { get; }
-
-        internal override EventDataSender OnCreateEventSender(string partitionId)
-        {
-            return new AmqpEventDataSender(this, partitionId);
-        }
-
-        protected override PartitionReceiver OnCreateReceiver(
-            string consumerGroupName, string partitionId, string startOffset, bool offsetInclusive, DateTime? startTime, long? epoch)
-        {
-            return new AmqpPartitionReceiver(
-                this, consumerGroupName, partitionId, startOffset, offsetInclusive, startTime, epoch);
-        }
-
-        protected override Task OnCloseAsync()
-        {
-            // Closing the Connection will also close all Links associated with it.
-            return this.ConnectionManager.CloseAsync();
-        }
-
-        internal async Task<ActiveClientRequestResponseLink> OpenRequestResponseLinkAsync(
-            string type, string address, MessagingEntityType? entityType, string[] requiredClaims, TimeSpan timeout)
-        {
-            var timeoutHelper = new TimeoutHelper(timeout, true);
-            AmqpSession session = null;
-            try
-            {
-                // Don't need to get token for namespace scope operations, included in request
-                bool isNamespaceScope = address.Equals(AmqpClientConstants.ManagementAddress, StringComparison.OrdinalIgnoreCase);
-
-                var connection = await this.ConnectionManager.GetOrCreateAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
-
-                var sessionSettings = new AmqpSessionSettings { Properties = new Fields() };
-                session = connection.CreateSession(sessionSettings);
-
-                await session.OpenAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
-
-                var linkSettings = new AmqpLinkSettings();
-                linkSettings.AddProperty(AmqpClientConstants.TimeoutName, (uint)timeoutHelper.RemainingTime().TotalMilliseconds);
-                if (entityType != null)
-                {
-                    linkSettings.AddProperty(AmqpClientConstants.EntityTypeName, (int)entityType.Value);
-                }
-
-                // Create the link
-                var link = new RequestResponseAmqpLink(type, session, address, linkSettings.Properties);
-
-                var authorizationValidToUtc = DateTime.MaxValue;
-
-                if (!isNamespaceScope)
-                {
-                    // TODO: Get Entity level token here
-                }
-
-                await link.OpenAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
-
-                // Redirected scenario requires entityPath as the audience, otherwise we 
-                // should always use the full EndpointUri as audience.
-                return new ActiveClientRequestResponseLink(
-                    link,
-                    this.ConnectionStringBuilder.Endpoint.AbsoluteUri, // audience
-                    this.ConnectionStringBuilder.Endpoint.AbsoluteUri, // endpointUri
-                    requiredClaims,
-                    false,
-                    authorizationValidToUtc);
-            }
-            catch (Exception)
-            {
-                // Aborting the session will cleanup the link as well.
-                session?.Abort();
-
-                throw;
-            }
-        }
-
-        protected override async Task<EventHubRuntimeInformation> OnGetRuntimeInformationAsync()
-        {
-            var serviceClient = this.GetManagementServiceClient();
-            var eventHubRuntimeInformation = await serviceClient.GetRuntimeInformationAsync().ConfigureAwait(false);
-
-            return eventHubRuntimeInformation;
-        }
-
-        protected override async Task<EventHubPartitionRuntimeInformation> OnGetPartitionRuntimeInformationAsync(string partitionId)
-        {
-            var serviceClient = this.GetManagementServiceClient();
-            var eventHubPartitionRuntimeInformation = await serviceClient.
-                GetPartitionRuntimeInformationAsync(partitionId).ConfigureAwait(false);
-
-            return eventHubPartitionRuntimeInformation;
-        }
-
-        internal AmqpServiceClient GetManagementServiceClient()
-        {
-            if (this.managementServiceClient == null)
-            {
-                lock (ThisLock)
-                {
-                    if (this.managementServiceClient == null)
-                    {
-                        this.managementServiceClient = new AmqpServiceClient(this, AmqpClientConstants.ManagementAddress);
-                    }
-
-                    Fx.Assert(string.Equals(this.managementServiceClient.Address, AmqpClientConstants.ManagementAddress, StringComparison.OrdinalIgnoreCase),
-                        "The address should match the address of managementServiceClient");
-                }
-            }
-
-            return this.managementServiceClient;
-        }
 
         internal static AmqpSettings CreateAmqpSettings(
             Version amqpVersion,
@@ -204,6 +95,119 @@ namespace Microsoft.Azure.EventHubs.Amqp
             settings.TransportProviders.Add(amqpProvider);
 
             return settings;
+        }
+
+        internal override EventDataSender OnCreateEventSender(string partitionId)
+        {
+            return new AmqpEventDataSender(this, partitionId);
+        }
+
+        internal async Task<ActiveClientRequestResponseLink> OpenRequestResponseLinkAsync(
+            string type, string address, MessagingEntityType? entityType, string[] requiredClaims, TimeSpan timeout)
+        {
+            var timeoutHelper = new TimeoutHelper(timeout, true);
+            AmqpSession session = null;
+            try
+            {
+                // Don't need to get token for namespace scope operations, included in request
+                bool isNamespaceScope = address.Equals(AmqpClientConstants.ManagementAddress, StringComparison.OrdinalIgnoreCase);
+
+                var connection = await this.ConnectionManager.GetOrCreateAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
+
+                var sessionSettings = new AmqpSessionSettings { Properties = new Fields() };
+                session = connection.CreateSession(sessionSettings);
+
+                await session.OpenAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
+
+                var linkSettings = new AmqpLinkSettings();
+                linkSettings.AddProperty(AmqpClientConstants.TimeoutName, (uint)timeoutHelper.RemainingTime().TotalMilliseconds);
+                if (entityType != null)
+                {
+                    linkSettings.AddProperty(AmqpClientConstants.EntityTypeName, (int)entityType.Value);
+                }
+
+                // Create the link
+                var link = new RequestResponseAmqpLink(type, session, address, linkSettings.Properties);
+
+                var authorizationValidToUtc = DateTime.MaxValue;
+
+                if (!isNamespaceScope)
+                {
+                    // TODO: Get Entity level token here
+                }
+
+                await link.OpenAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
+
+                // Redirected scenario requires entityPath as the audience, otherwise we
+                // should always use the full EndpointUri as audience.
+                return new ActiveClientRequestResponseLink(
+                    link,
+                    this.ConnectionStringBuilder.Endpoint.AbsoluteUri, // audience
+                    this.ConnectionStringBuilder.Endpoint.AbsoluteUri, // endpointUri
+                    requiredClaims,
+                    false,
+                    authorizationValidToUtc);
+            }
+            catch (Exception)
+            {
+                // Aborting the session will cleanup the link as well.
+                session?.Abort();
+
+                throw;
+            }
+        }
+
+        internal AmqpServiceClient GetManagementServiceClient()
+        {
+            if (this.managementServiceClient == null)
+            {
+                lock (this.ThisLock)
+                {
+                    if (this.managementServiceClient == null)
+                    {
+                        this.managementServiceClient = new AmqpServiceClient(this, AmqpClientConstants.ManagementAddress);
+                    }
+
+                    Fx.Assert(
+                        string.Equals(
+                            this.managementServiceClient.Address,
+                            AmqpClientConstants.ManagementAddress,
+                            StringComparison.OrdinalIgnoreCase),
+                        "The address should match the address of managementServiceClient");
+                }
+            }
+
+            return this.managementServiceClient;
+        }
+
+        protected override PartitionReceiver OnCreateReceiver(
+            string consumerGroupName, string partitionId, string startOffset, bool offsetInclusive, DateTime? startTime, long? epoch)
+        {
+            return new AmqpPartitionReceiver(
+                this, consumerGroupName, partitionId, startOffset, offsetInclusive, startTime, epoch);
+        }
+
+        protected override Task OnCloseAsync()
+        {
+            // Closing the Connection will also close all Links associated with it.
+            return this.ConnectionManager.CloseAsync();
+        }
+
+        protected override async Task<EventHubRuntimeInformation> OnGetRuntimeInformationAsync()
+        {
+            var serviceClient = this.GetManagementServiceClient();
+            var eventHubRuntimeInformation = await serviceClient.GetRuntimeInformationAsync().ConfigureAwait(false);
+
+            return eventHubRuntimeInformation;
+        }
+
+        protected override async Task<EventHubPartitionRuntimeInformation> OnGetPartitionRuntimeInformationAsync(string partitionId)
+        {
+            var serviceClient = this.GetManagementServiceClient();
+            var eventHubPartitionRuntimeInformation = await serviceClient.
+                GetPartitionRuntimeInformationAsync(partitionId).ConfigureAwait(false);
+
+            return eventHubPartitionRuntimeInformation;
         }
 
         static TransportSettings CreateTcpTransportSettings(

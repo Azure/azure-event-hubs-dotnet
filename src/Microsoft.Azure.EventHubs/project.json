@@ -1,44 +1,49 @@
 ﻿{
-  "version": "0.0.4-preview",
-  "title": "Microsoft.Azure.EventHubs",
-  "description": "Microsoft.Azure.EventHubs Class Library",
-  "authors": [ "Microsoft" ],
+	"version": "0.0.4-preview",
+	"title": "Microsoft.Azure.EventHubs",
+	"description": "Microsoft.Azure.EventHubs Class Library",
+	"authors": [ "Microsoft" ],
 
-  "buildOptions": {
-    "warningsAsErrors": true,
-    "delaySign": true,
-    "publicSign": false,
-    "keyFile": "../../build/MSSharedLibSN1024.snk"
-  },
+	"buildOptions": {
+		"warningsAsErrors": true,
+		"delaySign": true,
+		"publicSign": false,
+		"keyFile": "../../build/MSSharedLibSN1024.snk",
+		"additionalArguments": [ "/ruleset:./../../build/StyleCop.Analyzers.ruleset", "/additionalfile:./../../build/stylecop.json" ]
+	},
 
-  "packOptions": {
-    "tags": [ "Azure", "Event Hubs", "EventHubs", ".NET", "AMQP", "IoT" ],
-    "projectUrl": "https://github.com/Azure/azure-event-hubs-dotnet",
-    "licenseUrl": "https://raw.githubusercontent.com/Azure/azure-event-hubs-dotnet/master/license.txt",
-    "iconUrl": "https://raw.githubusercontent.com/Azure/azure-event-hubs-dotnet/master/event-hubs.png",
-    "releaseNotes": "https://github.com/Azure/azure-event-hubs-dotnet/releases",
-    "requireLicenseAcceptance": true
-  },
+	"packOptions": {
+		"tags": [ "Azure", "Event Hubs", "EventHubs", ".NET", "AMQP", "IoT" ],
+		"projectUrl": "https://github.com/Azure/azure-event-hubs-dotnet",
+		"licenseUrl": "https://raw.githubusercontent.com/Azure/azure-event-hubs-dotnet/master/license.txt",
+		"iconUrl": "https://raw.githubusercontent.com/Azure/azure-event-hubs-dotnet/master/event-hubs.png",
+		"releaseNotes": "https://github.com/Azure/azure-event-hubs-dotnet/releases",
+		"requireLicenseAcceptance": true
+	},
 
-  "dependencies": {
-    "Microsoft.Azure.Amqp": "2.0.2"
-  },
+	"dependencies": {
+		"StyleCop.Analyzers": {
+			"version": "1.0.0",
+			"type": "build"
+		},
+		"Microsoft.Azure.Amqp": "2.0.2"
+	},
 
-  "frameworks": {
-    "uap10.0": {
-      "dependencies": {
-        "Microsoft.NETCore.UniversalWindowsPlatform": "5.2.2",
-      }
-    },
-    "net451": {
-    },
-    "netstandard1.3": {
-      "imports": "dnxcore50",
-      "dependencies": {
-        "NETStandard.Library": "1.6.0",
-        "System.Reflection.TypeExtensions": "4.1.0",
-        "System.Runtime.Serialization.Primitives": "4.1.1"
-      }
-    }
-  }
+	"frameworks": {
+		"uap10.0": {
+			"dependencies": {
+				"Microsoft.NETCore.UniversalWindowsPlatform": "5.2.2",
+			}
+		},
+		"net451": {
+		},
+		"netstandard1.3": {
+			"imports": "dnxcore50",
+			"dependencies": {
+				"NETStandard.Library": "1.6.0",
+				"System.Reflection.TypeExtensions": "4.1.0",
+				"System.Runtime.Serialization.Primitives": "4.1.1"
+			}
+		}
+	}
 }
