@@ -11,11 +11,6 @@ function Build-Solution
     Write-Host "Building complete"
 }
 
-function Add-StrongNameEntry
-{
-    &'C:\Program Files (x86)\Microsoft SDKs\Windows\v10.0A\bin\NETFX 4.6.1 Tools\x64\sn.exe' -Vr *,*
-}
-
 function Set-XUnitConfig
 {
     Write-Host "Writing Xunit config for single threading"
