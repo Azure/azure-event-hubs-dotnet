@@ -16,6 +16,10 @@ Azure Event Hubs is a highly scalable publish-subscribe service that can ingest 
 
 Refer to the [online documentation](https://azure.microsoft.com/services/event-hubs/) to learn more about Event Hubs in general.
 
+## How to provide feedback
+
+See our [Contribution Guidelines](./.github/CONTRIBUTING.md).
+
 ## Overview
 
 The .NET client library for Azure Event Hubs allows for both sending events to and receiving events from an Azure Event Hub. 
@@ -57,19 +61,3 @@ In order to run the unit tests, you will need to do the following:
 <a href="https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FAzure%2Fazure-event-hubs-dotnet%2Fmaster%2Ftemplates%2Fazuredeploy.json" target="_blank">
     <img src="http://azuredeploy.net/deploybutton.png"/>
 </a>
-
-## How to provide feedback
-
-First, if you experience any issues with the runtime behavior of the Azure Event Hubs service, please consider filing a support request
-right away. Your options for [getting support are enumerated here](https://azure.microsoft.com/support/options/). In the Azure portal, 
-you can file a support request from the "Help and support" menu in the upper right hand corner of the page.   
-
-If you find issues in this library or have suggestions for improvement of code or documentation, [you can file an issue in the project's 
-GitHub repository](https://github.com/Azure/azure-event-hubs-dotnet/issues). Issues related to runtime behavior of the service, such as 
-sporadic exceptions or apparent service-side performance or reliability issues can not be handled here.
-
-Generally, if you want to discuss Azure Event Hubs or this client library with the community and the maintainers, you can turn to 
-[stackoverflow.com under the #azure-eventhub tag](http://stackoverflow.com/questions/tagged/azure-eventhub) or the 
-[MSDN Service Bus Forum](https://social.msdn.microsoft.com/Forums/en-US/home?forum=servbus). 
-
-This project has adopted the [Microsoft Open Source Code of Conduct](https://opensource.microsoft.com/codeofconduct/). For more information see the [Code of Conduct FAQ](https://opensource.microsoft.com/codeofconduct/faq/) or contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additional questions or comments.
