@@ -472,7 +472,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             return retval;
         }
 
-        CloudBlockBlob GetBlockBlobReference(CloudBlobDirectory consumerGroupDirectory, string partitionId)
+        CloudBlockBlob GetBlockBlobReference(string partitionId)
         {
             CloudBlockBlob leaseBlob = this.consumerGroupDirectory.GetBlockBlobReference(partitionId);
 
