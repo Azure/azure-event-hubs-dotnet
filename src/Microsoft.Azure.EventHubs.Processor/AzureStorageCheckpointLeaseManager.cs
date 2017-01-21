@@ -476,8 +476,10 @@ namespace Microsoft.Azure.EventHubs.Processor
         {
             CloudBlockBlob leaseBlob = this.consumerGroupDirectory.GetBlockBlobReference(partitionId);
 
-            // GetBlockBlobReference creates a new ServiceClient thus reset options.
-            // We need to override it here once more.
+            // GetBlockBlobReference creates a new ServiceClient thus resets options.
+            // Because of this we lose settings like MaximumExecutionTime on the client.
+            // Until storage addresses the issue we need to override it here once more.
+            // Tracking bug: https://github.com/Azure/azure-storage-net/issues/398
             leaseBlob.ServiceClient.DefaultRequestOptions = this.storageClient.DefaultRequestOptions;
 
             return leaseBlob;
