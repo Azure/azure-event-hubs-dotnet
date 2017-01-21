@@ -206,7 +206,8 @@ namespace Microsoft.Azure.EventHubs.Processor
         {
     	    AzureBlobLease retval = null;
 
-            CloudBlockBlob leaseBlob = this.consumerGroupDirectory.GetBlockBlobReference(partitionId);
+            CloudBlockBlob leaseBlob = GetBlockBlobReference(this.consumerGroupDirectory, partitionId);
+
             if (await leaseBlob.ExistsAsync().ConfigureAwait(false))
 		    {
                 retval = await DownloadLeaseAsync(partitionId, leaseBlob).ConfigureAwait(false);
@@ -232,7 +233,7 @@ namespace Microsoft.Azure.EventHubs.Processor
         	AzureBlobLease returnLease;
     	    try
     	    {
-    		    CloudBlockBlob leaseBlob = this.consumerGroupDirectory.GetBlockBlobReference(partitionId);
+                CloudBlockBlob leaseBlob = GetBlockBlobReference(this.consumerGroupDirectory, partitionId);
                 returnLease = new AzureBlobLease(partitionId, leaseBlob);
                 string jsonLease = JsonConvert.SerializeObject(returnLease);
 
@@ -469,6 +470,17 @@ namespace Microsoft.Azure.EventHubs.Processor
                 }
             }
             return retval;
+        }
+
+        CloudBlockBlob GetBlockBlobReference(CloudBlobDirectory consumerGroupDirectory, string partitionId)
+        {
+            CloudBlockBlob leaseBlob = this.consumerGroupDirectory.GetBlockBlobReference(partitionId);
+
+            // GetBlockBlobReference creates a new ServiceClient thus reset options.
+            // We need to override it here once more.
+            leaseBlob.ServiceClient.DefaultRequestOptions = this.storageClient.DefaultRequestOptions;
+
+            return leaseBlob;
         }
     }
 }

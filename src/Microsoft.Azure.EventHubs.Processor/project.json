@@ -23,7 +23,7 @@
       "target": "project" 
     },
     "Newtonsoft.Json": "9.0.1",
-    "WindowsAzure.Storage": "7.2.1"
+    "WindowsAzure.Storage": "8.0.1"
   },
 
   "frameworks": {
