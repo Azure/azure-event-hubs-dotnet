@@ -206,7 +206,7 @@ namespace Microsoft.Azure.EventHubs.Processor
         {
     	    AzureBlobLease retval = null;
 
-            CloudBlockBlob leaseBlob = GetBlockBlobReference(this.consumerGroupDirectory, partitionId);
+            CloudBlockBlob leaseBlob = GetBlockBlobReference(partitionId);
 
             if (await leaseBlob.ExistsAsync().ConfigureAwait(false))
 		    {
@@ -233,7 +233,7 @@ namespace Microsoft.Azure.EventHubs.Processor
         	AzureBlobLease returnLease;
     	    try
     	    {
-                CloudBlockBlob leaseBlob = GetBlockBlobReference(this.consumerGroupDirectory, partitionId);
+                CloudBlockBlob leaseBlob = GetBlockBlobReference(partitionId);
                 returnLease = new AzureBlobLease(partitionId, leaseBlob);
                 string jsonLease = JsonConvert.SerializeObject(returnLease);
 
