@@ -206,7 +206,8 @@ namespace Microsoft.Azure.EventHubs.Processor
         {
     	    AzureBlobLease retval = null;
 
-            CloudBlockBlob leaseBlob = this.consumerGroupDirectory.GetBlockBlobReference(partitionId);
+            CloudBlockBlob leaseBlob = GetBlockBlobReference(partitionId);
+
             if (await leaseBlob.ExistsAsync().ConfigureAwait(false))
 		    {
                 retval = await DownloadLeaseAsync(partitionId, leaseBlob).ConfigureAwait(false);
@@ -232,7 +233,7 @@ namespace Microsoft.Azure.EventHubs.Processor
         	AzureBlobLease returnLease;
     	    try
     	    {
-    		    CloudBlockBlob leaseBlob = this.consumerGroupDirectory.GetBlockBlobReference(partitionId);
+                CloudBlockBlob leaseBlob = GetBlockBlobReference(partitionId);
                 returnLease = new AzureBlobLease(partitionId, leaseBlob);
                 string jsonLease = JsonConvert.SerializeObject(returnLease);
 
@@ -469,6 +470,19 @@ namespace Microsoft.Azure.EventHubs.Processor
                 }
             }
             return retval;
+        }
+
+        CloudBlockBlob GetBlockBlobReference(string partitionId)
+        {
+            CloudBlockBlob leaseBlob = this.consumerGroupDirectory.GetBlockBlobReference(partitionId);
+
+            // GetBlockBlobReference creates a new ServiceClient thus resets options.
+            // Because of this we lose settings like MaximumExecutionTime on the client.
+            // Until storage addresses the issue we need to override it here once more.
+            // Tracking bug: https://github.com/Azure/azure-storage-net/issues/398
+            leaseBlob.ServiceClient.DefaultRequestOptions = this.storageClient.DefaultRequestOptions;
+
+            return leaseBlob;
         }
     }
 }
