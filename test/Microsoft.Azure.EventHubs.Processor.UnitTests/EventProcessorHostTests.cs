@@ -509,10 +509,10 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
         async Task InitialOffsetProviderWithDateTime()
         {
             // Send and receive single message so we can find out enqueue date-time of the last message.
-            var lastEvents = await DiscoverEndOfStream();
+            var partitions = await DiscoverEndOfStream();
 
             // We will use last enqueued message's enqueue date-time so EPH will pick messages only after that point.
-            var lastEnqueueDateTime = lastEvents.Max(le => le.Value.Item2);
+            var lastEnqueueDateTime = partitions.Max(le => le.Value.Item2);
             Log($"Last message enqueued at {lastEnqueueDateTime}");
 
             // Use a randomly generated container name so that initial offset provider will be respected.
@@ -540,11 +540,11 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
         async Task InitialOffsetProviderWithOffset()
         {
             // Send and receive single message so we can find out offset of the last message.
-            var lastOffsets = await DiscoverEndOfStream();
+            var partitions = await DiscoverEndOfStream();
             Log("Discovered last event offsets on each partition as below:");
-            foreach (var lastEvent in lastOffsets)
+            foreach (var p in partitions)
             {
-                Log($"Partition {lastEvent.Key}: {lastEvent.Value.Item1}");
+                Log($"Partition {p.Key}: {p.Value.Item1}");
             }
 
             // Use a randomly generated container name so that initial offset provider will be respected.
@@ -558,7 +558,7 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
             var processorOptions = new EventProcessorOptions
             {
                 ReceiveTimeout = TimeSpan.FromSeconds(15),
-                InitialOffsetProvider = partitionId => lastOffsets[partitionId].Item1,
+                InitialOffsetProvider = partitionId => partitions[partitionId].Item1,
                 MaxBatchSize = 100
             };
 
@@ -571,14 +571,6 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
         [Fact]
         async Task InitialOffsetProviderWithEndOfStream()
         {
-            // Send and receive single message so we can find out offset of the last message.
-            var lastOffsets = await DiscoverEndOfStream();
-            Log("Discovered last event offsets on each partition as below:");
-            foreach (var lastEvent in lastOffsets)
-            {
-                Log($"Partition {lastEvent.Key}: {lastEvent.Value.Item1}");
-            }
-
             // Use a randomly generated container name so that initial offset provider will be respected.
             var eventProcessorHost = new EventProcessorHost(
                 string.Empty,
@@ -734,15 +726,15 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
         async Task<Dictionary<string, Tuple<string, DateTime>>> DiscoverEndOfStream()
         {
             var ehClient = EventHubClient.CreateFromConnectionString(this.EventHubConnectionString);
-            var lastEvents = new Dictionary<string, Tuple<string, DateTime>>();
+            var partitions = new Dictionary<string, Tuple<string, DateTime>>();
 
             foreach (var pid in this.PartitionIds)
             {
                 var pInfo = await ehClient.GetPartitionRuntimeInformationAsync(pid);
-                lastEvents.Add(pid, Tuple.Create(pInfo.LastEnqueuedOffset, pInfo.LastEnqueuedTimeUtc));
+                partitions.Add(pid, Tuple.Create(pInfo.LastEnqueuedOffset, pInfo.LastEnqueuedTimeUtc));
             }
 
-            return lastEvents.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+            return partitions.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
         }
 
         async Task<Dictionary<string, List<EventData>>> RunGenericScenario(EventProcessorHost eventProcessorHost,
