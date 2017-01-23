@@ -288,13 +288,13 @@ namespace Microsoft.Azure.EventHubs.UnitTests
             Log($"Creating a new receiver with offset EndOFStream");
             var receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, PartitionReceiver.EndOfStream);
 
-            // Attemp to receive the message. This should receive only 1 message.
+            // Attemp to receive the message. This should return only 1 message.
             var receiveTask = receiver.ReceiveAsync(100);
 
             // Send a new message which is expected to go to the end of stream.
             // We are expecting to receive only this message.
-            // Wait 3 seconds before sending to avoid race.
-            await Task.Delay(3000);
+            // Wait 5 seconds before sending to avoid race.
+            await Task.Delay(5000);
             var eventToReceive = new EventData(new byte[1]);
             eventToReceive.Properties = new Dictionary<string, object>();
             eventToReceive.Properties.Add("stamp", Guid.NewGuid().ToString());

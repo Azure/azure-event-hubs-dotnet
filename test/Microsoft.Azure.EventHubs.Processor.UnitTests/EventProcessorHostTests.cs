@@ -569,6 +569,38 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
         }
 
         [Fact]
+        async Task InitialOffsetProviderWithEndOfStream()
+        {
+            // Send and receive single message so we can find out offset of the last message.
+            var lastOffsets = await DiscoverEndOfStream();
+            Log("Discovered last event offsets on each partition as below:");
+            foreach (var lastEvent in lastOffsets)
+            {
+                Log($"Partition {lastEvent.Key}: {lastEvent.Value.Item1}");
+            }
+
+            // Use a randomly generated container name so that initial offset provider will be respected.
+            var eventProcessorHost = new EventProcessorHost(
+                string.Empty,
+                PartitionReceiver.DefaultConsumerGroupName,
+                this.EventHubConnectionString,
+                this.StorageConnectionString,
+                Guid.NewGuid().ToString());
+
+            var processorOptions = new EventProcessorOptions
+            {
+                ReceiveTimeout = TimeSpan.FromSeconds(15),
+                InitialOffsetProvider = partitionId => PartitionReceiver.EndOfStream,
+                MaxBatchSize = 100
+            };
+
+            var receivedEvents = await this.RunGenericScenario(eventProcessorHost, processorOptions);
+
+            // We should have received only 1 event from each partition.
+            Assert.False(receivedEvents.Any(kvp => kvp.Value.Count != 1), "One of the partitions didn't return exactly 1 event");
+        }
+
+        [Fact]
         async Task InitialOffsetProviderOverrideBehavior()
         {
             // Generate a new lease container name that will be used through out the test.
@@ -768,6 +800,9 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
                 };
 
                 await eventProcessorHost.RegisterEventProcessorFactoryAsync(processorFactory, epo);
+
+                // Wait 5 seconds to avoid races in scenarios like EndOfStream.
+                await Task.Delay(5000);
 
                 Log($"Sending {totalNumberOfEventsToSend} event(s) to each partition");
                 var sendTasks = new List<Task>();
