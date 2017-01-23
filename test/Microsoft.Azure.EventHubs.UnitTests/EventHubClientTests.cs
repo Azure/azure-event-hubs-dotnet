@@ -268,6 +268,59 @@ namespace Microsoft.Azure.EventHubs.UnitTests
         }
 
         [Fact]
+        async Task CreateReceiverWithEndOfStream()
+        {
+            // Randomly pick one of the available partitons.
+            var partitionId = this.PartitionIds[new Random().Next(this.PartitionIds.Count())];
+            Log($"Randomly picked partition {partitionId}");
+
+            var partitionSender = this.EventHubClient.CreatePartitionSender(partitionId);
+
+            // Send couple of messages before creating an EndOfStream receiver.
+            // We are not expecting to receive these messages would be sent before receiver creation.
+            for (int i = 0; i < 10; i++)
+            {
+                var ed = new EventData(new byte[1]);
+                await partitionSender.SendAsync(ed);
+            }
+
+            // Create a new receiver which will start reading from the end of the stream.
+            Log($"Creating a new receiver with offset EndOFStream");
+            var receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, PartitionReceiver.EndOfStream);
+
+            // Attemp to receive the message. This should return only 1 message.
+            var receiveTask = receiver.ReceiveAsync(100);
+
+            // Send a new message which is expected to go to the end of stream.
+            // We are expecting to receive only this message.
+            // Wait 5 seconds before sending to avoid race.
+            await Task.Delay(5000);
+            var eventToReceive = new EventData(new byte[1]);
+            eventToReceive.Properties = new Dictionary<string, object>();
+            eventToReceive.Properties.Add("stamp", Guid.NewGuid().ToString());
+            await partitionSender.SendAsync(eventToReceive);
+
+            // Complete asyncy receive task.
+            var receivedMessages = await receiveTask;
+
+            // We should have received only 1 message from this call.
+            Assert.True(receivedMessages.Count() == 1, $"Didn't receive 1 message. Received {receivedMessages.Count()} messages(s).");
+
+            // Check stamp.
+            Assert.True(receivedMessages.Single().Properties["stamp"].ToString() == eventToReceive.Properties["stamp"].ToString()
+                , "Stamps didn't match on the message sent and received!");
+
+            Log("Received correct message as expected.");
+
+            // Next receive on this partition shouldn't return any more messages.
+            receivedMessages = await receiver.ReceiveAsync(100, TimeSpan.FromSeconds(15));
+            Assert.True(receivedMessages == null, $"Received messages at the end.");
+
+            await partitionSender.CloseAsync();
+            await receiver.CloseAsync();
+        }
+
+        [Fact]
         async Task CreateReceiverWithOffset()
         {
             // Randomly pick one of the available partitons.

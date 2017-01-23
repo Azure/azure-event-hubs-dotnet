@@ -28,6 +28,12 @@ namespace Microsoft.Azure.EventHubs
         public static readonly string StartOfStream = "-1";
 
         /// <summary>
+        /// The constant that denotes the end of a stream. This can be used as an offset argument in receiver creation to 
+        /// start receiving from the latest event, instead of a specific point in time/offset value.
+        /// </summary>
+        public static readonly string EndOfStream = "@latest";
+
+        /// <summary>
         /// The default consumer group name: $Default.
         /// </summary>
         public static readonly string DefaultConsumerGroupName = "$Default";
