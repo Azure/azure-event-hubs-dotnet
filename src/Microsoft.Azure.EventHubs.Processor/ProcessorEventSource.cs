@@ -6,7 +6,7 @@ namespace Microsoft.Azure.EventHubs
     using System.Diagnostics.Tracing;
 
     /// <summary>
-    /// EventSource for Microsoft-Azure-EventHubs traces.
+    /// EventSource for Microsoft-Azure-EventHubs-Processor traces.
     /// 
     /// When defining Start/Stop tasks, the StopEvent.Id must be exactly StartEvent.Id + 1.
     /// 
@@ -171,7 +171,7 @@ namespace Microsoft.Azure.EventHubs
         }
 
         [Event(57, Level = EventLevel.Informational, Message = "{0}: Partition {1}: Creating EventHubClient and PartitionReceiver with Epoch:{2} StartAt:{3}.")]
-        public void PartitionPumpCreateClientsStart(string hostId, string partitionId, long epoch, object startAt)
+        public void PartitionPumpCreateClientsStart(string hostId, string partitionId, long epoch, string startAt)
         {
             if (IsEnabled())
             {
