@@ -28,7 +28,7 @@
         "Microsoft.NETCore.UniversalWindowsPlatform": "5.2.2"
       }
     },
-    "net451": {
+    "net452": {
     },
     "netstandard1.3": {
       "imports": "dnxcore50",
