@@ -6,7 +6,6 @@ namespace Microsoft.Azure.EventHubs.UnitTests
     using System;
     using System.Collections.Generic;
     using System.Diagnostics;
-    using System.Globalization;
     using System.Linq;
     using System.Text;
     using System.Threading;
@@ -846,6 +845,82 @@ namespace Microsoft.Azure.EventHubs.UnitTests
             await Task.WhenAll(tasks);
 
             Log("All GetRuntimeInformationAsync tasks have completed.");
+        }
+
+        [Fact]
+        async Task SendAndReceiveZeroLengthBody()
+        {
+            var targetPartition = "0";
+            var zeroBodyEventData = new EventData(new byte[0]);
+            await SendAndReceiveEvent(targetPartition, zeroBodyEventData);
+        }
+
+        [Fact]
+        async Task SendAndReceiveArraySegmentEventData()
+        {
+            var targetPartition = "0";
+            byte[] byteArr = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+
+            var edToSend = new EventData(new ArraySegment<byte>(byteArr));
+            var edReceived = await SendAndReceiveEvent(targetPartition, edToSend);
+
+            // Validate array segment count.
+            Assert.True(edReceived.Body.Count == byteArr.Count(), $"Sent {byteArr.Count()} bytes and received {edReceived.Body.Count}");
+        }
+
+        // Send and receive given event on given partition.
+        async Task<EventData> SendAndReceiveEvent(string partitionId, EventData sendEvent)
+        {
+            EventData receivedEvent = null;
+            PartitionSender partitionSender = this.EventHubClient.CreatePartitionSender(partitionId);
+            PartitionReceiver partitionReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, DateTime.UtcNow.AddMinutes(-10));
+
+            try
+            {
+                string uniqueEventId = Guid.NewGuid().ToString();
+                Log($"Sending event to Partition {partitionId} with custom property EventId {uniqueEventId}");
+                sendEvent.Properties = new Dictionary<string, object> { ["EventId"] = uniqueEventId };
+                await partitionSender.SendAsync(sendEvent);
+
+                bool expectedEventReceived = false;
+                do
+                {
+                    IEnumerable<EventData> eventDatas = await partitionReceiver.ReceiveAsync(10);
+                    if (eventDatas == null)
+                    {
+                        break;
+                    }
+
+                    Log($"Received a batch of {eventDatas.Count()} events:");
+                    foreach (var eventData in eventDatas)
+                    {
+                        object objectValue;
+                        if (eventData.Properties != null && eventData.Properties.TryGetValue("EventId", out objectValue))
+                        {
+                            Log($"Received message with EventId {objectValue}");
+                            string receivedId = objectValue.ToString();
+                            if (receivedId == uniqueEventId)
+                            {
+                                Log("Success");
+                                receivedEvent = eventData;
+                                expectedEventReceived = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+                while (!expectedEventReceived);
+
+                Assert.True(expectedEventReceived, $"Did not receive expected event with EventId {uniqueEventId}");
+            }
+            finally
+            {
+                await Task.WhenAll(
+                    partitionReceiver.CloseAsync(),
+                    partitionSender.CloseAsync());
+            }
+
+            return receivedEvent;
         }
 
         async Task<Tuple<string, DateTime>> DiscoverEndOfStreamForPartition(string pid)
