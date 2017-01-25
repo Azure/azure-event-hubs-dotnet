@@ -49,7 +49,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
             do
             {
-                using (AmqpMessage amqpMessage = AmqpMessageConverter.EventDatasToAmqpMessage(eventDatas, partitionKey, true))
+                using (AmqpMessage amqpMessage = AmqpMessageConverter.EventDatasToAmqpMessage(eventDatas, partitionKey))
                 {
                     shouldRetry = false;
 
