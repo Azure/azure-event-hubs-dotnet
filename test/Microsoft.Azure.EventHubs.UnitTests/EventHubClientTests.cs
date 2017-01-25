@@ -216,54 +216,11 @@ namespace Microsoft.Azure.EventHubs.UnitTests
         [Fact]
         async Task PartitionReceiverReceive()
         {
+            string partitionId = "1";
+
             Log("Receiving Events via PartitionReceiver.ReceiveAsync");
-            const string partitionId = "1";
-            PartitionSender partitionSender = this.EventHubClient.CreatePartitionSender(partitionId);
-            PartitionReceiver partitionReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, DateTime.UtcNow.AddMinutes(-10));
-            try
-            {
-                string uniqueEventId = Guid.NewGuid().ToString();
-                Log($"Sending an event to Partition {partitionId} with custom property EventId {uniqueEventId}");
-                var sendEvent = new EventData(Encoding.UTF8.GetBytes("Hello EventHub!"));
-                sendEvent.Properties = new Dictionary<string, object> { ["EventId"] = uniqueEventId };
-                await partitionSender.SendAsync(sendEvent);
-
-                bool expectedEventReceived = false;
-                do
-                {
-                    IEnumerable<EventData> eventDatas = await partitionReceiver.ReceiveAsync(10);
-                    if (eventDatas == null)
-                    {
-                        break;
-                    }
-
-                    Log($"Received a batch of {eventDatas.Count()} events:");
-                    foreach (var eventData in eventDatas)
-                    {
-                        object objectValue;
-                        if (eventData.Properties != null && eventData.Properties.TryGetValue("EventId", out objectValue))
-                        {
-                            Log($"Received message with EventId {objectValue}");
-                            string receivedId = objectValue.ToString();
-                            if (receivedId == uniqueEventId)
-                            {
-                                Log("Success");
-                                expectedEventReceived = true;
-                                break;
-                            }
-                        }
-                    }
-                }
-                while (!expectedEventReceived);
-
-                Assert.True(expectedEventReceived, $"Did not receive expected event with EventId {uniqueEventId}");
-            }
-            finally
-            {
-                await Task.WhenAll(
-                    partitionReceiver.CloseAsync(),
-                    partitionSender.CloseAsync());
-            }
+            var sendEvent = new EventData(Encoding.UTF8.GetBytes("Hello EventHub!"));
+            await SendAndReceiveEvent(partitionId, sendEvent);
         }
 
         [Fact]
@@ -852,7 +809,10 @@ namespace Microsoft.Azure.EventHubs.UnitTests
         {
             var targetPartition = "0";
             var zeroBodyEventData = new EventData(new byte[0]);
-            await SendAndReceiveEvent(targetPartition, zeroBodyEventData);
+            var edReceived = await SendAndReceiveEvent(targetPartition, zeroBodyEventData);
+
+            // Validate body.
+            Assert.True(edReceived.Body.Count == 0, $"Received event's body isn't zero byte long.");
         }
 
         [Fact]
