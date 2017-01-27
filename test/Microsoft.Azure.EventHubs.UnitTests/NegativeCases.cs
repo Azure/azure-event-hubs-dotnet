@@ -205,9 +205,9 @@ namespace Microsoft.Azure.EventHubs.UnitTests
         }
 
         [Fact]
-        void NullBodyShouldFail()
+        async Task NullBodyShouldFail()
         {
-            Assert.ThrowsAsync<ArgumentNullException>(() =>
+            await Assert.ThrowsAsync<ArgumentNullException>(() =>
             {
                 new EventData(null);
                 throw new Exception("new EventData(null) was supposed to fail");
