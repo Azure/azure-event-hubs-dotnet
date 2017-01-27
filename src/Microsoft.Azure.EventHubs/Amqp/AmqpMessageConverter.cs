@@ -84,8 +84,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 var data = eventDatas.First();
                 returnMessage = EventDataToAmqpMessage(data, partitionKey);
                 returnMessage.Batchable = true;
-                if ((returnMessage.Sections & ClientAmqpPropsSetOnSendToEventHub) == 0 &&
-                    (data.Body.Array == null || data.Body.Count == 0))
+                if ((returnMessage.Sections & ClientAmqpPropsSetOnSendToEventHub) == 0 && data.Body.Array == null)
                 {
                     throw new InvalidOperationException(Resources.CannotSendAnEmptyEvent.FormatForUser(data.GetType().Name));
                 }
@@ -97,7 +96,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
         static AmqpMessage EventDataToAmqpMessage(EventData eventData, string partitionKey)
         {
             AmqpMessage amqpMessage;
-            if (eventData.Body.Array != null && eventData.Body.Count > 0)
+            if (eventData.Body.Array != null)
             {
                 amqpMessage = AmqpMessage.Create(new Data { Value = eventData.Body });
             }

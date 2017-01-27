@@ -175,7 +175,7 @@ namespace Microsoft.Azure.EventHubs.UnitTests
             Log("Sending multiple Events via EventHubClient.SendAsync(IEnumerable<EventData>)");
             var eventData1 = new EventData(Encoding.UTF8.GetBytes("Hello EventHub!"));
             var eventData2 = new EventData(Encoding.UTF8.GetBytes("This is another message in the batch!"));
-            eventData2.Properties = new Dictionary<string, object> { ["ContosoEventType"] = "some value here" };
+            eventData2.Properties["ContosoEventType"] = "some value here";
             return this.EventHubClient.SendAsync(new[] { eventData1, eventData2 });
         }
 
@@ -204,7 +204,7 @@ namespace Microsoft.Azure.EventHubs.UnitTests
             {
                 var eventData1 = new EventData(Encoding.UTF8.GetBytes("Hello EventHub!"));
                 var eventData2 = new EventData(Encoding.UTF8.GetBytes("This is another message in the batch!"));
-                eventData2.Properties = new Dictionary<string, object> { ["ContosoEventType"] = "some value here" };
+                eventData2.Properties["ContosoEventType"] = "some value here";
                 await partitionSender1.SendAsync(new[] { eventData1, eventData2 });
             }
             finally
@@ -252,8 +252,7 @@ namespace Microsoft.Azure.EventHubs.UnitTests
             // Wait 5 seconds before sending to avoid race.
             await Task.Delay(5000);
             var eventToReceive = new EventData(new byte[1]);
-            eventToReceive.Properties = new Dictionary<string, object>();
-            eventToReceive.Properties.Add("stamp", Guid.NewGuid().ToString());
+            eventToReceive.Properties["stamp"] = Guid.NewGuid().ToString();
             await partitionSender.SendAsync(eventToReceive);
 
             // Complete asyncy receive task.
@@ -289,8 +288,7 @@ namespace Microsoft.Azure.EventHubs.UnitTests
             // Send a new message which is expected to go to the end of stream.
             // We are expecting to receive only this message.
             var eventSent = new EventData(new byte[1]);
-            eventSent.Properties = new Dictionary<string, object>();
-            eventSent.Properties.Add("stamp", Guid.NewGuid().ToString());
+            eventSent.Properties["stamp"] = Guid.NewGuid().ToString();
             await this.EventHubClient.CreatePartitionSender(partitionId).SendAsync(eventSent);
 
             // Create a new receiver which will start reading from the last message on the stream.
@@ -327,8 +325,7 @@ namespace Microsoft.Azure.EventHubs.UnitTests
             // Send a new message which is expected to go to the end of stream.
             // We are expecting to receive only this message.
             var eventSent = new EventData(new byte[1]);
-            eventSent.Properties = new Dictionary<string, object>();
-            eventSent.Properties.Add("stamp", Guid.NewGuid().ToString());
+            eventSent.Properties["stamp"] = Guid.NewGuid().ToString();
             await this.EventHubClient.CreatePartitionSender(partitionId).SendAsync(eventSent);
 
             // Create a new receiver which will start reading from the last message on the stream.
@@ -461,7 +458,7 @@ namespace Microsoft.Azure.EventHubs.UnitTests
                 string uniqueEventId = Guid.NewGuid().ToString();
                 Log($"Sending an event to Partition {partitionId} with custom property EventId {uniqueEventId}");
                 var sendEvent = new EventData(Encoding.UTF8.GetBytes("Hello EventHub!"));
-                sendEvent.Properties = new Dictionary<string, object> { ["EventId"] = uniqueEventId };
+                sendEvent.Properties["EventId"] = uniqueEventId;
                 await partitionSender.SendAsync(sendEvent);
 
                 EventWaitHandle dataReceivedEvent = new EventWaitHandle(false, EventResetMode.ManualReset);
@@ -839,7 +836,7 @@ namespace Microsoft.Azure.EventHubs.UnitTests
             {
                 string uniqueEventId = Guid.NewGuid().ToString();
                 Log($"Sending event to Partition {partitionId} with custom property EventId {uniqueEventId}");
-                sendEvent.Properties = new Dictionary<string, object> { ["EventId"] = uniqueEventId };
+                sendEvent.Properties["EventId"] = uniqueEventId;
                 await partitionSender.SendAsync(sendEvent);
 
                 bool expectedEventReceived = false;

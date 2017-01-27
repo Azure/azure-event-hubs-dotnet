@@ -203,5 +203,15 @@ namespace Microsoft.Azure.EventHubs.UnitTests
                 Log("Caught MessageSizeExceededException as expected");
             }
         }
+
+        [Fact]
+        async Task NullBodyShouldFail()
+        {
+            await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            {
+                new EventData(null);
+                throw new Exception("new EventData(null) was supposed to fail");
+            });
+        }
     }
 }
