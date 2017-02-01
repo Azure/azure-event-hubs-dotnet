@@ -43,7 +43,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
             return eventData;
         }
 
-        public static AmqpMessage EventDatasToAmqpMessage(IEnumerable<EventData> eventDatas, string partitionKey, bool batchable)
+        public static AmqpMessage EventDatasToAmqpMessage(IEnumerable<EventData> eventDatas, string partitionKey)
         {
             if (eventDatas == null)
                 throw new ArgumentNullException(nameof(eventDatas));
@@ -58,15 +58,13 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 {
                     if (firstEvent == null)
                     {
-                        //this.ProcessFaultInjectionInfo(data);
                         firstEvent = data;
                     }
 
                     AmqpMessage amqpMessage = EventDataToAmqpMessage(data, partitionKey);
-                    amqpMessage.Batchable = batchable;
+                    amqpMessage.Batchable = true;
 
-                    if ((amqpMessage.Sections & ClientAmqpPropsSetOnSendToEventHub) == 0 &&
-                        (data.Body.Array == null || data.Body.Count == 0))
+                    if ((amqpMessage.Sections & ClientAmqpPropsSetOnSendToEventHub) == 0 && data.Body.Array == null)
                     {
                         throw new InvalidOperationException(Resources.CannotSendAnEmptyEvent.FormatForUser(data.GetType().Name));
                     }
@@ -83,11 +81,9 @@ namespace Microsoft.Azure.EventHubs.Amqp
             else if (dataCount == 1) // ??? can't be null
             {
                 var data = eventDatas.First();
-                //this.ProcessFaultInjectionInfo(data);
                 returnMessage = EventDataToAmqpMessage(data, partitionKey);
-                returnMessage.Batchable = batchable;
-                if ((returnMessage.Sections & ClientAmqpPropsSetOnSendToEventHub) == 0 &&
-                    (data.Body.Array == null || data.Body.Count == 0))
+                returnMessage.Batchable = true;
+                if ((returnMessage.Sections & ClientAmqpPropsSetOnSendToEventHub) == 0 && data.Body.Array == null)
                 {
                     throw new InvalidOperationException(Resources.CannotSendAnEmptyEvent.FormatForUser(data.GetType().Name));
                 }
@@ -98,18 +94,9 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
         static AmqpMessage EventDataToAmqpMessage(EventData eventData, string partitionKey)
         {
-            AmqpMessage amqpMessage;
-            if (eventData.Body.Array != null && eventData.Body.Count > 0)
-            {
-                amqpMessage = AmqpMessage.Create(new Data { Value = eventData.Body });
-            }
-            else
-            {
-                // Empty body
-                amqpMessage = AmqpMessage.Create();
-            }
-
+            AmqpMessage amqpMessage  = AmqpMessage.Create(new Data { Value = eventData.Body });
             UpdateAmqpMessageHeadersAndProperties(amqpMessage, null, partitionKey, eventData, true);
+
             return amqpMessage;
         }
 
@@ -235,31 +222,22 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     }
                 }
             }
-
-            //if ((sections & SectionFlag.Properties) != 0)
-            //{
-            //    var properties = amqpMessage.Properties;
-            //    AddIfTrue(data.SystemProperties, properties, p => p.MessageId != null, Properties.MessageIdName, p => p.MessageId.ToString());
-            //    AddIfTrue(data.SystemProperties, properties, p => p.UserId.Array != null, Properties.UserIdName, p => p.UserId);
-            //    AddIfTrue(data.SystemProperties, properties, p => p.To != null, Properties.ToName, p => p.To.ToString());
-            //    AddIfTrue(data.SystemProperties, properties, p => p.Subject != null, Properties.SubjectName, p => p.Subject);
-            //    AddIfTrue(data.SystemProperties, properties, p => p.ReplyTo != null, Properties.ReplyToName, p => p.ReplyTo.ToString());
-            //    AddIfTrue(data.SystemProperties, properties, p => p.CorrelationId != null, Properties.CorrelationIdName, p => p.CorrelationId.ToString());
-            //    AddIfTrue(data.SystemProperties, properties, p => p.ContentType.Value != null, Properties.ContentTypeName, p => p.ContentType.ToString());
-            //    AddIfTrue(data.SystemProperties, properties, p => p.ContentEncoding.Value != null, Properties.ContentEncodingName, p => p.ContentEncoding.ToString());
-            //    AddIfTrue(data.SystemProperties, properties, p => p.AbsoluteExpiryTime != null, Properties.AbsoluteExpiryTimeName, p => p.AbsoluteExpiryTime);
-            //    AddIfTrue(data.SystemProperties, properties, p => p.CreationTime != null, Properties.CreationTimeName, p => p.CreationTime);
-            //    AddIfTrue(data.SystemProperties, properties, p => p.GroupId != null, Properties.GroupIdName, p => p.GroupId);
-            //    AddIfTrue(data.SystemProperties, properties, p => p.GroupSequence != null, Properties.GroupSequenceName, p => p.GroupSequence);
-            //    AddIfTrue(data.SystemProperties, properties, p => p.ReplyToGroupId != null, Properties.ReplyToGroupIdName, p => p.ReplyToGroupId);
-            //}
         }
 
         static ArraySegment<byte> StreamToBytes(Stream stream)
         {
-            MemoryStream memoryStream = new MemoryStream(512);
-            stream.CopyTo(memoryStream, 512);
-            ArraySegment<byte> buffer = new ArraySegment<byte>(memoryStream.ToArray());
+            ArraySegment<byte> buffer;
+
+            if (stream == null)
+            {
+                buffer = new ArraySegment<byte>();
+            }
+            else
+            {
+                MemoryStream memoryStream = new MemoryStream(512);
+                stream.CopyTo(memoryStream, 512);
+                buffer = new ArraySegment<byte>(memoryStream.ToArray());
+            }
 
             return buffer;
         }

@@ -1,5 +1,5 @@
 {
-  "version": "0.0.5-preview",
+  "version": "1.0.0",
   "title": "Microsoft.Azure.EventHubs.Processor",
   "description": "Microsoft.Azure.EventHubs.Processor Class Library",
   "authors": [ "Microsoft" ],
