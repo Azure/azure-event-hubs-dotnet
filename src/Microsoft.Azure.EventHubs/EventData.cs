@@ -21,9 +21,7 @@ namespace Microsoft.Azure.EventHubs
         /// <example>Sample Code:
         /// <code>
         /// EventData eventData = new EventData(telemetryEventBytes);
-        /// var applicationProperties = new Dictionary&lt;string, string&gt;();
-        /// applicationProperties["eventType"] = "com.microsoft.azure.monitoring.EtlEvent";
-        /// eventData.Properties(applicationProperties);
+        /// eventData.Properties["eventType"] = "com.microsoft.azure.monitoring.EtlEvent";
         /// await partitionSender.SendAsync(eventData);
         /// </code>
         /// </example>
@@ -42,9 +40,7 @@ namespace Microsoft.Azure.EventHubs
         /// <example>Sample Code:
         /// <code>
         /// EventData eventData = new EventData(new ArraySegment&lt;byte&gt;(eventBytes, offset, count));
-        /// var applicationProperties = new Dictionary&lt;string, string&gt;();
-        /// applicationProperties["eventType"] = "com.microsoft.azure.monitoring.EtlEvent";
-        /// eventData.Properties(applicationProperties);
+        /// eventData.Properties["eventType"] = "com.microsoft.azure.monitoring.EtlEvent";
         /// await partitionSender.SendAsync(eventData);
         /// </code>
         /// </example>
@@ -52,6 +48,7 @@ namespace Microsoft.Azure.EventHubs
         public EventData(ArraySegment<byte> arraySegment)
         {
             this.Body = arraySegment;
+            this.Properties = new Dictionary<string, object>();
         }
 
         /// <summary>
@@ -68,7 +65,7 @@ namespace Microsoft.Azure.EventHubs
         /// </summary>
         public IDictionary<string, object> Properties
         {
-            get; set;
+            get; internal set;
         }
 
         /// <summary>
