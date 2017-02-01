@@ -27,7 +27,7 @@ namespace Microsoft.Azure.EventHubs
                 platform = System.Runtime.InteropServices.RuntimeInformation.OSDescription;
 #elif UAP10_0
                 platform = "UAP";
-#elif NET452
+#elif NET451
                 platform = Environment.OSVersion.VersionString;
 #endif
             }
