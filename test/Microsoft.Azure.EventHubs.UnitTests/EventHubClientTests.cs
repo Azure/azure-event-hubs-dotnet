@@ -217,10 +217,12 @@ namespace Microsoft.Azure.EventHubs.UnitTests
         async Task PartitionReceiverReceive()
         {
             string partitionId = "1";
+            string payloadString = "Hello EventHub!";
 
             Log("Receiving Events via PartitionReceiver.ReceiveAsync");
-            var sendEvent = new EventData(Encoding.UTF8.GetBytes("Hello EventHub!"));
-            await SendAndReceiveEvent(partitionId, sendEvent);
+            var sendEvent = new EventData(Encoding.UTF8.GetBytes(payloadString));
+            var receivedEvent = await SendAndReceiveEvent(partitionId, sendEvent);
+            Assert.True(Encoding.UTF8.GetString(receivedEvent.Body.Array) == payloadString, "Received payload string isn't the same as sent payload string.");
         }
 
         [Fact]

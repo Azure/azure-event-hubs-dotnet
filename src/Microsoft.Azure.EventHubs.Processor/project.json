@@ -32,7 +32,7 @@
         "Microsoft.NETCore.UniversalWindowsPlatform": "5.2.2"
       }
     },
-    "net452": {
+    "net451": {
     },
     "netstandard1.3": {
       "imports": [

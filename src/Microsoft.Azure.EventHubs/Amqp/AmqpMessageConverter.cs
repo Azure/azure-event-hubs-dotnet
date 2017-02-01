@@ -94,17 +94,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
         static AmqpMessage EventDataToAmqpMessage(EventData eventData, string partitionKey)
         {
-            AmqpMessage amqpMessage;
-            if (eventData.Body.Array != null)
-            {
-                amqpMessage = AmqpMessage.Create(new Data { Value = eventData.Body });
-            }
-            else
-            {
-                // Empty body
-                amqpMessage = AmqpMessage.Create();
-            }
-
+            AmqpMessage amqpMessage  = AmqpMessage.Create(new Data { Value = eventData.Body });
             UpdateAmqpMessageHeadersAndProperties(amqpMessage, null, partitionKey, eventData, true);
 
             return amqpMessage;
