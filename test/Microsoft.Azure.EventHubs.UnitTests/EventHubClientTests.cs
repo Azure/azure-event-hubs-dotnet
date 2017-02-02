@@ -449,6 +449,73 @@ namespace Microsoft.Azure.EventHubs.UnitTests
         }
 
         [Fact]
+        async Task CreateNonEpochReceiverAfterEpochReceiver()
+        {
+            var epochReceiver = this.EventHubClient.CreateEpochReceiver(PartitionReceiver.DefaultConsumerGroupName, "1", PartitionReceiver.StartOfStream, 1);
+            var nonEpochReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "1", PartitionReceiver.StartOfStream);
+
+            try
+            {
+                Log("Starting epoch receiver");
+                await epochReceiver.ReceiveAsync(10);
+
+                await Task.Delay(TimeSpan.FromSeconds(10));
+
+                try
+                {
+                    Log("Starting nonepoch receiver, this should fail");
+                    await nonEpochReceiver.ReceiveAsync(10);
+                    throw new InvalidOperationException("Non-Epoch receiver should have encountered an exception by now!");
+                }
+                catch (ReceiverDisconnectedException ex) when (ex.Message.Contains("non-epoch receiver is not allowed"))
+                {
+                    Log($"Received expected exception {ex.GetType()}: {ex.Message}");
+                }
+            }
+            finally
+            {
+                await epochReceiver.CloseAsync();
+                await nonEpochReceiver.CloseAsync();
+            }
+        }
+
+        [Fact]
+        async Task CreateEpochReceiverAfterNonEpochReceiver()
+        {
+            var nonEpochReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "1", PartitionReceiver.StartOfStream);
+            var epochReceiver = this.EventHubClient.CreateEpochReceiver(PartitionReceiver.DefaultConsumerGroupName, "1", PartitionReceiver.StartOfStream, 1);
+
+            try
+            {
+                Log("Starting nonepoch receiver");
+                await nonEpochReceiver.ReceiveAsync(10);
+
+                await Task.Delay(TimeSpan.FromSeconds(10));
+
+                Log("Starting epoch receiver");
+                await epochReceiver.ReceiveAsync(10);
+
+                await Task.Delay(TimeSpan.FromSeconds(10));
+
+                try
+                {
+                    Log("Restarting nonepoch receiver, this should fail");
+                    await nonEpochReceiver.ReceiveAsync(10);
+                    throw new InvalidOperationException("Non-Epoch receiver should have encountered an exception by now!");
+                }
+                catch (ReceiverDisconnectedException ex) when (ex.Message.Contains("non-epoch receiver is not allowed"))
+                {
+                    Log($"Received expected exception {ex.GetType()}: {ex.Message}");
+                }
+            }
+            finally
+            {
+                await epochReceiver.CloseAsync();
+                await nonEpochReceiver.CloseAsync();
+            }
+        }
+
+        [Fact]
         async Task PartitionReceiverSetReceiveHandler()
         {
             Log("Receiving Events via PartitionReceiver.SetReceiveHandler()");
