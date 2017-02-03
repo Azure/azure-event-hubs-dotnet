@@ -39,9 +39,9 @@ consumers that filter and/or transform event streams and then forward them on to
 
 ### Getting Started
 
-To get started sending events to an Event Hub refer to [Get started sending messages to Event Hubs in .NET Core](./samples/SampleSender/getting-started-sending.md).
+To get started sending events to an Event Hub refer to [Get started sending messages to Event Hubs in .NET Core](./samples/SampleSender/readme.md).
 
-To get started receiving events with the **EventProcessorHost** refer to [Get started receiving messages with the EventProcessorHost in .NET Core](./samples/SampleEphReceiver/getting-started-receiving-eph.md).  
+To get started receiving events with the **EventProcessorHost** refer to [Get started receiving messages with the EventProcessorHost in .NET Core](./samples/SampleEphReceiver/readme.md ).  
 
 ### Running the unit tests 
 
