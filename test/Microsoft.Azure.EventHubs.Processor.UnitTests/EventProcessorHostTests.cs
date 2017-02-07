@@ -152,22 +152,31 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
         [Fact]
         async Task MultipleProcessorHosts()
         {
-            Log("Testing with 2 EventProcessorHost instances");
+            int hostCount = 3;
 
+            Log($"Testing with {hostCount} EventProcessorHost instances");
+
+            // Prepare partition trackers.
             var partitionReceiveEvents = new ConcurrentDictionary<string, AsyncAutoResetEvent>();
             foreach (var partitionId in PartitionIds)
             {
                 partitionReceiveEvents[partitionId] = new AsyncAutoResetEvent(false);
             }
 
-            int hostCount = 2;
+            // Prepare host trackers.
+            var hostReceiveEvents = new ConcurrentDictionary<string, AsyncAutoResetEvent>();
+
             var hosts = new List<EventProcessorHost>();
             try
             {
-                for (int i = 0; i < hostCount; i++)
+                for (int hostId = 0; hostId < hostCount; hostId++)
                 {
+                    var thisHostName = $"host-{hostId}";
+                    hostReceiveEvents[thisHostName] = new AsyncAutoResetEvent(false);
+
                     Log("Creating EventProcessorHost");
                     var eventProcessorHost = new EventProcessorHost(
+                        thisHostName,
                         string.Empty, // Passing empty as entity path here rsince path is already in EH connection string.
                         PartitionReceiver.DefaultConsumerGroupName,
                         this.EventHubConnectionString,
@@ -194,11 +203,11 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
                         processor.OnProcessEvents += (_, eventsArgs) =>
                         {
                             int eventCount = eventsArgs.Item2.events != null ? eventsArgs.Item2.events.Count() : 0;
-                            Log($"{hostName} > Partition {partitionId} TestEventProcessor processing {eventCount} event(s)");
                             if (eventCount > 0)
                             {
-                                var receivedEvent = partitionReceiveEvents[partitionId];
-                                receivedEvent.Set();
+                                Log($"{hostName} > Partition {partitionId} TestEventProcessor processing {eventCount} event(s)");
+                                partitionReceiveEvents[partitionId].Set();
+                                hostReceiveEvents[hostName].Set();
                             }
                         };
                     };
@@ -206,8 +215,10 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
                     await eventProcessorHost.RegisterEventProcessorFactoryAsync(processorFactory, processorOptions);
                 }
 
+                // Allow some time for each host to own at least 1 partition.
+                // Partition stealing logic balances partition ownership one at a time.
                 Log("Waiting for partition ownership to settle...");
-                await Task.Delay(TimeSpan.FromSeconds(30));
+                await Task.Delay(TimeSpan.FromSeconds(60));
 
                 Log("Sending an event to each partition");
                 var sendTasks = new List<Task>();
@@ -218,11 +229,17 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
                 await Task.WhenAll(sendTasks);
 
                 Log("Verifying an event was received by each partition");
-                foreach (var partitionId in PartitionIds)
+                foreach (var e in partitionReceiveEvents)
                 {
-                    var receivedEvent = partitionReceiveEvents[partitionId];
-                    bool partitionReceivedMessage = await receivedEvent.WaitAsync(TimeSpan.FromSeconds(30));
-                    Assert.True(partitionReceivedMessage, $"Partition {partitionId} didn't receive any message!");
+                    bool ret = await e.Value.WaitAsync(TimeSpan.FromSeconds(30));
+                    Assert.True(ret, $"Partition {e.Key} didn't receive any message!");
+                }
+
+                Log("Verifying at least an event was received by each host");
+                foreach (var e in hostReceiveEvents)
+                {
+                    bool ret = await e.Value.WaitAsync(TimeSpan.FromSeconds(30));
+                    Assert.True(ret, $"Host {e.Key} didn't receive any message!");
                 }
             }
             finally

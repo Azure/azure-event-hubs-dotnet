@@ -26,6 +26,10 @@ namespace Microsoft.Azure.EventHubs.Processor
             this.Token = source.Token;
         }
 
+        public string Offset { get; set; }
+
+        public long SequenceNumber { get; set; }
+
         public string PartitionId { get; set; }
 
         public string Owner { get; set; }
@@ -36,7 +40,8 @@ namespace Microsoft.Azure.EventHubs.Processor
 
         public virtual Task<bool> IsExpired() 
         {
-    	    // this function is meaningless in the base class
+            // By default lease never expires.
+            // Deriving class will implement the lease expiry logic.
             return Task.FromResult(false);
         }
 

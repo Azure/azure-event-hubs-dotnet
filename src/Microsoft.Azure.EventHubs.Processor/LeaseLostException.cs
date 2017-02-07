@@ -20,7 +20,6 @@ namespace Microsoft.Azure.EventHubs.Processor
             this.lease = lease;
         }
 
-        // We don't want to expose Lease to the public.
         public string PartitionId
         {
             get { return this.lease.PartitionId; }

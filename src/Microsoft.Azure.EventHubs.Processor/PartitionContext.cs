@@ -175,12 +175,14 @@ namespace Microsoft.Azure.EventHubs.Processor
                 {
                     if (inStoreCheckpoint == null)
                     {
-                        inStoreCheckpoint = await this.host.CheckpointManager.CreateCheckpointIfNotExistsAsync(checkpoint.PartitionId).ConfigureAwait(false);
+                        await this.host.CheckpointManager.CreateCheckpointIfNotExistsAsync(checkpoint.PartitionId).ConfigureAwait(false);
                     }
 
-                    inStoreCheckpoint.Offset = checkpoint.Offset;
-                    inStoreCheckpoint.SequenceNumber = checkpoint.SequenceNumber;
-                    await this.host.CheckpointManager.UpdateCheckpointAsync(inStoreCheckpoint).ConfigureAwait(false);
+                    await this.host.CheckpointManager.UpdateCheckpointAsync(this.Lease, checkpoint).ContinueWith((obj) =>
+                    {
+                        this.Lease.Offset = checkpoint.Offset;
+                        this.Lease.SequenceNumber = checkpoint.SequenceNumber;
+                    }).ConfigureAwait(false);
                 }
                 else
                 {

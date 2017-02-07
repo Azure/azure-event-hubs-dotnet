@@ -49,8 +49,9 @@ namespace Microsoft.Azure.EventHubs.Processor
         /// <summary>
         /// Update the checkpoint in the store with the offset/sequenceNumber in the provided checkpoint.
         /// </summary>
+        /// <param name="lease">Partition information against which to perform a checkpoint.</param>
         /// <param name="checkpoint">offset/sequeceNumber to update the store with.</param>
-        Task UpdateCheckpointAsync(Checkpoint checkpoint);
+        Task UpdateCheckpointAsync(Lease lease, Checkpoint checkpoint);
 
         /// <summary>
         /// Delete the stored checkpoint for the given partition. If there is no stored checkpoint for the

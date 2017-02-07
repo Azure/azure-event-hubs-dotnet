@@ -112,7 +112,12 @@ namespace Microsoft.Azure.EventHubs.Processor
             if (reason != CloseReason.LeaseLost)
             {
                 // Since this pump is dead, release the lease. 
-                await this.Host.LeaseManager.ReleaseLeaseAsync(this.PartitionContext.Lease).ConfigureAwait(false);
+                // Ignore LeaseLostException 
+                try
+                {
+                    await this.Host.LeaseManager.ReleaseLeaseAsync(this.PartitionContext.Lease).ConfigureAwait(false);
+                }
+                catch (LeaseLostException) { }
             }
 
             this.PumpStatus = PartitionPumpStatus.Closed;
