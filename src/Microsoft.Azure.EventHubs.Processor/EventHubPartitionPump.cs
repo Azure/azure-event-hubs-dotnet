@@ -33,21 +33,9 @@ namespace Microsoft.Azure.EventHubs.Processor
                 catch (Exception e)
                 {
                     lastException = e;
-                    if (e is ReceiverDisconnectedException)
-                    {
-                        // TODO Assuming this is due to a receiver with a higher epoch.
-                        // Is there a way to be sure without checking the exception text?
-                        ProcessorEventSource.Log.PartitionPumpWarning(
-                            this.Host.Id, this.PartitionContext.PartitionId, "Receiver disconnected on create, bad epoch?", e.ToString());
-                        // If it's a bad epoch, then retrying isn't going to help.
-                        break;
-                    }
-                    else
-                    {
-                        ProcessorEventSource.Log.PartitionPumpWarning(
-                            this.Host.Id, this.PartitionContext.PartitionId, "Failure creating client or receiver, retrying", e.ToString());
-                        retryCount++;
-                    }
+                    ProcessorEventSource.Log.PartitionPumpWarning(
+                        this.Host.Id, this.PartitionContext.PartitionId, "Failure creating client or receiver, retrying", e.ToString());
+                    retryCount++;
                 }
             }
             while (!openedOK && (retryCount < 5));
@@ -171,8 +159,10 @@ namespace Microsoft.Azure.EventHubs.Processor
                 {
                     ProcessorEventSource.Log.PartitionPumpError(
                         this.eventHubPartitionPump.Host.Id, this.eventHubPartitionPump.PartitionContext.PartitionId, "EventHub client error:", error.ToString());
-                    await this.eventHubPartitionPump.ProcessErrorAsync(error).ConfigureAwait(false);
                 }
+
+                // We would like to deliver all errors in the pump to error handler.
+                await this.eventHubPartitionPump.ProcessErrorAsync(error).ConfigureAwait(false);
 
                 this.eventHubPartitionPump.PumpStatus = PartitionPumpStatus.Errored;
             }
