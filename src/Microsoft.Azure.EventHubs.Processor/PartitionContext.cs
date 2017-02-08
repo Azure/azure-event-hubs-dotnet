@@ -44,15 +44,6 @@ namespace Microsoft.Azure.EventHubs.Processor
 
         object ThisLock { get; }
 
-        /// <summary>
-        /// Updates the offset/sequenceNumber in the PartitionContext with the values in the received EventData object.
-        ///  
-        /// <para>Since offset is a string it cannot be compared easily, but sequenceNumber is checked. The new sequenceNumber must be
-        /// at least the same as the current value or the entire assignment is aborted. It is assumed that if the new sequenceNumber
-        /// is equal or greater, the new offset will be as well.</para>
-        /// </summary>
-        /// <param name="eventData">A received EventData with valid offset and sequenceNumber</param>
-        /// <exception cref="ArgumentOutOfRangeException">If the sequenceNumber in the provided event is less than the current value</exception>
         internal void SetOffsetAndSequenceNumber(EventData eventData)
         {
             if (eventData == null)
@@ -60,35 +51,12 @@ namespace Microsoft.Azure.EventHubs.Processor
                 throw new ArgumentNullException(nameof(eventData));
             }
 
-            this.SetOffsetAndSequenceNumber(eventData.SystemProperties.Offset, eventData.SystemProperties.SequenceNumber);
-        }
-
-        /// <summary>
-        /// Updates the offset/sequenceNumber in the PartitionContext.
-        /// 
-        /// <para>These two values are closely tied and must be updated in an atomic fashion, hence the combined setter.
-        /// Since offset is a string it cannot be compared easily, but sequenceNumber is checked. The new sequenceNumber must be
-        /// at least the same as the current value or the entire assignment is aborted. It is assumed that if the new sequenceNumber
-        /// is equal or greater, the new offset will be as well.</para>
-        /// </summary>
-        /// <param name="offset">New offset value</param>
-        /// <param name="sequenceNumber">New sequenceNumber value </param>
-        /// <exception cref="ArgumentOutOfRangeException">If the sequenceNumber in the provided event is less than the current value</exception>
-        void SetOffsetAndSequenceNumber(string offset, long sequenceNumber)
-        {
-            lock(this.ThisLock)
+            lock (this.ThisLock)
             {
-                if (sequenceNumber >= this.SequenceNumber)
-                {
-                    this.Offset = offset;
-                    this.SequenceNumber = sequenceNumber;
-                }
-                else
-                {
-                    throw new ArgumentOutOfRangeException("offset/sequenceNumber", $"New offset {offset}/{sequenceNumber} is less than previous {this.Offset}/{this.SequenceNumber}");
-                }
+                this.Offset = eventData.SystemProperties.Offset;
+                this.SequenceNumber = eventData.SystemProperties.SequenceNumber;
             }
-        }    
+        }
 
         internal async Task<object> GetInitialOffsetAsync() // throws InterruptedException, ExecutionException
         {
@@ -132,7 +100,6 @@ namespace Microsoft.Azure.EventHubs.Processor
         /// <summary>
         /// Writes the current offset and sequenceNumber to the checkpoint store via the checkpoint manager.
         /// </summary>
-        /// <exception cref="ArgumentOutOfRangeException">If this.sequenceNumber is less than the last checkpointed value</exception>
         public Task CheckpointAsync()
         {
     	    // Capture the current offset and sequenceNumber. Synchronize to be sure we get a matched pair
@@ -153,10 +120,21 @@ namespace Microsoft.Azure.EventHubs.Processor
         /// values to the checkpoint store via the checkpoint manager.
         /// </summary>
         /// <param name="eventData">A received EventData with valid offset and sequenceNumber</param>
+        /// <exception cref="ArgumentNullException">If suplied eventData is null</exception>
         /// <exception cref="ArgumentOutOfRangeException">If the sequenceNumber is less than the last checkpointed value</exception>
         public Task CheckpointAsync(EventData eventData)
         {
-            this.SetOffsetAndSequenceNumber(eventData.SystemProperties.Offset, eventData.SystemProperties.SequenceNumber);
+            if (eventData == null)
+            {
+                throw new ArgumentNullException("eventData");
+            }
+            
+            // We have never seen this sequence number yet
+            if (eventData.SystemProperties.SequenceNumber > this.SequenceNumber)
+            {
+                throw new ArgumentOutOfRangeException("eventData.SystemProperties.SequenceNumber");
+            }
+
             return this.PersistCheckpointAsync(new Checkpoint(this.PartitionId, eventData.SystemProperties.Offset, eventData.SystemProperties.SequenceNumber));
         }
 
