@@ -112,6 +112,12 @@ namespace Microsoft.Azure.EventHubs.Processor
             return checkpoint;
         }
 
+        [Obsolete("Use UpdateCheckpointAsync(Lease lease, Checkpoint checkpoint) instead", true)]
+        public Task UpdateCheckpointAsync(Checkpoint checkpoint)
+        {
+            throw new NotImplementedException();
+        }
+
         public async Task UpdateCheckpointAsync(Lease lease, Checkpoint checkpoint)
         {
             AzureBlobLease newLease = new AzureBlobLease((AzureBlobLease)lease);
