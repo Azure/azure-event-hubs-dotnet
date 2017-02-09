@@ -77,10 +77,45 @@ namespace Microsoft.Azure.EventHubs
             get; internal set;
         }
 
+        /// <summary>
+        /// Creates EventData object with SystemProperties property populated.
+        /// Use it for test purposes only.
+        /// </summary>
+        public static EventData CreateWithSystemProperties(byte[] array, long sequenceNumber, DateTime enqueuedTimeUtc, string offset,
+            string partitionKey)
+        {
+            return new EventData(array)
+            {
+                SystemProperties = new SystemPropertiesCollection(sequenceNumber, enqueuedTimeUtc, offset, partitionKey)
+            };
+        }
+
+        /// <summary>
+        /// Creates EventData object with SystemProperties property populated.
+        /// Use it for test purposes only.
+        /// </summary>
+        public static EventData CreateWithSystemProperties(ArraySegment<byte> arraySegment, long sequenceNumber, DateTime enqueuedTimeUtc, string offset,
+            string partitionKey)
+        {
+            return new EventData(arraySegment)
+            {
+                SystemProperties = new SystemPropertiesCollection(sequenceNumber, enqueuedTimeUtc, offset, partitionKey)
+            };
+        }
+
         public sealed class SystemPropertiesCollection
         {
             internal SystemPropertiesCollection()
             {
+            }
+
+            internal SystemPropertiesCollection(long sequenceNumber, DateTime enqueuedTimeUtc, string offset,
+                string partitionKey)
+            {
+                SequenceNumber = sequenceNumber;
+                EnqueuedTimeUtc = enqueuedTimeUtc;
+                Offset = offset;
+                PartitionKey = partitionKey;
             }
 
             public long SequenceNumber

@@ -894,6 +894,19 @@ namespace Microsoft.Azure.EventHubs.UnitTests
             Assert.True(edReceived.Body.Count == byteArr.Count(), $"Sent {byteArr.Count()} bytes and received {edReceived.Body.Count}");
         }
 
+        [Fact]
+        void EventDataObjectCanHaveSystemPropertiesPopulatedCorrectly()
+        {
+            byte[] byteArr = {0};
+            var eventData = EventData.CreateWithSystemProperties(new ArraySegment<byte>(byteArr), long.MinValue,
+                DateTime.MinValue, string.Empty, "foo");
+
+            Assert.True(eventData.SystemProperties.EnqueuedTimeUtc == DateTime.MinValue);
+            Assert.True(eventData.SystemProperties.Offset == string.Empty);
+            Assert.True(eventData.SystemProperties.PartitionKey == "foo");
+            Assert.True(eventData.SystemProperties.SequenceNumber == long.MinValue);
+        }
+
         // Send and receive given event on given partition.
         async Task<EventData> SendAndReceiveEvent(string partitionId, EventData sendEvent)
         {
