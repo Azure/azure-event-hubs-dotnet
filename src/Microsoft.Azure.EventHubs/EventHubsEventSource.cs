@@ -199,7 +199,16 @@ namespace Microsoft.Azure.EventHubs
                 WriteEvent(20, clientId, partitionId, error);
             }
         }
-        
+
+        [Event(100, Level = EventLevel.Error, Message = "{0}: Exception handled: {1}")]
+        public void ExceptionHandled(string clientId, string partitionId, string error)
+        {
+            if (IsEnabled())
+            {
+                WriteEvent(100, clientId, partitionId, error);
+            }
+        }
+
         // TODO: Add Keywords if desired.
         //public class Keywords   // This is a bitvector
         //{
