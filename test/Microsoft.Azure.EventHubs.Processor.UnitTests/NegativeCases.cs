@@ -210,6 +210,11 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
                 Log("Verifying received events by each partition");
                 foreach (var partitionId in PartitionIds)
                 {
+                    if (!receivedEventCounts.ContainsKey(partitionId))
+                    {
+                        throw new Exception($"Partition {partitionId} didn't receive any messages!");
+                    }
+
                     var receivedEventCount = receivedEventCounts[partitionId];
                     Assert.True(receivedEventCount >= 2, $"Partition {partitionId} received {receivedEventCount} where as at least 2 expected!");
                 }
@@ -217,6 +222,7 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
             finally
             {
                 Log("Calling UnregisterEventProcessorAsync.");
+                await eventProcessorHost.UnregisterEventProcessorAsync();
             }
         }
     }
