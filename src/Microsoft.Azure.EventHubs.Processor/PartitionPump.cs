@@ -125,14 +125,14 @@ namespace Microsoft.Azure.EventHubs.Processor
         {
             if (events == null)
             {
-                if (!this.Host.EventProcessorOptions.InvokeProcessorAfterReceiveTimeout)
-                {
-                    return;
-                }
-                else
+                if (this.Host.EventProcessorOptions.InvokeProcessorAfterReceiveTimeout)
                 {
                     // Assumes that .NET Core client will call with empty EventData on receive timeout.
                     events = Enumerable.Empty<EventData>();
+                }
+                else
+                {
+                    return;
                 }
             }
 
