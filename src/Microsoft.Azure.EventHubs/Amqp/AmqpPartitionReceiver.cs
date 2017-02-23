@@ -17,7 +17,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
         readonly ActiveClientLinkManager clientLinkManager;
         IPartitionReceiveHandler receiveHandler;
         CancellationTokenSource receivePumpCancellationSource;
-        internal Task receivePumpTask;
+        Task receivePumpTask;
 
         public AmqpPartitionReceiver(
             AmqpEventHubClient eventHubClient,
