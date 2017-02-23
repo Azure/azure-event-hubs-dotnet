@@ -292,6 +292,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     }
                     catch (Exception e)
                     {
+                        EventHubsEventSource.Log.ReceiveHandlerExitingWithError(this.ClientId, this.PartitionId, e.Message);
                         await this.ReceiveHandlerProcessErrorAsync(e).ConfigureAwait(false);
                         break;
                     }
@@ -302,6 +303,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     }
                     catch (Exception userCodeError)
                     {
+                        EventHubsEventSource.Log.ReceiveHandlerExitingWithError(this.ClientId, this.PartitionId, userCodeError.Message);
                         await this.ReceiveHandlerProcessErrorAsync(userCodeError).ConfigureAwait(false);
                         break;
                     }
