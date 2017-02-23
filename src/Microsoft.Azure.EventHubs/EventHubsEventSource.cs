@@ -199,7 +199,16 @@ namespace Microsoft.Azure.EventHubs
                 WriteEvent(20, clientId, partitionId, error);
             }
         }
-        
+
+        [Event(21, Level = EventLevel.Error, Message = "{0}: Receive handler exiting with exception on partition {1}: {2}.")]
+        public void ReceiveHandlerExitingWithError(string clientId, string partitionId, string error)
+        {
+            if (IsEnabled())
+            {
+                WriteEvent(21, clientId, partitionId, error);
+            }
+        }
+
         // TODO: Add Keywords if desired.
         //public class Keywords   // This is a bitvector
         //{

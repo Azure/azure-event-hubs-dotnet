@@ -922,7 +922,7 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
             return receivedEvents.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
         }
 
-        async Task SendToPartitionAsync(string partitionId, string messageBody, string connectionString)
+        protected async Task SendToPartitionAsync(string partitionId, string messageBody, string connectionString)
         {
             var eventHubClient = EventHubClient.CreateFromConnectionString(connectionString);
             try
