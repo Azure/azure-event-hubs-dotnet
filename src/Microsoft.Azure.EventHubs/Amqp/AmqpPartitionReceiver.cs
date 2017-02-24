@@ -156,15 +156,14 @@ namespace Microsoft.Azure.EventHubs.Amqp
         async Task<ReceivingAmqpLink> CreateLinkAsync(TimeSpan timeout)
         {
             var amqpEventHubClient = ((AmqpEventHubClient)this.EventHubClient);
-            var csb = this.EventHubClient.ConnectionStringBuilder;
-            var timeoutHelper = new TimeoutHelper(csb.OperationTimeout);
+            var timeoutHelper = new TimeoutHelper(timeout);
             AmqpConnection connection = await amqpEventHubClient.ConnectionManager.GetOrCreateAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
 
             // Authenticate over CBS
             var cbsLink = connection.Extensions.Find<AmqpCbsLink>();
 
             ICbsTokenProvider cbsTokenProvider = amqpEventHubClient.CbsTokenProvider;
-            Uri address = new Uri(csb.Endpoint, this.Path);
+            Uri address = new Uri(amqpEventHubClient.ConnectionStringBuilder.Endpoint, this.Path);
             string audience = address.AbsoluteUri;
             string resource = address.AbsoluteUri;
             var expiresAt = await cbsLink.SendTokenAsync(cbsTokenProvider, address, audience, resource, new[] { ClaimConstants.Listen }, timeoutHelper.RemainingTime()).ConfigureAwait(false);
