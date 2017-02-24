@@ -116,8 +116,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
             var cbsLink = connection.Extensions.Find<AmqpCbsLink>();
 
             ICbsTokenProvider cbsTokenProvider = amqpEventHubClient.CbsTokenProvider;
-            var csb = amqpEventHubClient.ConnectionStringBuilder;
-            Uri address = new Uri(csb.Endpoint, this.Path);
+            Uri address = new Uri(amqpEventHubClient.ConnectionStringBuilder.Endpoint, this.Path);
             string audience = address.AbsoluteUri;
             string resource = address.AbsoluteUri;
             var expiresAt = await cbsLink.SendTokenAsync(cbsTokenProvider, address, audience, resource, new[] { ClaimConstants.Send }, timeoutHelper.RemainingTime()).ConfigureAwait(false);
