@@ -161,10 +161,15 @@ namespace Microsoft.Azure.EventHubs.Processor
                         this.eventHubPartitionPump.Host.Id, this.eventHubPartitionPump.PartitionContext.PartitionId, "EventHub client error:", error.ToString());
                 }
 
-                // We would like to deliver all errors in the pump to error handler.
-                await this.eventHubPartitionPump.ProcessErrorAsync(error).ConfigureAwait(false);
-
-                this.eventHubPartitionPump.PumpStatus = PartitionPumpStatus.Errored;
+                try
+                {
+                    // We would like to deliver all errors in the pump to error handler.
+                    await this.eventHubPartitionPump.ProcessErrorAsync(error).ConfigureAwait(false);
+                }
+                finally
+                {
+                    this.eventHubPartitionPump.PumpStatus = PartitionPumpStatus.Errored;
+                }
             }
         }
     }
