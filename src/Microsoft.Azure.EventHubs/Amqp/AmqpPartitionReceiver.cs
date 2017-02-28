@@ -110,6 +110,13 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     }
                     else
                     {
+                        // Handle System.TimeoutException explicitly.
+                        // We don't really want to to throw TimeoutException on this call.
+                        if (ex is TimeoutException)
+                        {
+                            break;
+                        }
+
                         throw;
                     }
                 }
