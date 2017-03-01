@@ -59,61 +59,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
             return this.ConnectionManager.CloseAsync();
         }
 
-        internal async Task<ActiveClientRequestResponseLink> OpenRequestResponseLinkAsync(
-            string type, string address, MessagingEntityType? entityType, string[] requiredClaims, TimeSpan timeout)
-        {
-            var timeoutHelper = new TimeoutHelper(timeout, true);
-            AmqpSession session = null;
-            try
-            {
-                // Don't need to get token for namespace scope operations, included in request
-                bool isNamespaceScope = address.Equals(AmqpClientConstants.ManagementAddress, StringComparison.OrdinalIgnoreCase);
-
-                var connection = await this.ConnectionManager.GetOrCreateAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
-
-                var sessionSettings = new AmqpSessionSettings { Properties = new Fields() };
-                session = connection.CreateSession(sessionSettings);
-
-                await session.OpenAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
-
-                var linkSettings = new AmqpLinkSettings();
-                linkSettings.AddProperty(AmqpClientConstants.TimeoutName, (uint)timeoutHelper.RemainingTime().TotalMilliseconds);
-                if (entityType != null)
-                {
-                    linkSettings.AddProperty(AmqpClientConstants.EntityTypeName, (int)entityType.Value);
-                }
-
-                // Create the link
-                var link = new RequestResponseAmqpLink(type, session, address, linkSettings.Properties);
-
-                var authorizationValidToUtc = DateTime.MaxValue;
-
-                if (!isNamespaceScope)
-                {
-                    // TODO: Get Entity level token here
-                }
-
-                await link.OpenAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
-
-                // Redirected scenario requires entityPath as the audience, otherwise we 
-                // should always use the full EndpointUri as audience.
-                return new ActiveClientRequestResponseLink(
-                    link,
-                    this.ConnectionStringBuilder.Endpoint.AbsoluteUri, // audience
-                    this.ConnectionStringBuilder.Endpoint.AbsoluteUri, // endpointUri
-                    requiredClaims,
-                    false,
-                    authorizationValidToUtc);
-            }
-            catch (Exception)
-            {
-                // Aborting the session will cleanup the link as well.
-                session?.Abort();
-
-                throw;
-            }
-        }
-
         protected override async Task<EventHubRuntimeInformation> OnGetRuntimeInformationAsync()
         {
             var serviceClient = this.GetManagementServiceClient();
