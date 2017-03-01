@@ -130,10 +130,10 @@ namespace Microsoft.Azure.EventHubs.Amqp
         {
             lock (this.receivePumpLock)
             {
-                if (this.receiveHandler != null)
+                if (newReceiveHandler != null && this.receiveHandler != null)
                 {
                     // Notify existing handler first (but don't wait).
-                    this.receiveHandler.ProcessErrorAsync(new OperationCanceledException("New handler has registered for this receiver.")); // .Fork();
+                    this.receiveHandler.ProcessErrorAsync(new OperationCanceledException("New handler has registered for this receiver."));
                 }
 
                 this.receiveHandler = newReceiveHandler;
