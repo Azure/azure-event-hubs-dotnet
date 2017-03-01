@@ -532,7 +532,13 @@ namespace Microsoft.Azure.EventHubs.UnitTests
 
                 EventWaitHandle dataReceivedEvent = new EventWaitHandle(false, EventResetMode.ManualReset);
                 var handler = new TestPartitionReceiveHandler();
-                handler.ErrorReceived += (s, e) => Log($"TestPartitionReceiveHandler.ProcessError {e.GetType().Name}: {e.Message}");
+
+                // Not expecting any errors.
+                handler.ErrorReceived += (s, e) =>
+                {
+                    throw new Exception($"TestPartitionReceiveHandler.ProcessError {e.GetType().Name}: {e.Message}");
+                };
+
                 handler.EventsReceived += (s, eventDatas) =>
                 {
                     int count = eventDatas != null ? eventDatas.Count() : 0;
@@ -564,6 +570,10 @@ namespace Microsoft.Azure.EventHubs.UnitTests
             }
             finally
             {
+                // Unregister handler.
+                partitionReceiver.SetReceiveHandler(null);
+
+                // Close clients.
                 await partitionSender.CloseAsync();
                 await partitionReceiver.CloseAsync();
             }
