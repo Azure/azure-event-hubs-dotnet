@@ -1,8 +1,8 @@
-﻿# Get started receiving messages with the EventProcessorHost in .NET Standard
+﻿# Get started receiving messages with the EventProcessorHost in .NET Core
 
 ## What will be accomplished
 
-This tutorial shows how to create the existing solution **SampleEphReceiver** (inside this folder). You can run the solution as-is, replacing the `EhConnectionString`, `EhEntityPath`, and `StorageAccount` strings with your Event Hub and storage account values, or follow this tutorial to create your own.
+This tutorial will walk-through how to create the existing solution **SampleEphReceiver** (inside this folder). You can run the solution as-is replacing the EhConnectionString/EhEntityPath/StorageAccount settings with your Event Hub and storage account values, or follow this tutorial to create your own.
 
 In this tutorial, we will write a .NET Core console application to receive messages from an Event Hub using the **EventProcessorHost**.
 
@@ -24,9 +24,9 @@ In this tutorial, we will write a .NET Core console application to receive messa
 
 ### Add the Event Hubs NuGet package
 
-* Add the following NuGet packages to your project:
-  * [`Microsoft.Azure.EventHubs`](https://www.nuget.org/packages/Microsoft.Azure.EventHubs/)
-  * [`Microsoft.Azure.EventHubs.Processor`](https://www.nuget.org/packages/Microsoft.Azure.EventHubs.Processor/)
+1. Right-click the newly created project and select **Manage NuGet Packages**.
+
+2. Click the **Browse** tab, then search for “Microsoft Azure Event Processor Host” and select the **Microsoft Azure Event Processor Host** item. Click **Install** to complete the installation, then close this dialog box.
 
 ### Implement the IEventProcessor interface
 
