@@ -1,190 +1,26 @@
-﻿# Get started receiving messages with the EventProcessorHost in .NET Core
+# Get started receiving messages with the EventProcessorHost in .NET Core
 
-## What will be accomplished
+> [!NOTE]
+> This sample is also available as a tutorial [here](https://docs.microsoft.com/azure/event-hubs/event-hubs-dotnet-standard-getstarted-receive-eph).
 
-This tutorial will walk-through how to create the existing solution **SampleEphReceiver** (inside this folder). You can run the solution as-is replacing the EhConnectionString/EhEntityPath/StorageAccount settings with your Event Hub and storage account values, or follow this tutorial to create your own.
-
-In this tutorial, we will write a .NET Core console application to receive messages from an Event Hub using the **EventProcessorHost**.
+This sample shows how to write a .NET Core console application that receives messages from an Event Hub using the **EventProcessorHost**. You can run the solution as-is, replacing the placeholder strings with your Event Hub and storage account values, or you can follow the steps in the [tutorial](https://docs.microsoft.com/azure/event-hubs/event-hubs-dotnet-standard-getstarted-receive-eph) to create your own.
 
 ## Prerequisites
 
 1. [Visual Studio 2015](http://www.visualstudio.com).
-
-2. [.NET Core Visual Studio 2015 Tooling](http://www.microsoft.com/net/core).
-
+2. [.NET Core Visual Studio 2015 tools](http://www.microsoft.com/net/core).
 3. An Azure subscription.
-
 4. An Event Hubs namespace.
+5. An Azure storage account.
+
+### Create an Azure Storage account
+1. Log on to the [Azure portal](https://portal.azure.com).
+2. In the left navigation pane of the portal, click **New**, then click **Storage**, and then click **Storage Account**.
+3. Complete the fields in the storage account blade and then click **Create**.
+4. After you see the **Deployments Succeeded** message, click the name of the new storage account and in the **Essentials** blade, click **Blobs**. When the **Blob service** blade opens, click **+ Container** at the top. Name the container **archive**, then close the **Blob service** blade.
+5. Click **Access keys** in the left blade and copy the name of the storage container, the storage account, and the value of **key1**. Save these values to Notepad or some other temporary location.
+
+### Create an Event Hubs namespace and an Event Hub
+
+The next step is to use the [Azure portal](https://portal.azure.com) to create a namespace of type Event Hubs, and obtain the management credentials your application needs to communicate with the Event Hub. To create a namespace and Event Hub, follow the procedure in [this article](event-hubs-create.md).
     
-## Receive messages from the Event Hub
-
-### Create a console application
-
-1. Launch Visual Studio and create a new .NET Core console application.
-
-### Add the Event Hubs NuGet package
-
-1. Right-click the newly created project and select **Manage NuGet Packages**.
-
-2. Click the **Browse** tab, then search for “Microsoft Azure Event Processor Host” and select the **Microsoft Azure Event Processor Host** item. Click **Install** to complete the installation, then close this dialog box.
-
-### Implement the IEventProcessor interface
-
-1. Create a new class called `SimpleEventProcessor'.
-
-2. Add the following `using` statements to the top of the SimpleEventProcessor.cs file.
-
-    ```cs
-    using Microsoft.Azure.EventHubs;
-    using Microsoft.Azure.EventHubs.Processor;
-    ```
-
-3. Implement the `IEventProcessor` interface. The class should look like this:
-
-    ```cs
-    namespace SampleEphReceiver
-    {
-        using System;
-        using System.Collections.Generic;
-        using System.Text;
-        using System.Threading.Tasks;
-        using Microsoft.Azure.EventHubs;
-        using Microsoft.Azure.EventHubs.Processor;
-    
-        public class SimpleEventProcessor : IEventProcessor
-        {
-            public Task CloseAsync(PartitionContext context, CloseReason reason)
-            {
-                Console.WriteLine($"Processor Shutting Down. Partition '{context.PartitionId}', Reason: '{reason}'.");
-                return Task.CompletedTask;
-            }
-    
-            public Task OpenAsync(PartitionContext context)
-            {
-                Console.WriteLine($"SimpleEventProcessor initialized. Partition: '{context.PartitionId}'");
-                return Task.CompletedTask;
-            }
-    
-            public Task ProcessErrorAsync(PartitionContext context, Exception error)
-            {
-                Console.WriteLine($"Error on Partition: {context.PartitionId}, Error: {error.Message}");
-                return Task.CompletedTask;
-            }
-    
-            public Task ProcessEventsAsync(PartitionContext context, IEnumerable<EventData> messages)
-            {
-                foreach (var eventData in messages)
-                {
-                    var data = Encoding.UTF8.GetString(eventData.Body.Array, eventData.Body.Offset, eventData.Body.Count);
-                    Console.WriteLine($"Message received. Partition: '{context.PartitionId}', Data: '{data}'");
-                }
-    
-                return context.CheckpointAsync();
-            }
-        }
-    }
-    ```
-
-### Write a main console method that uses `SimpleEventProcessor` to receive messages from an Event Hub
-
-1. Add the following `using` statements to the top of the Program.cs file.
-  
-    ```cs
-    using Microsoft.Azure.EventHubs;
-    using Microsoft.Azure.EventHubs.Processor;
-    ```
-
-2. Add constants to the `Program` class for the Event Hubs connection string, Event Hub path, storage container name, storage account name, and storage account key. Replace placeholders with their corresponding values.
-
-    ```cs
-    private const string EhConnectionString = "{Event Hubs connection string}";
-    private const string EhEntityPath = "{Event Hub path/name}";
-    private const string StorageContainerName = "{Storage account container name}";
-    private const string StorageAccountName = "{Storage account name}";
-    private const string StorageAccountKey = "{Storage account key}";
-
-    private static readonly string StorageConnectionString = string.Format("DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1}", StorageAccountName, StorageAccountKey);
-    ```   
-
-3. Add a new method named `MainAsync` to the `Program` class like the following:
-    ```cs
-    private static async Task MainAsync(string[] args)
-    {
-        Console.WriteLine("Registering EventProcessor...");
-
-        var eventProcessorHost = new EventProcessorHost(
-            EhEntityPath,
-            PartitionReceiver.DefaultConsumerGroupName,
-            EhConnectionString,
-            StorageConnectionString,
-            StorageContainerName);
-
-        // Registers the Event Processor Host and starts receiving messages
-        await eventProcessorHost.RegisterEventProcessorAsync<SimpleEventProcessor>();
-
-        Console.WriteLine("Receiving. Press enter key to stop worker.");
-        Console.ReadLine();
-
-        // Disposes of the Event Processor Host
-        await eventProcessorHost.UnregisterEventProcessorAsync();
-    }
-    ```
-
-3. Add the following line of code to the `Main` method:
-
-    ```cs
-    MainAsync(args).GetAwaiter().GetResult();
-    ```
-
-	Here is what your Program.cs file should look like:
-
-    ```cs
-    namespace SampleEphReceiver
-    {
-        using System;
-        using System.Threading.Tasks;
-        using Microsoft.Azure.EventHubs;
-        using Microsoft.Azure.EventHubs.Processor;
-    
-        public class Program
-        {
-            private const string EhConnectionString = "{Event Hubs connection string}";
-            private const string EhEntityPath = "{Event Hub path/name}";
-            private const string StorageContainerName = "{Storage account container name}";
-            private const string StorageAccountName = "{Storage account name}";
-            private const string StorageAccountKey = "{Storage account key}";
-    
-            private static readonly string StorageConnectionString = string.Format("DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1}", StorageAccountName, StorageAccountKey);
-    
-            public static void Main(string[] args)
-            {
-                MainAsync(args).GetAwaiter().GetResult();
-            }
-    
-            private static async Task MainAsync(string[] args)
-            {
-                Console.WriteLine("Registering EventProcessor...");
-    
-                var eventProcessorHost = new EventProcessorHost(
-                    EhEntityPath,
-                    PartitionReceiver.DefaultConsumerGroupName,
-                    EhConnectionString,
-                    StorageConnectionString,
-                    StorageContainerName);
-    
-                // Registers the Event Processor Host and starts receiving messages
-                await eventProcessorHost.RegisterEventProcessorAsync<SimpleEventProcessor>();
-    
-                Console.WriteLine("Receiving. Press enter key to stop worker.");
-                Console.ReadLine();
-    
-                // Disposes of the Event Processor Host
-                await eventProcessorHost.UnregisterEventProcessorAsync();
-            }
-        }
-    }
-    ```
-  
-4. Run the program, and ensure that there are no errors.
-  
-Congratulations! You have now received messages from an Event Hub.
