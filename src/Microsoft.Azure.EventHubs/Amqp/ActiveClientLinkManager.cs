@@ -94,10 +94,9 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
             // Account clock skew by providing some buffer.
             interval -= TokenRefreshBuffer;
-            Fx.Assert(interval >= TimeSpan.Zero, "interval can't be negative");
 
-            interval = interval < AmqpClientConstants.ClientMinimumTokenRefreshInterval 
-                ? AmqpClientConstants.ClientMinimumTokenRefreshInterval : interval;
+            // If interval is negative then we are close to expiry. Try refreshing token right now.
+            interval = interval < TimeSpan.Zero ? TimeSpan.Zero : interval;
 
             this.validityTimer.Change(interval, Timeout.InfiniteTimeSpan);
         }
