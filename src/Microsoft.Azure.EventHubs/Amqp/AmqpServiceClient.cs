@@ -20,7 +20,6 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
 
         readonly AmqpEventHubClient eventHubClient;
         readonly FaultTolerantAmqpObject<RequestResponseAmqpLink> link;
-        readonly ActiveClientLinkManager clientLinkManager;
 
         SecurityToken token;
         AsyncLock tokenLock = new AsyncLock();
@@ -31,7 +30,6 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
             this.eventHubClient = eventHubClient;
             this.Address = address;
             this.link = new FaultTolerantAmqpObject<RequestResponseAmqpLink>(t => this.OpenLinkAsync(t), rrlink => rrlink.CloseAsync(TimeSpan.FromSeconds(10)));
-            this.clientLinkManager = new ActiveClientLinkManager(this.eventHubClient);
         }
 
         AmqpMessage CreateGetRuntimeInformationRequest()
@@ -172,10 +170,64 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
 
         async Task<RequestResponseAmqpLink> OpenLinkAsync(TimeSpan timeout)
         {
-            ActiveClientRequestResponseLink activeClientLink = await this.eventHubClient.OpenRequestResponseLinkAsync(
+            ActiveClientRequestResponseLink activeClientLink = await OpenRequestResponseLinkAsync(
                 "svc", this.Address, null, AmqpServiceClient.RequiredClaims, timeout);
-            this.clientLinkManager.SetActiveLink(activeClientLink);
             return activeClientLink.Link;
+        }
+
+        async Task<ActiveClientRequestResponseLink> OpenRequestResponseLinkAsync(
+            string type, string address, MessagingEntityType? entityType, string[] requiredClaims, TimeSpan timeout)
+        {
+            var timeoutHelper = new TimeoutHelper(timeout, true);
+            AmqpSession session = null;
+            try
+            {
+                // Don't need to get token for namespace scope operations, included in request
+                bool isNamespaceScope = address.Equals(AmqpClientConstants.ManagementAddress, StringComparison.OrdinalIgnoreCase);
+
+                var connection = await this.eventHubClient.ConnectionManager.GetOrCreateAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
+
+                var sessionSettings = new AmqpSessionSettings { Properties = new Fields() };
+                session = connection.CreateSession(sessionSettings);
+
+                await session.OpenAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
+
+                var linkSettings = new AmqpLinkSettings();
+                linkSettings.AddProperty(AmqpClientConstants.TimeoutName, (uint)timeoutHelper.RemainingTime().TotalMilliseconds);
+                if (entityType != null)
+                {
+                    linkSettings.AddProperty(AmqpClientConstants.EntityTypeName, (int)entityType.Value);
+                }
+
+                // Create the link
+                var link = new RequestResponseAmqpLink(type, session, address, linkSettings.Properties);
+
+                var authorizationValidToUtc = DateTime.MaxValue;
+
+                if (!isNamespaceScope)
+                {
+                    // TODO: Get Entity level token here
+                }
+
+                await link.OpenAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
+
+                // Redirected scenario requires entityPath as the audience, otherwise we 
+                // should always use the full EndpointUri as audience.
+                return new ActiveClientRequestResponseLink(
+                    link,
+                    this.eventHubClient.ConnectionStringBuilder.Endpoint.AbsoluteUri, // audience
+                    this.eventHubClient.ConnectionStringBuilder.Endpoint.AbsoluteUri, // endpointUri
+                    requiredClaims,
+                    false,
+                    authorizationValidToUtc);
+            }
+            catch (Exception)
+            {
+                // Aborting the session will cleanup the link as well.
+                session?.Abort();
+
+                throw;
+            }
         }
     }
 }
