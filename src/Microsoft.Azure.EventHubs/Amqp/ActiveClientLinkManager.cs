@@ -10,7 +10,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
     sealed class ActiveClientLinkManager
     {
         static readonly TimeSpan SendTokenTimeout = TimeSpan.FromMinutes(1);
-        static readonly TimeSpan TokenRefreshBuffer = TimeSpan.FromSeconds(10);
+        static readonly TimeSpan TokenRefreshBuffer = TimeSpan.FromSeconds(300);
 
         readonly Timer validityTimer;
         readonly AmqpEventHubClient eventHubClient;
@@ -77,15 +77,8 @@ namespace Microsoft.Azure.EventHubs.Amqp
             }
             catch
             {
-                //DNX_TODO: 
-                //if (Fx.IsFatal(exception))
-                //{
-                //    throw;
-                //}
-
-                //DNX_TODO: MessagingClientEtwProvider.Provider.EventWriteAmqpLogError(thisPtr.activeClientLink.LinkObject, "BeginSendToken", exception.Message);
-
-                // failed to refresh token, no need to do anything since the server will shut the link itself
+                // Failed to refresh token, no need to do anything since the server will shut the link itself
+                // then we will create a new one.
                 thisPtr.CancelValidityTimer();
             }
         }
@@ -98,12 +91,15 @@ namespace Microsoft.Azure.EventHubs.Amqp
             }
 
             TimeSpan interval = this.activeClientLink.AuthorizationValidToUtc.Subtract(DateTime.UtcNow);
-            interval += TokenRefreshBuffer;   // Avoid getting a token that expires right away
-            interval = interval < AmqpClientConstants.ClientMinimumTokenRefreshInterval ? AmqpClientConstants.ClientMinimumTokenRefreshInterval : interval;
+
+            // Account clock skew by providing some buffer.
+            interval -= TokenRefreshBuffer;
+            Fx.Assert(interval >= TimeSpan.Zero, "interval can't be negative");
+
+            interval = interval < AmqpClientConstants.ClientMinimumTokenRefreshInterval 
+                ? AmqpClientConstants.ClientMinimumTokenRefreshInterval : interval;
 
             this.validityTimer.Change(interval, Timeout.InfiniteTimeSpan);
-
-            //DNX_TODO: MessagingClientEtwProvider.Provider.EventWriteAmqpManageLink("SetTimer", this.activeClientLink.LinkObject, interval.ToString("c", CultureInfo.InvariantCulture));
         }
 
         void OnLinkClosed(object sender, EventArgs e)
