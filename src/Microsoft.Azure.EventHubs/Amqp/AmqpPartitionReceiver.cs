@@ -300,7 +300,11 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     {
                         EventHubsEventSource.Log.ReceiveHandlerExitingWithError(this.ClientId, this.PartitionId, e.Message);
                         await this.ReceiveHandlerProcessErrorAsync(e).ConfigureAwait(false);
-                        break;
+
+                        // Avoid tight loop if Receieve call keeps faling.
+                        await Task.Delay(100);
+
+                        continue;
                     }
 
                     try
@@ -311,7 +315,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     {
                         EventHubsEventSource.Log.ReceiveHandlerExitingWithError(this.ClientId, this.PartitionId, userCodeError.Message);
                         await this.ReceiveHandlerProcessErrorAsync(userCodeError).ConfigureAwait(false);
-                        break;
                     }
                 }
             }
