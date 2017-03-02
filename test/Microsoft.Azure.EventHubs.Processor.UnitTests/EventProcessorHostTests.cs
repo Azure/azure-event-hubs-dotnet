@@ -9,7 +9,6 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
     using System.Diagnostics;
     using System.Linq;
     using System.Text;
-    using System.Threading;
     using System.Threading.Tasks;
     using Xunit;
     using Xunit.Abstractions;
@@ -688,96 +687,6 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
             Assert.False(receivedEvents.Any(kvp => kvp.Value.Count != 1), "One of the partitions didn't return exactly 1 event");
         }
 
-        [Fact]
-        async Task HostShouldRecoverAfterReceiverDisconnection()
-        {
-            // We will target one partition and do validation on it.
-            var targetPartition = this.PartitionIds.First();
-
-            int targetPartitionOpens = 0;
-            int targetPartitionCloses = 0;
-            int targetPartitionErrors = 0;
-            PartitionReceiver externalReceiver = null;
-
-            var eventProcessorHost = new EventProcessorHost(
-                "ephhost",
-                string.Empty,
-                PartitionReceiver.DefaultConsumerGroupName,
-                this.EventHubConnectionString,
-                this.StorageConnectionString,
-                Guid.NewGuid().ToString());
-
-            try
-            {
-                var processorFactory = new TestEventProcessorFactory();
-
-                processorFactory.OnCreateProcessor += (f, createArgs) =>
-                {
-                    var processor = createArgs.Item2;
-                    string partitionId = createArgs.Item1.PartitionId;
-                    string hostName = createArgs.Item1.Owner;
-                    processor.OnOpen += (_, partitionContext) =>
-                        {
-                            Log($"{hostName} > Partition {partitionId} TestEventProcessor opened");
-                            if (partitionId == targetPartition)
-                            {
-                                Interlocked.Increment(ref targetPartitionOpens);
-                            }
-                        };
-                    processor.OnClose += (_, closeArgs) =>
-                        {
-                            Log($"{hostName} > Partition {partitionId} TestEventProcessor closing: {closeArgs.Item2}");
-                            if (partitionId == targetPartition && closeArgs.Item2 == CloseReason.Shutdown)
-                            {
-                                Interlocked.Increment(ref targetPartitionCloses);
-                            }
-                        };
-                    processor.OnProcessError += (_, errorArgs) =>
-                        {
-                            Log($"{hostName} > Partition {partitionId} TestEventProcessor process error {errorArgs.Item2.Message}");
-                            if (partitionId == targetPartition && errorArgs.Item2 is ReceiverDisconnectedException)
-                            {
-                                Interlocked.Increment(ref targetPartitionErrors);
-                            }
-                        };
-                };
-
-                await eventProcessorHost.RegisterEventProcessorFactoryAsync(processorFactory);
-
-                // Wait 15 seconds then create a new epoch receiver.
-                // This will trigger ReceiverDisconnectedExcetion in the host.
-                await Task.Delay(15000);
-
-                Log("Creating a new receiver with epoch 2. This will trigger ReceiverDisconnectedException in the host.");
-                var ehClient = EventHubClient.CreateFromConnectionString(this.EventHubConnectionString);
-                externalReceiver = ehClient.CreateEpochReceiver(PartitionReceiver.DefaultConsumerGroupName,
-                    targetPartition, PartitionReceiver.StartOfStream, 2);
-                await externalReceiver.ReceiveAsync(100, TimeSpan.FromSeconds(5));
-
-                // Give another 1 minute for host to recover then do the validatins.
-                await Task.Delay(60000);
-
-                Log("Verifying that host was able to receive ReceiverDisconnectedException");
-                Assert.True(targetPartitionErrors == 1, $"Host received {targetPartitionErrors} ReceiverDisconnectedExceptions!");
-
-                Log("Verifying that host was able to reopen the partition");
-                Assert.True(targetPartitionOpens == 2, $"Host opened target partition {targetPartitionOpens} times!");
-
-                Log("Verifying that host notified by close");
-                Assert.True(targetPartitionCloses == 1, $"Host closed target partition {targetPartitionCloses} times!");
-            }
-            finally
-            {
-                Log("Calling UnregisterEventProcessorAsync");
-                await eventProcessorHost.UnregisterEventProcessorAsync();
-
-                if (externalReceiver != null)
-                {
-                    await externalReceiver.CloseAsync();
-                }
-            }
-        }
-
         /// <summary>
         /// If a host doesn't checkpoint on the processed events and shuts down, new host should start processing from the beginning.
         /// </summary>
@@ -922,7 +831,7 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
             return receivedEvents.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
         }
 
-        protected async Task SendToPartitionAsync(string partitionId, string messageBody, string connectionString)
+        async Task SendToPartitionAsync(string partitionId, string messageBody, string connectionString)
         {
             var eventHubClient = EventHubClient.CreateFromConnectionString(connectionString);
             try
