@@ -128,10 +128,17 @@ namespace Microsoft.Azure.EventHubs.Processor
 
         protected async Task ProcessEventsAsync(IEnumerable<EventData> events)
         {
-            // Assumes that .NET Core client will call with null on receive timeout.
-            if (events == null && !this.Host.EventProcessorOptions.InvokeProcessorAfterReceiveTimeout)
+            if (events == null)
             {
-                return;
+                if (this.Host.EventProcessorOptions.InvokeProcessorAfterReceiveTimeout)
+                {
+                    // Assumes that .NET Core client will call with empty EventData on receive timeout.
+                    events = Enumerable.Empty<EventData>();
+                }
+                else
+                {
+                    return;
+                }
             }
 
             // Synchronize to serialize calls to the processor.

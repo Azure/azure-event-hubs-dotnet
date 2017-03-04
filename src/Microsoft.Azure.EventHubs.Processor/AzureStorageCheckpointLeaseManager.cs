@@ -305,6 +305,18 @@ namespace Microsoft.Azure.EventHubs.Processor
                 await leaseBlob.FetchAttributesAsync().ConfigureAwait(false);
                 if (leaseBlob.Properties.LeaseState == LeaseState.Leased)
                 {
+                    if (string.IsNullOrEmpty(lease.Token))
+                    {
+                        // We reach here in a race condition: when this instance of EventProcessorHost scanned the
+                        // lease blobs, this partition was unowned (token is empty) but between then and now, another
+                        // instance of EPH has established a lease (getLeaseState() is LEASED). We normally enforce
+                        // that we only steal the lease if it is still owned by the instance which owned it when we
+                        // scanned, but we can't do that when we don't know who owns it. The safest thing to do is just
+                        // fail the acquisition. If that means that one EPH instance gets more partitions than it should,
+                        // rebalancing will take care of that quickly enough.
+                        return false;
+                    }
+
                     ProcessorEventSource.Log.AzureStorageManagerInfo(this.host.Id, lease.PartitionId, "Need to ChangeLease");
                     newToken = await leaseBlob.ChangeLeaseAsync(newLeaseId, AccessCondition.GenerateLeaseCondition(lease.Token)).ConfigureAwait(false);
                 }

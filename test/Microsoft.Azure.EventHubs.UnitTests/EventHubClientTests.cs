@@ -532,7 +532,13 @@ namespace Microsoft.Azure.EventHubs.UnitTests
 
                 EventWaitHandle dataReceivedEvent = new EventWaitHandle(false, EventResetMode.ManualReset);
                 var handler = new TestPartitionReceiveHandler();
-                handler.ErrorReceived += (s, e) => Log($"TestPartitionReceiveHandler.ProcessError {e.GetType().Name}: {e.Message}");
+
+                // Not expecting any errors.
+                handler.ErrorReceived += (s, e) =>
+                {
+                    throw new Exception($"TestPartitionReceiveHandler.ProcessError {e.GetType().Name}: {e.Message}");
+                };
+
                 handler.EventsReceived += (s, eventDatas) =>
                 {
                     int count = eventDatas != null ? eventDatas.Count() : 0;
@@ -564,6 +570,10 @@ namespace Microsoft.Azure.EventHubs.UnitTests
             }
             finally
             {
+                // Unregister handler.
+                partitionReceiver.SetReceiveHandler(null);
+
+                // Close clients.
                 await partitionSender.CloseAsync();
                 await partitionReceiver.CloseAsync();
             }
@@ -746,6 +756,50 @@ namespace Microsoft.Azure.EventHubs.UnitTests
             {
                 await receiver.CloseAsync();
             }
+        }
+
+        /// <summary>
+        /// Small receive timeout should not throw System.TimeoutException. 
+        /// TimeoutException should be returned as NULL to the awaiting client.
+        /// </summary>
+        /// <returns></returns>
+        [Fact]
+        async Task SmallReceiveTimeout()
+        {
+            var maxClients = 5;
+
+            // Issue receives with 1 second so that some of the Receive calls will timeout while creating AMQP link.
+            // Even those Receive calls should return NULL instead of bubbling the exception up.
+            var receiveTimeoutInSeconds = 1;
+
+            var tasks = Enumerable.Range(0, maxClients)
+                .Select(async i =>
+                {
+                    PartitionReceiver receiver = null;
+
+                    try
+                    {
+                        Log($"Testing with {receiveTimeoutInSeconds} seconds on client {i}.");
+
+                        // Start receiving from a future time so that Receive call won't be able to fetch any events.
+                        var ehClient = EventHubClient.CreateFromConnectionString(this.EventHubsConnectionString);
+                        receiver = ehClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", DateTime.UtcNow.AddMinutes(1));
+                        var ed = await receiver.ReceiveAsync(1, TimeSpan.FromSeconds(receiveTimeoutInSeconds));
+                        if (ed == null)
+                        {
+                            Log($"Received NULL from client {i}");
+                        }
+                    }
+                    finally
+                    {
+                        if (receiver != null)
+                        {
+                            await receiver.CloseAsync();
+                        }
+                    }
+                });
+
+            await Task.WhenAll(tasks);
         }
 
         [Fact]

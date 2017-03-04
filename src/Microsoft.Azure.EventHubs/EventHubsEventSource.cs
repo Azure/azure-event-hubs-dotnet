@@ -200,6 +200,15 @@ namespace Microsoft.Azure.EventHubs
             }
         }
 
+        [Event(21, Level = EventLevel.Error, Message = "{0}: Receive handler exiting with exception on partition {1}: {2}.")]
+        public void ReceiveHandlerExitingWithError(string clientId, string partitionId, string error)
+        {
+            if (IsEnabled())
+            {
+                WriteEvent(21, clientId, partitionId, error);
+            }
+        }
+
         [Event(100, Level = EventLevel.Error, Message = "{0}: Exception handled: {1}")]
         public void ExceptionHandled(string clientId, string partitionId, string error)
         {

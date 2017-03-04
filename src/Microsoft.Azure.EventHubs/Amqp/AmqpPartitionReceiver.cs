@@ -110,6 +110,13 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     }
                     else
                     {
+                        // Handle System.TimeoutException explicitly.
+                        // We don't really want to to throw TimeoutException on this call.
+                        if (ex is TimeoutException)
+                        {
+                            break;
+                        }
+
                         throw;
                     }
                 }
@@ -123,10 +130,10 @@ namespace Microsoft.Azure.EventHubs.Amqp
         {
             lock (this.receivePumpLock)
             {
-                if (this.receiveHandler != null)
+                if (newReceiveHandler != null && this.receiveHandler != null)
                 {
                     // Notify existing handler first (but don't wait).
-                    this.receiveHandler.ProcessErrorAsync(new OperationCanceledException("New handler has registered for this receiver.")); // .Fork();
+                    this.receiveHandler.ProcessErrorAsync(new OperationCanceledException("New handler has registered for this receiver."));
                 }
 
                 this.receiveHandler = newReceiveHandler;
@@ -156,15 +163,14 @@ namespace Microsoft.Azure.EventHubs.Amqp
         async Task<ReceivingAmqpLink> CreateLinkAsync(TimeSpan timeout)
         {
             var amqpEventHubClient = ((AmqpEventHubClient)this.EventHubClient);
-            var csb = this.EventHubClient.ConnectionStringBuilder;
-            var timeoutHelper = new TimeoutHelper(csb.OperationTimeout);
+            var timeoutHelper = new TimeoutHelper(timeout);
             AmqpConnection connection = await amqpEventHubClient.ConnectionManager.GetOrCreateAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
 
             // Authenticate over CBS
             var cbsLink = connection.Extensions.Find<AmqpCbsLink>();
 
             ICbsTokenProvider cbsTokenProvider = amqpEventHubClient.CbsTokenProvider;
-            Uri address = new Uri(csb.Endpoint, this.Path);
+            Uri address = new Uri(amqpEventHubClient.ConnectionStringBuilder.Endpoint, this.Path);
             string audience = address.AbsoluteUri;
             string resource = address.AbsoluteUri;
             var expiresAt = await cbsLink.SendTokenAsync(cbsTokenProvider, address, audience, resource, new[] { ClaimConstants.Listen }, timeoutHelper.RemainingTime()).ConfigureAwait(false);
@@ -268,41 +274,52 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
         async Task ReceivePumpAsync(CancellationToken cancellationToken)
         {
-            // Loop until pump is shutdown or an error is hit.
-            while (!cancellationToken.IsCancellationRequested)
+            try
             {
-                IEnumerable<EventData> receivedEvents;
-
-                try
+                // Loop until pump is shutdown or an error is hit.
+                while (!cancellationToken.IsCancellationRequested)
                 {
-                    int batchSize;
-                    lock (this.receivePumpLock)
+                    IEnumerable<EventData> receivedEvents;
+
+                    try
                     {
-                        if (this.receiveHandler == null)
+                        int batchSize;
+                        lock (this.receivePumpLock)
                         {
-                            // Pump has been shutdown, nothing more to do.
-                            return;
+                            if (this.receiveHandler == null)
+                            {
+                                // Pump has been shutdown, nothing more to do.
+                                return;
+                            }
+                            batchSize = receiveHandler.MaxBatchSize;
                         }
-                        batchSize = receiveHandler.MaxBatchSize;
+
+                        receivedEvents = await this.ReceiveAsync(batchSize);
+                    }
+                    catch (Exception e)
+                    {
+                        EventHubsEventSource.Log.ReceiveHandlerExitingWithError(this.ClientId, this.PartitionId, e.Message);
+                        await this.ReceiveHandlerProcessErrorAsync(e).ConfigureAwait(false);
+                        break;
                     }
 
-                    receivedEvents = await this.ReceiveAsync(batchSize);
+                    try
+                    {
+                        await this.ReceiveHandlerProcessEventsAsync(receivedEvents).ConfigureAwait(false);
+                    }
+                    catch (Exception userCodeError)
+                    {
+                        EventHubsEventSource.Log.ReceiveHandlerExitingWithError(this.ClientId, this.PartitionId, userCodeError.Message);
+                        await this.ReceiveHandlerProcessErrorAsync(userCodeError).ConfigureAwait(false);
+                        break;
+                    }
                 }
-                catch (Exception e)
-                {
-                    await this.ReceiveHandlerProcessErrorAsync(e).ConfigureAwait(false);
-                    break;
-                }
-
-                try
-                {
-                    await this.ReceiveHandlerProcessEventsAsync(receivedEvents).ConfigureAwait(false);
-                }
-                catch (Exception userCodeError)
-                {
-                    await this.ReceiveHandlerProcessErrorAsync(userCodeError).ConfigureAwait(false);
-                    break;
-                }
+            }
+            catch (Exception ex)
+            {
+                // This should never throw
+                EventHubsEventSource.Log.ReceiveHandlerExitingWithError(this.ClientId, this.PartitionId, ex.Message);
+                Environment.FailFast(ex.ToString());
             }
 
             this.ReceiveHandlerClose();

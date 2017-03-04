@@ -86,7 +86,7 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
         /// </summary>
         /// <returns></returns>
         [Fact]
-        async Task HostShouldRecoverWhenProcessProcessEventsAsyncThrows()
+        async Task HostShouldRecoverWhenProcessEventsAsyncThrows()
         {
             var lastReceivedAt = DateTime.Now;
             var lastReceivedAtLock = new object();
@@ -118,10 +118,6 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
                     if (errorArgs.Item2.Message.Contains("ExceptionSequence1"))
                     {
                         throw new Exception("ExceptionSequence2");
-                    }
-                    if (errorArgs.Item2.Message.Contains("ExceptionSequence2"))
-                    {
-                        throw new Exception("ExceptionSequence3");
                     }
                 };
                 processor.OnProcessEvents += (_, eventsArgs) =>
@@ -179,7 +175,7 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
                 await Task.WhenAll(sendTasks);
 
                 // Now send 1 poisoned message. This will fail one of the partition pumps.
-                Log($"Sending a poison event to parttition {PartitionIds.First()}");
+                Log($"Sending a poison event to partition {PartitionIds.First()}");
                 var client = EventHubClient.CreateFromConnectionString(this.EventHubConnectionString);
                 var pSender = client.CreatePartitionSender(PartitionIds.First());
                 var ed = new EventData(Encoding.UTF8.GetBytes("This is poison message"));
