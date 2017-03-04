@@ -440,7 +440,7 @@ namespace Microsoft.Azure.EventHubs.Processor
 	        {
 	            if (WasLeaseLost(partitionId, se))
                 {
-                    throw new LeaseLostException(lease, se);
+                    throw new LeaseLostException(lease.PartitionId, se);
                 }
 
                 throw;
