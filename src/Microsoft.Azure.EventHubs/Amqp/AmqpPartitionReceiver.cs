@@ -348,7 +348,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
         // Encapsulates taking the receivePumpLock, checking this.receiveHandler for null,
         // calls this.receiveHandler.ProcessErrorAsync (starting this operation inside the receivePumpLock).
-        async Task ReceiveHandlerProcessErrorAsync(Exception error)
+        Task ReceiveHandlerProcessErrorAsync(Exception error)
         {
             Task processErrorTask = null;
             lock (this.receivePumpLock)
@@ -359,16 +359,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 }
             }
 
-            try
-            {
-                await (processErrorTask ?? Task.FromResult(0));
-            }
-            catch (Exception ex)
-            {
-                // Trace and swallow any error at this point.
-                EventHubsEventSource.Log.ExceptionHandled(this.ClientId, this.PartitionId,
-                    $"{ex.Message} while calling ReceiveHandler's ProcessErrorAsync");
-            }
+            return processErrorTask ?? Task.FromResult(0);
         }
 
         // Encapsulates taking the receivePumpLock, checking this.receiveHandler for null,
