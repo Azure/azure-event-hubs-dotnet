@@ -400,6 +400,9 @@ namespace Microsoft.Azure.EventHubs
             }
         }
 
+        /// <summary>Retrieves runtime information for the specified partition of the Event Hub.</summary>
+        /// <param name="partitionId">The partition ID.</param>
+        /// <returns>Returns <see cref="EventHubPartitionRuntimeInformation" />.</returns>
         public async Task<EventHubPartitionRuntimeInformation> GetPartitionRuntimeInformationAsync(string partitionId)
         {
             if (string.IsNullOrWhiteSpace(partitionId))
@@ -422,6 +425,13 @@ namespace Microsoft.Azure.EventHubs
             {
                 EventHubsEventSource.Log.GetEventHubPartitionRuntimeInformationStop(this.ClientId, partitionId);
             }
+        }
+
+        /// <summary>Creates a batch where event data objects can be added for later SendAsync call.</summary>
+        /// <returns>Returns <see cref="EventDataBatch" />.</returns>
+        public EventDataBatch CreateBatch()
+        {
+            return new EventDataBatch(this.InnerSender.MaxMessageSize);
         }
 
         internal EventDataSender CreateEventSender(string partitionId = null)

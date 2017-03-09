@@ -36,7 +36,7 @@ namespace Microsoft.Azure.EventHubs.UnitTests
 
             // Create default EH client.
             this.EventHubClient = EventHubClient.CreateFromConnectionString(this.EventHubsConnectionString);
-
+            
             // Discover partition ids.
             var eventHubInfo = this.EventHubClient.GetRuntimeInformationAsync().Result;
             this.PartitionIds = eventHubInfo.PartitionIds;

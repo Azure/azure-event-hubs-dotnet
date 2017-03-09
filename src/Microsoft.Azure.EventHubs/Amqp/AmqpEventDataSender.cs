@@ -29,6 +29,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
             this.SendLinkManager = new FaultTolerantAmqpObject<SendingAmqpLink>(this.CreateLinkAsync, this.CloseSession);
             this.clientLinkManager = new ActiveClientLinkManager((AmqpEventHubClient)this.EventHubClient);
+            this.MaxMessageSize = 256 * 1024;   // Default. Updated when link is opened
         }
 
         string Path { get; }
@@ -151,6 +152,8 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     new[] { ClaimConstants.Send },
                     true,
                     expiresAt);
+
+                this.MaxMessageSize = (long)activeClientLink.Link.Settings.MaxMessageSize;
 
                 this.clientLinkManager.SetActiveLink(activeClientLink);
 
