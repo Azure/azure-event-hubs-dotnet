@@ -46,9 +46,6 @@ namespace Microsoft.Azure.EventHubs.Processor
         /// <returns>The checkpoint for the given partition, whether newly created or already existing.</returns>
         Task<Checkpoint> CreateCheckpointIfNotExistsAsync(string partitionId);
 
-        [System.Obsolete("Use UpdateCheckpointAsync(Lease lease, Checkpoint checkpoint) instead", true)]
-        Task UpdateCheckpointAsync(Checkpoint checkpoint);
-
         /// <summary>
         /// Update the checkpoint in the store with the offset/sequenceNumber in the provided checkpoint.
         /// </summary>

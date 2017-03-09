@@ -143,7 +143,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             return $"PartitionContext({this.EventHubPath}/{this.ConsumerGroupName}/{this.PartitionId}/{this.SequenceNumber})";
         }
 
-        async Task PersistCheckpointAsync(Checkpoint checkpoint) // throws ArgumentOutOfRangeException, InterruptedException, ExecutionException
+        async Task PersistCheckpointAsync(Checkpoint checkpoint)
         {
             ProcessorEventSource.Log.PartitionPumpCheckpointStart(this.host.Id, checkpoint.PartitionId, checkpoint.Offset, checkpoint.SequenceNumber);
             try
@@ -160,7 +160,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                     {
                         this.Lease.Offset = checkpoint.Offset;
                         this.Lease.SequenceNumber = checkpoint.SequenceNumber;
-                    }).ConfigureAwait(false);
+                    }, TaskContinuationOptions.OnlyOnRanToCompletion).ConfigureAwait(false);
                 }
                 else
                 {

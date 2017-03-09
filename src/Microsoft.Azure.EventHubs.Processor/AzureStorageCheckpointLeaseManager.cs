@@ -112,18 +112,12 @@ namespace Microsoft.Azure.EventHubs.Processor
             return checkpoint;
         }
 
-        [Obsolete("Use UpdateCheckpointAsync(Lease lease, Checkpoint checkpoint) instead", true)]
-        public Task UpdateCheckpointAsync(Checkpoint checkpoint)
-        {
-            throw new NotImplementedException();
-        }
-
         public async Task UpdateCheckpointAsync(Lease lease, Checkpoint checkpoint)
         {
             AzureBlobLease newLease = new AzureBlobLease((AzureBlobLease)lease);
             newLease.Offset = checkpoint.Offset;
             newLease.SequenceNumber = checkpoint.SequenceNumber;
-            await UpdateLeaseAsync(newLease).ConfigureAwait(false);
+            await this.UpdateLeaseAsync(newLease).ConfigureAwait(false);
         }
 
         public Task DeleteCheckpointAsync(string partitionId)
@@ -364,7 +358,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             {
                 if (WasLeaseLost(partitionId, se))
                 {
-                    throw new LeaseLostException(lease, se);
+                    throw new LeaseLostException(partitionId, se);
                 }
 
                 throw;
@@ -400,7 +394,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             {
                 if (WasLeaseLost(partitionId, se))
                 {
-                    throw new LeaseLostException(lease, se);
+                    throw new LeaseLostException(partitionId, se);
                 }
 
                 throw;
