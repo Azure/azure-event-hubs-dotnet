@@ -144,6 +144,8 @@ namespace Microsoft.Azure.EventHubs.Processor
 
             public async Task ProcessErrorAsync(Exception error)
             {
+                bool faultPump;
+
                 if (error == null)
                 {
                     error = new Exception("No error info supplied by EventHub client");
@@ -151,14 +153,22 @@ namespace Microsoft.Azure.EventHubs.Processor
 
                 if (error is ReceiverDisconnectedException)
                 {
+                    // Trace as warning since ReceiverDisconnectedException is part of lease stealing logic.
                     ProcessorEventSource.Log.PartitionPumpWarning(
                         this.eventHubPartitionPump.Host.Id, this.eventHubPartitionPump.PartitionContext.PartitionId,
                         "EventHub client disconnected, probably another host took the partition");
+
+
+                    // Shutdown the message pump when receiver is disconnected.
+                    faultPump = true;
                 }
                 else
                 {
                     ProcessorEventSource.Log.PartitionPumpError(
                         this.eventHubPartitionPump.Host.Id, this.eventHubPartitionPump.PartitionContext.PartitionId, "EventHub client error:", error.ToString());
+
+                    // No need to fault the pump, we expect receiver to recover on its own.
+                    faultPump = false;
                 }
 
                 try
@@ -168,7 +178,11 @@ namespace Microsoft.Azure.EventHubs.Processor
                 }
                 finally
                 {
-                    this.eventHubPartitionPump.PumpStatus = PartitionPumpStatus.Errored;
+                    // Fault pump only when needed.
+                    if (faultPump)
+                    {
+                        this.eventHubPartitionPump.PumpStatus = PartitionPumpStatus.Errored;
+                    }
                 }
             }
         }

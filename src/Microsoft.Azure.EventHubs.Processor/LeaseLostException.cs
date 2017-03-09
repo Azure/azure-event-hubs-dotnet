@@ -7,22 +7,22 @@ namespace Microsoft.Azure.EventHubs.Processor
 
     public class LeaseLostException : Exception
     {
-        readonly Lease lease;
+        readonly string partitionId;
 
-        internal LeaseLostException(Lease lease, Exception innerException)
+        internal LeaseLostException(string partitionId, Exception innerException)
             : base(string.Empty, innerException)
         {
-            if (lease == null)
+            if (partitionId == null)
             {
-                throw new ArgumentNullException(nameof(lease));
+                throw new ArgumentNullException(nameof(partitionId));
             }
 
-            this.lease = lease;
+            this.partitionId = partitionId;
         }
 
         public string PartitionId
         {
-            get { return this.lease.PartitionId; }
+            get { return this.partitionId; }
         }
     }
 }
