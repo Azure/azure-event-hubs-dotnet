@@ -38,6 +38,9 @@ namespace Microsoft.Azure.EventHubs.Processor
         /// <returns>Checkpoint info for the given partition, or null if none has been previously stored.</returns>
         Task<Checkpoint> GetCheckpointAsync(string partitionId);
 
+        [System.Obsolete("Use UpdateCheckpointAsync(Lease lease, Checkpoint checkpoint) instead", true)]
+        Task UpdateCheckpointAsync(Checkpoint checkpoint);
+
         /// <summary>
         /// Create the checkpoint for the given partition if it doesn't exist. Do nothing if it does exist.
         /// The offset/sequenceNumber for a freshly-created checkpoint should be set to StartOfStream/0.
