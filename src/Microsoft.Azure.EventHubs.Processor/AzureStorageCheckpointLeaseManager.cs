@@ -28,7 +28,13 @@ namespace Microsoft.Azure.EventHubs.Processor
         static readonly TimeSpan storageMaximumExecutionTime = TimeSpan.FromMinutes(2);
         static readonly TimeSpan leaseDuration = TimeSpan.FromSeconds(30);
         static readonly TimeSpan leaseRenewInterval = TimeSpan.FromSeconds(10);
-        readonly BlobRequestOptions renewRequestOptions = new BlobRequestOptions();
+
+        // Lease renew calls shouldn't wait more than leaseRenewInterval
+        readonly BlobRequestOptions renewRequestOptions = new BlobRequestOptions()
+        {
+            ServerTimeout = leaseRenewInterval,
+            MaximumExecutionTime = TimeSpan.FromMinutes(1)
+        };
 
         internal AzureStorageCheckpointLeaseManager(string storageConnectionString, string leaseContainerName, string storageBlobPrefix)
         {
@@ -97,6 +103,12 @@ namespace Microsoft.Azure.EventHubs.Processor
     	    return checkpoint;
         }
 
+        [Obsolete("Use UpdateCheckpointAsync(Lease lease, Checkpoint checkpoint) instead", true)]
+        public Task UpdateCheckpointAsync(Checkpoint checkpoint)
+        {
+            throw new NotImplementedException();
+        }
+
         public async Task<Checkpoint> CreateCheckpointIfNotExistsAsync(string partitionId)
         {
     	    // Normally the lease will already be created, checkpoint store is initialized after lease store.
@@ -106,13 +118,12 @@ namespace Microsoft.Azure.EventHubs.Processor
             return checkpoint;
         }
 
-        public async Task UpdateCheckpointAsync(Checkpoint checkpoint)
+        public async Task UpdateCheckpointAsync(Lease lease, Checkpoint checkpoint)
         {
-            // Need to fetch the most current lease data so that we can update it correctly.
-            AzureBlobLease lease = (AzureBlobLease)await GetLeaseAsync(checkpoint.PartitionId).ConfigureAwait(false);
-            lease.Offset = checkpoint.Offset;
-            lease.SequenceNumber = checkpoint.SequenceNumber;
-            await UpdateLeaseAsync(lease).ConfigureAwait(false);
+            AzureBlobLease newLease = new AzureBlobLease((AzureBlobLease)lease);
+            newLease.Offset = checkpoint.Offset;
+            newLease.SequenceNumber = checkpoint.SequenceNumber;
+            await this.UpdateLeaseAsync(newLease).ConfigureAwait(false);
         }
 
         public Task DeleteCheckpointAsync(string partitionId)
@@ -343,8 +354,8 @@ namespace Microsoft.Azure.EventHubs.Processor
         async Task<bool> RenewLeaseCoreAsync(AzureBlobLease lease)
         {
             CloudBlockBlob leaseBlob = lease.Blob;
-            bool retval = true;
             string partitionId = lease.PartitionId;
+
     	    try
             {
                 await leaseBlob.RenewLeaseAsync(AccessCondition.GenerateLeaseCondition(lease.Token), this.renewRequestOptions, null).ConfigureAwait(false);
@@ -353,15 +364,13 @@ namespace Microsoft.Azure.EventHubs.Processor
             {
                 if (WasLeaseLost(partitionId, se))
                 {
-                    retval = false;
+                    throw new LeaseLostException(partitionId, se);
                 }
-                else
-                {
-                    throw;
-                }
+
+                throw;
             }
     	
- 	        return retval;
+ 	        return true;
         }
 
         public Task<bool> ReleaseLeaseAsync(Lease lease)
@@ -374,8 +383,8 @@ namespace Microsoft.Azure.EventHubs.Processor
             ProcessorEventSource.Log.AzureStorageManagerInfo(this.host.Id, lease.PartitionId, "Releasing lease");
 
             CloudBlockBlob leaseBlob = lease.Blob;
-            bool retval = true;
             string partitionId = lease.PartitionId;
+
         	try
             {
                 string leaseId = lease.Token;
@@ -391,15 +400,13 @@ namespace Microsoft.Azure.EventHubs.Processor
             {
                 if (WasLeaseLost(partitionId, se))
                 {
-                    retval = false;
+                    throw new LeaseLostException(partitionId, se);
                 }
-                else
-                {
-                    throw;
-                }
+
+                throw;
             }
     	
-        	return retval;
+        	return true;
         }
 
         public Task<bool> UpdateLeaseAsync(Lease lease)
@@ -422,12 +429,9 @@ namespace Microsoft.Azure.EventHubs.Processor
             {
                 return false;
             }
-    	
-        	// First, renew the lease to make sure the update will go through.
-    	    if (!await this.RenewLeaseAsync(lease).ConfigureAwait(false))
-            {
-                return false;
-            }
+
+            // First, renew the lease to make sure the update will go through.
+            await this.RenewLeaseAsync(lease).ConfigureAwait(false);
 
             CloudBlockBlob leaseBlob = lease.Blob;
     	    try
@@ -481,6 +485,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                     }
                 }
             }
+
             return retval;
         }
 

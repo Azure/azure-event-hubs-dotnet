@@ -80,11 +80,11 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
             Assert.NotNull(ex.InnerException);
             Assert.IsType<MessagingEntityNotFoundException>(ex.InnerException);
         }
+
         /// <summary>
         /// While processing events one event causes a failure. Host should be able to recover any error.
         /// </summary>
         /// <returns></returns>
-        /// 
         [Fact]
         async Task HostShouldRecoverWhenProcessEventsAsyncThrows()
         {
