@@ -156,11 +156,11 @@ namespace Microsoft.Azure.EventHubs.Processor
                         await this.host.CheckpointManager.CreateCheckpointIfNotExistsAsync(checkpoint.PartitionId).ConfigureAwait(false);
                     }
 
-                    await this.host.CheckpointManager.UpdateCheckpointAsync(this.Lease, checkpoint).ContinueWith((obj) =>
-                    {
-                        this.Lease.Offset = checkpoint.Offset;
-                        this.Lease.SequenceNumber = checkpoint.SequenceNumber;
-                    }, TaskContinuationOptions.OnlyOnRanToCompletion).ConfigureAwait(false);
+                    await this.host.CheckpointManager.UpdateCheckpointAsync(this.Lease, checkpoint).ConfigureAwait(false);
+
+                    // Update internal lease if update call above is successful.
+                    this.Lease.Offset = checkpoint.Offset;
+                    this.Lease.SequenceNumber = checkpoint.SequenceNumber;
                 }
                 else
                 {
