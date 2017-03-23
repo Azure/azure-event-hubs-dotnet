@@ -1,4 +1,4 @@
-﻿﻿<p align="center">
+﻿<p align="center">
   <img src="event-hubs.png" alt="Microsoft Azure Event Hubs" width="100"/>
 </p>
 
@@ -39,9 +39,9 @@ consumers that filter and/or transform event streams and then forward them on to
 
 ### Getting Started
 
-To get started sending events to an Event Hub refer to [Get started sending messages to Event Hubs in .NET Core](./samples/SampleSender/readme.md).
+To get started sending events to an Event Hub refer to [Get started sending messages to Event Hubs in .NET Core](https://github.com/Azure/azure-event-hubs/tree/master/samples/SampleSender).
 
-To get started receiving events with the **EventProcessorHost** refer to [Get started receiving messages with the EventProcessorHost in .NET Core](./samples/SampleEphReceiver/readme.md ).  
+To get started receiving events with the **EventProcessorHost** refer to [Get started receiving messages with the EventProcessorHost in .NET Core](https://github.com/Azure/azure-event-hubs/tree/master/samples/SampleEphReceiver).  
 
 ### Running the unit tests 
 

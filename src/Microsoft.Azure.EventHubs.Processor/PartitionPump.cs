@@ -112,7 +112,12 @@ namespace Microsoft.Azure.EventHubs.Processor
             if (reason != CloseReason.LeaseLost)
             {
                 // Since this pump is dead, release the lease. 
-                await this.Host.LeaseManager.ReleaseLeaseAsync(this.PartitionContext.Lease).ConfigureAwait(false);
+                // Ignore LeaseLostException 
+                try
+                {
+                    await this.Host.LeaseManager.ReleaseLeaseAsync(this.PartitionContext.Lease).ConfigureAwait(false);
+                }
+                catch (LeaseLostException) { }
             }
 
             this.PumpStatus = PartitionPumpStatus.Closed;
@@ -123,10 +128,17 @@ namespace Microsoft.Azure.EventHubs.Processor
 
         protected async Task ProcessEventsAsync(IEnumerable<EventData> events)
         {
-            // Assumes that .NET Core client will call with null on receive timeout.
-            if (events == null && !this.Host.EventProcessorOptions.InvokeProcessorAfterReceiveTimeout)
+            if (events == null)
             {
-                return;
+                if (this.Host.EventProcessorOptions.InvokeProcessorAfterReceiveTimeout)
+                {
+                    // Assumes that .NET Core client will call with empty EventData on receive timeout.
+                    events = Enumerable.Empty<EventData>();
+                }
+                else
+                {
+                    return;
+                }
             }
 
             // Synchronize to serialize calls to the processor.
@@ -135,15 +147,18 @@ namespace Microsoft.Azure.EventHubs.Processor
             // protected by synchronizing too.
             using (await this.ProcessingAsyncLock.LockAsync().ConfigureAwait(false))
             {
-                int eventCount = events?.Count() ?? 0;
-                ProcessorEventSource.Log.PartitionPumpInvokeProcessorEventsStart(this.Host.Id, this.PartitionContext.PartitionId, eventCount);
+                ProcessorEventSource.Log.PartitionPumpInvokeProcessorEventsStart(this.Host.Id,
+                    this.PartitionContext.PartitionId, events?.Count() ?? 0);
                 try
                 {
-                    if (eventCount > 0)
+                    EventData last = events?.LastOrDefault();
+                    if (last != null)
                     {
-                        var lastMessage = events.Last();
-                        this.PartitionContext.SequenceNumber = lastMessage.SystemProperties.SequenceNumber;
-                        this.PartitionContext.Offset = lastMessage.SystemProperties.Offset;
+                        ProcessorEventSource.Log.PartitionPumpInfo(
+                            this.Host.Id,
+                            this.PartitionContext.PartitionId,
+                            "Updating offset in partition context with end of batch " + last.SystemProperties.Offset + "/" + last.SystemProperties.SequenceNumber);
+                        this.PartitionContext.SetOffsetAndSequenceNumber(last);
                     }
 
                     await this.Processor.ProcessEventsAsync(this.PartitionContext, events).ConfigureAwait(false);
@@ -156,16 +171,6 @@ namespace Microsoft.Azure.EventHubs.Processor
                 finally
                 {
                     ProcessorEventSource.Log.PartitionPumpInvokeProcessorEventsStop(this.Host.Id, this.PartitionContext.PartitionId);
-                }
-
-                EventData last = events?.LastOrDefault();
-                if (last != null)
-                {
-                    ProcessorEventSource.Log.PartitionPumpInfo(
-                        this.Host.Id,
-                        this.PartitionContext.PartitionId,
-                        "Updating offset in partition context with end of batch " + last.SystemProperties.Offset + "/" + last.SystemProperties.SequenceNumber);
-                    this.PartitionContext.SetOffsetAndSequenceNumber(last);
                 }
             }
         }

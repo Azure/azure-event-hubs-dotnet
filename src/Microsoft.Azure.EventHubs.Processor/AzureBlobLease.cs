@@ -10,7 +10,6 @@ namespace Microsoft.Azure.EventHubs.Processor
 	class AzureBlobLease : Lease
 	{
 	    // ctor needed for deserialization
-
 	    internal AzureBlobLease()
 		{
 		}
@@ -36,13 +35,8 @@ namespace Microsoft.Azure.EventHubs.Processor
 		}
 
 	    // do not serialize
-
 	    [JsonIgnore]
 		public CloudBlockBlob Blob { get; }
-
-	    public string Offset { get; set; }
-
-	    public long SequenceNumber { get; set; }
 
 	    public override async Task<bool> IsExpired()
 		{

@@ -48,11 +48,12 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
             }
 
             // Checkpoint batch? This should checkpoint with last message delivered.
-            if (eventsArgs.checkPointBatch)
+            else if (eventsArgs.checkPointBatch)
             {
                 return context.CheckpointAsync();
             }
 
+            // No checkpoint? Then just return CompletedTask
             return Task.CompletedTask;
         }
 

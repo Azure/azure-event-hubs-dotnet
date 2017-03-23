@@ -1,5 +1,5 @@
 {
-  "version": "1.0.0",
+  "version": "1.0.1",
   "title": "Microsoft.Azure.EventHubs.Processor",
   "description": "Microsoft.Azure.EventHubs.Processor Class Library",
   "authors": [ "Microsoft" ],
@@ -23,7 +23,7 @@
       "target": "project" 
     },
     "Newtonsoft.Json": "9.0.1",
-    "WindowsAzure.Storage": "8.0.1"
+    "WindowsAzure.Storage": "8.1.1"
   },
 
   "frameworks": {

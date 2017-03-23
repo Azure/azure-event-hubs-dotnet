@@ -9,6 +9,7 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
     using System.Diagnostics;
     using System.Linq;
     using System.Text;
+    using System.Threading;
     using System.Threading.Tasks;
     using Xunit;
     using Xunit.Abstractions;
@@ -152,22 +153,31 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
         [Fact]
         async Task MultipleProcessorHosts()
         {
-            Log("Testing with 2 EventProcessorHost instances");
+            int hostCount = 3;
 
+            Log($"Testing with {hostCount} EventProcessorHost instances");
+
+            // Prepare partition trackers.
             var partitionReceiveEvents = new ConcurrentDictionary<string, AsyncAutoResetEvent>();
             foreach (var partitionId in PartitionIds)
             {
                 partitionReceiveEvents[partitionId] = new AsyncAutoResetEvent(false);
             }
 
-            int hostCount = 2;
+            // Prepare host trackers.
+            var hostReceiveEvents = new ConcurrentDictionary<string, AsyncAutoResetEvent>();
+
             var hosts = new List<EventProcessorHost>();
             try
             {
-                for (int i = 0; i < hostCount; i++)
+                for (int hostId = 0; hostId < hostCount; hostId++)
                 {
+                    var thisHostName = $"host-{hostId}";
+                    hostReceiveEvents[thisHostName] = new AsyncAutoResetEvent(false);
+
                     Log("Creating EventProcessorHost");
                     var eventProcessorHost = new EventProcessorHost(
+                        thisHostName,
                         string.Empty, // Passing empty as entity path here rsince path is already in EH connection string.
                         PartitionReceiver.DefaultConsumerGroupName,
                         this.EventHubConnectionString,
@@ -194,11 +204,11 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
                         processor.OnProcessEvents += (_, eventsArgs) =>
                         {
                             int eventCount = eventsArgs.Item2.events != null ? eventsArgs.Item2.events.Count() : 0;
-                            Log($"{hostName} > Partition {partitionId} TestEventProcessor processing {eventCount} event(s)");
                             if (eventCount > 0)
                             {
-                                var receivedEvent = partitionReceiveEvents[partitionId];
-                                receivedEvent.Set();
+                                Log($"{hostName} > Partition {partitionId} TestEventProcessor processing {eventCount} event(s)");
+                                partitionReceiveEvents[partitionId].Set();
+                                hostReceiveEvents[hostName].Set();
                             }
                         };
                     };
@@ -206,8 +216,10 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
                     await eventProcessorHost.RegisterEventProcessorFactoryAsync(processorFactory, processorOptions);
                 }
 
+                // Allow some time for each host to own at least 1 partition.
+                // Partition stealing logic balances partition ownership one at a time.
                 Log("Waiting for partition ownership to settle...");
-                await Task.Delay(TimeSpan.FromSeconds(30));
+                await Task.Delay(TimeSpan.FromSeconds(60));
 
                 Log("Sending an event to each partition");
                 var sendTasks = new List<Task>();
@@ -218,11 +230,17 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
                 await Task.WhenAll(sendTasks);
 
                 Log("Verifying an event was received by each partition");
-                foreach (var partitionId in PartitionIds)
+                foreach (var e in partitionReceiveEvents)
                 {
-                    var receivedEvent = partitionReceiveEvents[partitionId];
-                    bool partitionReceivedMessage = await receivedEvent.WaitAsync(TimeSpan.FromSeconds(30));
-                    Assert.True(partitionReceivedMessage, $"Partition {partitionId} didn't receive any message!");
+                    bool ret = await e.Value.WaitAsync(TimeSpan.FromSeconds(30));
+                    Assert.True(ret, $"Partition {e.Key} didn't receive any message!");
+                }
+
+                Log("Verifying at least an event was received by each host");
+                foreach (var e in hostReceiveEvents)
+                {
+                    bool ret = await e.Value.WaitAsync(TimeSpan.FromSeconds(30));
+                    Assert.True(ret, $"Host {e.Key} didn't receive any message!");
                 }
             }
             finally
@@ -254,7 +272,7 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
                 this.StorageConnectionString,
                 leaseContainerName,
                 "firsthost");
-            var setOfMessages1 = await RunGenericScenario(eventProcessorHostFirst);
+            var runResult1 = await RunGenericScenario(eventProcessorHostFirst);
 
             // Consume all messages with second host.
             // Create host with 'secondhost' prefix.
@@ -268,12 +286,12 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
                 this.StorageConnectionString,
                 leaseContainerName,
                 "secondhost");
-            var setOfMessages2 = await RunGenericScenario(eventProcessorHostSecond, totalNumberOfEventsToSend: 0);
+            var runResult2 = await RunGenericScenario(eventProcessorHostSecond, totalNumberOfEventsToSend: 0);
 
             // Confirm that we are looking at 2 identical sets of messages in the end.
-            foreach (var kvp in setOfMessages1)
+            foreach (var kvp in runResult1.ReceivedEvents)
             {
-                Assert.True(kvp.Value.Count() == setOfMessages2[kvp.Key].Count,
+                Assert.True(kvp.Value.Count() == runResult2.ReceivedEvents[kvp.Key].Count,
                     $"The sets of messages returned from first host and the second host are different for partition {kvp.Key}.");
             }
         }
@@ -530,10 +548,10 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
                 MaxBatchSize = 100
             };
 
-            var receivedEvents = await this.RunGenericScenario(eventProcessorHost, processorOptions);
+            var runResult = await this.RunGenericScenario(eventProcessorHost, processorOptions);
 
             // We should have received only 1 event from each partition.
-            Assert.False(receivedEvents.Any(kvp => kvp.Value.Count != 1), "One of the partitions didn't return exactly 1 event");
+            Assert.False(runResult.ReceivedEvents.Any(kvp => kvp.Value.Count != 1), "One of the partitions didn't return exactly 1 event");
         }
 
         [Fact]
@@ -562,10 +580,10 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
                 MaxBatchSize = 100
             };
 
-            var receivedEvents = await this.RunGenericScenario(eventProcessorHost, processorOptions);
+            var runResult = await this.RunGenericScenario(eventProcessorHost, processorOptions);
 
             // We should have received only 1 event from each partition.
-            Assert.False(receivedEvents.Any(kvp => kvp.Value.Count != 1), "One of the partitions didn't return exactly 1 event");
+            Assert.False(runResult.ReceivedEvents.Any(kvp => kvp.Value.Count != 1), "One of the partitions didn't return exactly 1 event");
         }
 
         [Fact]
@@ -586,10 +604,10 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
                 MaxBatchSize = 100
             };
 
-            var receivedEvents = await this.RunGenericScenario(eventProcessorHost, processorOptions);
+            var runResult = await this.RunGenericScenario(eventProcessorHost, processorOptions);
 
             // We should have received only 1 event from each partition.
-            Assert.False(receivedEvents.Any(kvp => kvp.Value.Count != 1), "One of the partitions didn't return exactly 1 event");
+            Assert.False(runResult.ReceivedEvents.Any(kvp => kvp.Value.Count != 1), "One of the partitions didn't return exactly 1 event");
         }
 
         [Fact]
@@ -623,10 +641,11 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
                 InitialOffsetProvider = partitionId => PartitionReceiver.StartOfStream,
                 MaxBatchSize = 100
             };
-            var receivedEvents = await this.RunGenericScenario(eventProcessorHost, processorOptions, checkPointLastEvent: false);
+
+            var runResult = await this.RunGenericScenario(eventProcessorHost, processorOptions, checkpointLastEvent: false);
 
             // We should have received only 1 event from each partition.
-            Assert.False(receivedEvents.Any(kvp => kvp.Value.Count != 1), "One of the partitions didn't return exactly 1 event");
+            Assert.False(runResult.ReceivedEvents.Any(kvp => kvp.Value.Count != 1), "One of the partitions didn't return exactly 1 event");
         }
 
         [Fact]
@@ -652,10 +671,10 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
                 this.EventHubConnectionString,
                 this.StorageConnectionString,
                 leaseContainerName);
-            var receivedEvents = await RunGenericScenario(eventProcessorHostSecond);
+            var runResult = await RunGenericScenario(eventProcessorHostSecond);
 
             // We should have received only 1 event from each partition.
-            Assert.False(receivedEvents.Any(kvp => kvp.Value.Count != 1), "One of the partitions didn't return exactly 1 event");
+            Assert.False(runResult.ReceivedEvents.Any(kvp => kvp.Value.Count != 1), "One of the partitions didn't return exactly 1 event");
         }
 
         [Fact]
@@ -671,7 +690,7 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
                 this.EventHubConnectionString,
                 this.StorageConnectionString,
                 leaseContainerName);
-            await RunGenericScenario(eventProcessorHostFirst, checkPointLastEvent: false, checkPointBatch: true);
+            await RunGenericScenario(eventProcessorHostFirst, checkpointLastEvent: false, checkpointBatch: true);
 
             // For the second time we initiate a host and this time it should pick from where the previous host left.
             // In other words, it shouldn't start receiving from start of the stream.
@@ -681,10 +700,100 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
                 this.EventHubConnectionString,
                 this.StorageConnectionString,
                 leaseContainerName);
-            var receivedEvents = await RunGenericScenario(eventProcessorHostSecond);
+            var runResult = await RunGenericScenario(eventProcessorHostSecond);
 
             // We should have received only 1 event from each partition.
-            Assert.False(receivedEvents.Any(kvp => kvp.Value.Count != 1), "One of the partitions didn't return exactly 1 event");
+            Assert.False(runResult.ReceivedEvents.Any(kvp => kvp.Value.Count != 1), "One of the partitions didn't return exactly 1 event");
+        }
+
+        [Fact]
+        async Task HostShouldRecoverAfterReceiverDisconnection()
+        {
+            // We will target one partition and do validation on it.
+            var targetPartition = this.PartitionIds.First();
+
+            int targetPartitionOpens = 0;
+            int targetPartitionCloses = 0;
+            int targetPartitionErrors = 0;
+            PartitionReceiver externalReceiver = null;
+
+            var eventProcessorHost = new EventProcessorHost(
+                "ephhost",
+                string.Empty,
+                PartitionReceiver.DefaultConsumerGroupName,
+                this.EventHubConnectionString,
+                this.StorageConnectionString,
+                Guid.NewGuid().ToString());
+
+            try
+            {
+                var processorFactory = new TestEventProcessorFactory();
+
+                processorFactory.OnCreateProcessor += (f, createArgs) =>
+                {
+                    var processor = createArgs.Item2;
+                    string partitionId = createArgs.Item1.PartitionId;
+                    string hostName = createArgs.Item1.Owner;
+                    processor.OnOpen += (_, partitionContext) =>
+                        {
+                            Log($"{hostName} > Partition {partitionId} TestEventProcessor opened");
+                            if (partitionId == targetPartition)
+                            {
+                                Interlocked.Increment(ref targetPartitionOpens);
+                            }
+                        };
+                    processor.OnClose += (_, closeArgs) =>
+                        {
+                            Log($"{hostName} > Partition {partitionId} TestEventProcessor closing: {closeArgs.Item2}");
+                            if (partitionId == targetPartition && closeArgs.Item2 == CloseReason.Shutdown)
+                            {
+                                Interlocked.Increment(ref targetPartitionCloses);
+                            }
+                        };
+                    processor.OnProcessError += (_, errorArgs) =>
+                        {
+                            Log($"{hostName} > Partition {partitionId} TestEventProcessor process error {errorArgs.Item2.Message}");
+                            if (partitionId == targetPartition && errorArgs.Item2 is ReceiverDisconnectedException)
+                            {
+                                Interlocked.Increment(ref targetPartitionErrors);
+                            }
+                        };
+                };
+
+                await eventProcessorHost.RegisterEventProcessorFactoryAsync(processorFactory);
+
+                // Wait 15 seconds then create a new epoch receiver.
+                // This will trigger ReceiverDisconnectedExcetion in the host.
+                await Task.Delay(15000);
+
+                Log("Creating a new receiver with epoch 2. This will trigger ReceiverDisconnectedException in the host.");
+                var ehClient = EventHubClient.CreateFromConnectionString(this.EventHubConnectionString);
+                externalReceiver = ehClient.CreateEpochReceiver(PartitionReceiver.DefaultConsumerGroupName,
+                    targetPartition, PartitionReceiver.StartOfStream, 2);
+                await externalReceiver.ReceiveAsync(100, TimeSpan.FromSeconds(5));
+
+                // Give another 1 minute for host to recover then do the validatins.
+                await Task.Delay(60000);
+
+                Log("Verifying that host was able to receive ReceiverDisconnectedException");
+                Assert.True(targetPartitionErrors == 1, $"Host received {targetPartitionErrors} ReceiverDisconnectedExceptions!");
+
+                Log("Verifying that host was able to reopen the partition");
+                Assert.True(targetPartitionOpens == 2, $"Host opened target partition {targetPartitionOpens} times!");
+
+                Log("Verifying that host notified by close");
+                Assert.True(targetPartitionCloses == 1, $"Host closed target partition {targetPartitionCloses} times!");
+            }
+            finally
+            {
+                Log("Calling UnregisterEventProcessorAsync");
+                await eventProcessorHost.UnregisterEventProcessorAsync();
+
+                if (externalReceiver != null)
+                {
+                    await externalReceiver.CloseAsync();
+                }
+            }
         }
 
         /// <summary>
@@ -704,8 +813,8 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
                 this.EventHubConnectionString,
                 this.StorageConnectionString,
                 leaseContainerName);
-            var receivedEvents1 = await RunGenericScenario(eventProcessorHostFirst, checkPointLastEvent: false);
-            var totalEventsFromFirstHost = receivedEvents1.Sum(part => part.Value.Count);
+            var runResult1 = await RunGenericScenario(eventProcessorHostFirst, checkpointLastEvent: false);
+            var totalEventsFromFirstHost = runResult1.ReceivedEvents.Sum(part => part.Value.Count);
 
             // Second time we initiate a host, it should pick from where previous host left.
             // In other words, it shouldn't start receiving from start of the stream.
@@ -715,12 +824,33 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
                 this.EventHubConnectionString,
                 this.StorageConnectionString,
                 leaseContainerName);
-            var receivedEvents2 = await RunGenericScenario(eventProcessorHostSecond);
-            var totalEventsFromSecondHost = receivedEvents2.Sum(part => part.Value.Count);
+            var runResult2 = await RunGenericScenario(eventProcessorHostSecond);
+            var totalEventsFromSecondHost = runResult2.ReceivedEvents.Sum(part => part.Value.Count);
 
             // Second host should have received +partition-count messages.
             Assert.True(totalEventsFromFirstHost + PartitionIds.Count() == totalEventsFromSecondHost,
-                $"Second host received {receivedEvents2} events where as first host receive {receivedEvents1} events.");
+                $"Second host received {totalEventsFromSecondHost} events where as first host receive {totalEventsFromFirstHost} events.");
+        }
+
+        /// <summary>
+        /// Checkpointing every message received should be Ok. No failures expected.
+        /// </summary>
+        /// <returns></returns>
+        [Fact]
+        async Task CheckpointEveryMessageReceived()
+        {
+            var eventProcessorHost = new EventProcessorHost(
+                null,
+                PartitionReceiver.DefaultConsumerGroupName,
+                this.EventHubConnectionString,
+                this.StorageConnectionString,
+                this.LeaseContainerName);
+
+            var runResult = await RunGenericScenario(eventProcessorHost, totalNumberOfEventsToSend: 10,
+                checkpointLastEvent: false, checkpoingEveryEvent: true);
+
+            // Validate there were not failures.
+            Assert.True(runResult.NumberOfFailures == 0, $"RunResult returned with {runResult.NumberOfFailures} failures!");
         }
 
         async Task<Dictionary<string, Tuple<string, DateTime>>> DiscoverEndOfStream()
@@ -737,11 +867,11 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
             return partitions.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
         }
 
-        async Task<Dictionary<string, List<EventData>>> RunGenericScenario(EventProcessorHost eventProcessorHost,
-            EventProcessorOptions epo = null, int totalNumberOfEventsToSend = 1, bool checkPointLastEvent = true,
-            bool checkPointBatch = false)
+        async Task<GenericScenarioResult> RunGenericScenario(EventProcessorHost eventProcessorHost,
+            EventProcessorOptions epo = null, int totalNumberOfEventsToSend = 1, bool checkpointLastEvent = true,
+            bool checkpointBatch = false, bool checkpoingEveryEvent = false)
         {
-            var receivedEvents = new ConcurrentDictionary<string, List<EventData>>();
+            var runResult = new GenericScenarioResult();
             var lastReceivedAt = DateTime.Now;
 
             if (epo == null)
@@ -767,27 +897,32 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
                     string hostName = createArgs.Item1.Owner;
                     processor.OnOpen += (_, partitionContext) => Log($"{hostName} > Partition {partitionId} TestEventProcessor opened");
                     processor.OnClose += (_, closeArgs) => Log($"{hostName} > Partition {partitionId} TestEventProcessor closing: {closeArgs.Item2}");
-                    processor.OnProcessError += (_, errorArgs) => Log($"{hostName} > Partition {partitionId} TestEventProcessor process error {errorArgs.Item2.Message}");
+                    processor.OnProcessError += (_, errorArgs) =>
+                        {
+                            Log($"{hostName} > Partition {partitionId} TestEventProcessor process error {errorArgs.Item2.Message}");
+                            Interlocked.Increment(ref runResult.NumberOfFailures);
+                        };
                     processor.OnProcessEvents += (_, eventsArgs) =>
                     {
                         int eventCount = eventsArgs.Item2.events != null ? eventsArgs.Item2.events.Count() : 0;
                         Log($"{hostName} > Partition {partitionId} TestEventProcessor processing {eventCount} event(s)");
                         if (eventCount > 0)
                         {
-                            List<EventData> events;
-                            receivedEvents.TryGetValue(partitionId, out events);
-                            if (events == null)
-                            {
-                                events = new List<EventData>();
-                            }
-
-                            events.AddRange(eventsArgs.Item2.events);
-                            receivedEvents[partitionId] = events;
                             lastReceivedAt = DateTime.Now;
+                            runResult.AddEvents(partitionId, eventsArgs.Item2.events);
+
+                            foreach (var e in eventsArgs.Item2.events)
+                            {
+                                // Checkpoint every event received?
+                                if (checkpoingEveryEvent)
+                                {
+                                    eventsArgs.Item1.CheckpointAsync(e).Wait();
+                                }
+                            }
                         }
 
-                        eventsArgs.Item2.checkPointLastEvent = checkPointLastEvent;
-                        eventsArgs.Item2.checkPointBatch = checkPointBatch;
+                        eventsArgs.Item2.checkPointLastEvent = checkpointLastEvent;
+                        eventsArgs.Item2.checkPointBatch = checkpointBatch;
                     };
                 };
 
@@ -814,10 +949,12 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
                     await Task.Delay(1000);
                 }
 
-                Log("Verifying at least an event was received by each partition");
+                Log($"Verifying at least {totalNumberOfEventsToSend} event(s) was received by each partition");
                 foreach (var partitionId in PartitionIds)
                 {
-                    Assert.True(receivedEvents.ContainsKey(partitionId), $"Partition {partitionId} didn't receive any message!");
+                    Assert.True(runResult.ReceivedEvents.ContainsKey(partitionId) 
+                        && runResult.ReceivedEvents[partitionId].Count >=  totalNumberOfEventsToSend,
+                        $"Partition {partitionId} didn't receive expected number of messages. Expected {totalNumberOfEventsToSend}, received {runResult.ReceivedEvents[partitionId].Count}.");
                 }
 
                 Log("Success");
@@ -828,10 +965,10 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
                 await eventProcessorHost.UnregisterEventProcessorAsync();
             }
 
-            return receivedEvents.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+            return runResult;
         }
 
-        async Task SendToPartitionAsync(string partitionId, string messageBody, string connectionString)
+        protected async Task SendToPartitionAsync(string partitionId, string messageBody, string connectionString)
         {
             var eventHubClient = EventHubClient.CreateFromConnectionString(connectionString);
             try
@@ -851,6 +988,32 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
             output.WriteLine(log);
             Debug.WriteLine(log);
             Console.WriteLine(log);
+        }
+    }
+
+    class GenericScenarioResult
+    {
+        public ConcurrentDictionary<string, List<EventData>> ReceivedEvents = new ConcurrentDictionary<string, List<EventData>>();
+        public int NumberOfFailures = 0;
+
+        object listLock = new object();
+
+        public void AddEvents(string partitionId, IEnumerable<EventData> addEvents)
+        {
+            List<EventData> events;
+            this.ReceivedEvents.TryGetValue(partitionId, out events);
+            if (events == null)
+            {
+                events = new List<EventData>();
+            }
+
+            // Account the case where 2 hosts racing by working on the same partition.
+            lock (listLock)
+            {
+                events.AddRange(addEvents);
+            }
+
+            this.ReceivedEvents[partitionId] = events;
         }
     }
 }
