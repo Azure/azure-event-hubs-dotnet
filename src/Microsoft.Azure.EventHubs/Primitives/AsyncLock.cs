@@ -64,30 +64,15 @@ namespace Microsoft.Azure.EventHubs
         public struct LockRelease : IDisposable
         {
             readonly AsyncLock asyncLockRelease;
-            bool disposed;
 
             internal LockRelease(AsyncLock release)
             {
                 this.asyncLockRelease = release;
-                this.disposed = false;
             }
 
             public void Dispose()
             {
-                Dispose(true);
-            }
-
-            void Dispose(bool disposing)
-            {
-                if (!disposed)
-                {
-                    if (disposing)
-                    {
-                        asyncLockRelease?.asyncSemaphore.Release();
-                    }
-
-                    this.disposed = true;
-                }
+                asyncLockRelease?.asyncSemaphore.Release();
             }
         }
     }
