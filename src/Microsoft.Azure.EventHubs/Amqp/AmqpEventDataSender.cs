@@ -111,7 +111,8 @@ namespace Microsoft.Azure.EventHubs.Amqp
             var amqpEventHubClient = ((AmqpEventHubClient)this.EventHubClient);
 
             // Allow at least AmqpMinimumOpenSessionTimeoutInSeconds seconds to open the session.
-            var openSessionTimeout = TimeSpan.FromSeconds(Math.Max(timeout.TotalSeconds, AmqpClientConstants.AmqpMinimumOpenSessionTimeoutInSeconds));
+            var openSessionTimeout = AmqpClientConstants.AmqpMinimumOpenSessionTimeoutInSeconds > timeout.TotalSeconds ?
+                TimeSpan.FromSeconds(AmqpClientConstants.AmqpMinimumOpenSessionTimeoutInSeconds) : timeout;
             var timeoutHelper = new TimeoutHelper(openSessionTimeout);
 
             AmqpConnection connection = await amqpEventHubClient.ConnectionManager.GetOrCreateAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
