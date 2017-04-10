@@ -94,10 +94,11 @@ function Run-UnitTests
         & $openCoverConsole $target $targetArgs $filter '-register:user' '-oldStyle'
 
         $processorTestProject = $ENV:APPVEYOR_BUILD_FOLDER + '\test\Microsoft.Azure.EventHubs.Processor.UnitTests\project.json'
+        $processorTargetArgs = '-targetargs: test ' + $testProject + ' -f netcoreapp1.0'
         $output = '-output:' + $coverageFile
         $filter = '-filter:+[Microsoft.Azure.EventHubs*]* -[Microsoft.Azure.EventHubs.UnitTests]* -[Microsoft.Azure.EventHubs.Processor.UnitTests]*'
 
-        & $openCoverConsole $target $targetArgs $filter $output '-mergeoutput' '-register:user' '-oldStyle'
+        & $openCoverConsole $target $processorTargetArgs $filter $output '-mergeoutput' '-register:user' '-oldStyle'
 
         if (-not $?)
         {
