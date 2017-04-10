@@ -95,7 +95,7 @@ function Run-UnitTests
 
         $processorTestProject = $ENV:APPVEYOR_BUILD_FOLDER + '\test\Microsoft.Azure.EventHubs.Processor.UnitTests\project.json'
         $output = '-output:' + $coverageFile
-        $filter = '-filter:+[Microsoft.Azure.EventHubs*]* -[Microsoft.Azure.EventHubs.Processor.UnitTests]*'
+        $filter = '-filter:+[Microsoft.Azure.EventHubs*]* -[Microsoft.Azure.EventHubs.UnitTests]* -[Microsoft.Azure.EventHubs.Processor.UnitTests]*'
 
         & $openCoverConsole $target $targetArgs $filter $output '-mergeoutput' '-register:user' '-oldStyle'
 
