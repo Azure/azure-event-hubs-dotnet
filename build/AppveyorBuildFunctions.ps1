@@ -84,9 +84,10 @@ function Run-UnitTests
 
         Invoke-WebRequest -Uri "https://dist.nuget.org/win-x86-commandline/latest/nuget.exe" -OutFile nuget.exe
         & .\nuget.exe install opencover -version 4.6.519
+        
         $openCoverConsole = $ENV:APPVEYOR_BUILD_FOLDER + '\OpenCover.4.6.519\tools\OpenCover.Console.exe'
-        $coverageFile = $ENV:APPVEYOR_BUILD_FOLDER + '\coverage.xml'
         $target = '-target:C:\Program Files\dotnet\dotnet.exe'
+        
         $testProject = $ENV:APPVEYOR_BUILD_FOLDER + '\test\Microsoft.Azure.EventHubs.UnitTests\project.json'
         $targetArgs = '-targetargs: test ' + $testProject + ' -f netcoreapp1.0'
         $filter = '-filter:+[Microsoft.Azure.EventHubs*]* -[Microsoft.Azure.EventHubs.UnitTests]*'
@@ -95,10 +96,12 @@ function Run-UnitTests
 
         $processorTestProject = $ENV:APPVEYOR_BUILD_FOLDER + '\test\Microsoft.Azure.EventHubs.Processor.UnitTests\project.json'
         $processorTargetArgs = '-targetargs: test ' + $testProject + ' -f netcoreapp1.0'
+        $processorFilter = '-filter:+[Microsoft.Azure.EventHubs*]* -[Microsoft.Azure.EventHubs.UnitTests]* -[Microsoft.Azure.EventHubs.Processor.UnitTests]*'
+        
+        $coverageFile = $ENV:APPVEYOR_BUILD_FOLDER + '\coverage.xml'
         $output = '-output:' + $coverageFile
-        $filter = '-filter:+[Microsoft.Azure.EventHubs*]* -[Microsoft.Azure.EventHubs.UnitTests]* -[Microsoft.Azure.EventHubs.Processor.UnitTests]*'
 
-        & $openCoverConsole $target $processorTargetArgs $filter $output '-mergeoutput' '-register:user' '-oldStyle'
+        & $openCoverConsole $target $processorTargetArgs $processorFilter $output '-mergeoutput' '-register:user' '-oldStyle'
 
         if (-not $?)
         {
