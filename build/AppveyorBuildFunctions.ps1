@@ -112,6 +112,9 @@ function Run-UnitTests
         python -m pip install --upgrade pip
         pip install git+git://github.com/codecov/codecov-python.git
         codecov -f $coverageFile -t $ENV:CodeCov -X gcov
+
+        & dotnet test $testProject -f net46
+        & dotnet test $processorTestProject -f net46
     }
     else
     {
