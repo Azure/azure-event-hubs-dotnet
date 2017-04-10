@@ -95,7 +95,7 @@ function Run-UnitTests
         & $openCoverConsole $target $targetArgs $filter '-register:user' '-oldStyle'
 
         $processorTestProject = $ENV:APPVEYOR_BUILD_FOLDER + '\test\Microsoft.Azure.EventHubs.Processor.UnitTests\project.json'
-        $processorTargetArgs = '-targetargs: test ' + $testProject + ' -f netcoreapp1.0'
+        $processorTargetArgs = '-targetargs: test ' + $processorTestProject + ' -f netcoreapp1.0'
         $processorFilter = '-filter:+[Microsoft.Azure.EventHubs*]* -[Microsoft.Azure.EventHubs.UnitTests]* -[Microsoft.Azure.EventHubs.Processor.UnitTests]*'
         
         $coverageFile = $ENV:APPVEYOR_BUILD_FOLDER + '\coverage.xml'
