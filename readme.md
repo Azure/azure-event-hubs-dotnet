@@ -6,8 +6,8 @@
 
 |Build/Package|Status|
 |------|-------------|
-|master|[![Build status](https://ci.appveyor.com/api/projects/status/p71xb6o7233m7gi3/branch/master?svg=true)](https://ci.appveyor.com/project/jtaubensee/azure-event-hubs-dotnet/branch/master)|
-|dev|[![Build status](https://ci.appveyor.com/api/projects/status/p71xb6o7233m7gi3/branch/master?svg=true)](https://ci.appveyor.com/project/jtaubensee/azure-event-hubs-dotnet/branch/dev)|
+|master|[![Build status](https://ci.appveyor.com/api/projects/status/p71xb6o7233m7gi3/branch/master?svg=true)](https://ci.appveyor.com/project/jtaubensee/azure-event-hubs-dotnet/branch/master) [![codecov](https://codecov.io/gh/Azure/azure-event-hubs-dotnet/branch/master/graph/badge.svg)](https://codecov.io/gh/Azure/azure-event-hubs-dotnet)|
+|dev|[![Build status](https://ci.appveyor.com/api/projects/status/p71xb6o7233m7gi3/branch/master?svg=true)](https://ci.appveyor.com/project/jtaubensee/azure-event-hubs-dotnet/branch/dev) [![codecov](https://codecov.io/gh/Azure/azure-event-hubs-dotnet/branch/dev/graph/badge.svg)](https://codecov.io/gh/Azure/azure-event-hubs-dotnet)|
 |Microsoft.Azure.EventHubs|[![NuGet Version and Downloads count](https://buildstats.info/nuget/Microsoft.Azure.EventHubs?includePreReleases=true)](https://www.nuget.org/packages/Microsoft.Azure.EventHubs/)|
 |Microsoft.Azure.EventHubs.Processor|[![NuGet Version and Downloads count](https://buildstats.info/nuget/Microsoft.Azure.EventHubs.Processor?includePreReleases=true)](https://www.nuget.org/packages/Microsoft.Azure.EventHubs.Processor/)|
 
