@@ -11,39 +11,6 @@ function Build-Solution
     Write-Host "Building complete"
 }
 
-function Set-XUnitConfig
-{
-    Write-Host "Writing Xunit config for single threading"
-
-    $xUnitConfig = "
-    {
-        `"parallelizeAssembly`": false,
-        `"parallelizeTestCollections`": false
-    }"
-
-    New-Item test/Microsoft.Azure.EventHubs.UnitTests/bin/debug/netcoreapp1.0/xunit.runner.json `
-        -Type File `
-        -Value $xUnitConfig `
-        -Force | Out-Null
-    
-    New-Item test/Microsoft.Azure.EventHubs.UnitTests/bin/Debug/net46/win7-x64/xunit.runner.json `
-        -Type File `
-        -Value $xUnitConfig `
-        -Force | Out-Null
-
-    New-Item test/Microsoft.Azure.EventHubs.Processor.UnitTests/bin/debug/netcoreapp1.0/xunit.runner.json `
-        -Type File `
-        -Value $xUnitConfig `
-        -Force | Out-Null
-
-    New-Item test/Microsoft.Azure.EventHubs.Processor.UnitTests/bin/Debug/net46/win7-x64/xunit.runner.json `
-        -Type File `
-        -Value $xUnitConfig `
-        -Force | Out-Null
-
-    Write-Host "Completed writing Xunit config"
-}
-
 function Deploy-AzureResources
 {
     if ([bool]$env:ClientSecret `
@@ -115,9 +82,32 @@ function Run-UnitTests
     {
         Write-Host "Running unit tests."
 
-        dotnet test test/Microsoft.Azure.EventHubs.UnitTests/project.json
-    
-        dotnet test test/Microsoft.Azure.EventHubs.Processor.UnitTests/project.json
+        Invoke-WebRequest -Uri "https://dist.nuget.org/win-x86-commandline/latest/nuget.exe" -OutFile nuget.exe
+        & .\nuget.exe install opencover -version 4.6.519
+        $openCoverConsole = $ENV:APPVEYOR_BUILD_FOLDER + '\OpenCover.4.6.519\tools\OpenCover.Console.exe'
+        $coverageFile = $ENV:APPVEYOR_BUILD_FOLDER + '\coverage.xml'
+        $target = '-target:C:\Program Files\dotnet\dotnet.exe'
+        $testProject = $ENV:APPVEYOR_BUILD_FOLDER + '\test\Microsoft.Azure.EventHubs.UnitTests\project.json'
+        $targetArgs = '-targetargs: test ' + $testProject + ' -f netcoreapp1.0'
+        $filter = '-filter:+[Microsoft.Azure.EventHubs*]* -[Microsoft.Azure.EventHubs.UnitTests]*'
+        
+        & $openCoverConsole $target $targetArgs $filter '-register:user' '-oldStyle'
+
+        $processorTestProject = $ENV:APPVEYOR_BUILD_FOLDER + '\test\Microsoft.Azure.EventHubs.Processor.UnitTests\project.json'
+        $output = '-output:' + $coverageFile
+        $filter = '-filter:+[Microsoft.Azure.EventHubs*]* -[Microsoft.Azure.EventHubs.Processor.UnitTests]*'
+
+        & $openCoverConsole $target $targetArgs $filter $output '-mergeoutput' '-register:user' '-oldStyle'
+
+        if (-not $?)
+        {
+            throw "Unit tests failed."
+        }
+
+        $ENV:PATH = 'C:\\Python34;C:\\Python34\\Scripts;' + $ENV:PATH
+        python -m pip install --upgrade pip
+        pip install git+git://github.com/codecov/codecov-python.git
+        codecov -f $coverageFile -t $ENV:CodeCov -X gcov
     }
     else
     {
