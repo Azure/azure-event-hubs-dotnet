@@ -5,6 +5,7 @@ namespace Microsoft.Azure.EventHubs
 {
     using System;
     using System.Collections.Generic;
+    using Azure.Amqp;
 
     /// <summary>
     /// The data structure encapsulating the Event being sent-to and received-from EventHubs.
@@ -103,5 +104,7 @@ namespace Microsoft.Azure.EventHubs
                 get; internal set;
             }
         }
+
+        internal AmqpMessage AmqpMessage { get; set; }
     }
 }

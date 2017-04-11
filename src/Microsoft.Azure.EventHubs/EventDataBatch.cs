@@ -5,22 +5,21 @@ namespace Microsoft.Azure.EventHubs
 {
     using System;
     using System.Collections.Generic;
+    using Microsoft.Azure.EventHubs.Amqp;
 
     /// <summary>A helper class for creating a batch of EventData objects to be used for SendBatch or SendBatchAsync call.</summary>
     public class EventDataBatch
     {
-        const int ReservedSize = 6 * 1024;
         const int MaxSizeLimit = 4 * 1024 * 1024;
         readonly List<EventData> eventDataList;
-        long maxMessageSize;
+        long maxSize;
         long currentSize;
 
-        internal EventDataBatch(long maxMessageSize)
+        public EventDataBatch(long maxSizeInBytes)
         {
-            Fx.Assert(maxMessageSize > ReservedSize, "max message size too small");
-            this.maxMessageSize = Math.Min(maxMessageSize, MaxSizeLimit);
+            this.maxSize = Math.Min(maxSizeInBytes, MaxSizeLimit);
             this.eventDataList = new List<EventData>();
-            this.currentSize = ReservedSize;
+            this.currentSize = (maxSizeInBytes / 65536) * 1024;    // reserve 1KB for every 64KB
         }
 
         /// <summary>Gets the current event count in the batch.</summary>
@@ -32,27 +31,25 @@ namespace Microsoft.Azure.EventHubs
             }
         }
 
-        /// <summary>Tries to add an event data to the batch.</summary>
-        /// <param name="eventData">The <see cref="Microsoft.ServiceBus.Messaging.EventData" /> to add.</param>
-        /// <returns>A boolean value indicating if the event data has been added to the batch or not, based on the current size of the batch.</returns>
-        /// <exception cref="InvalidOperationException">Thrown when an invalid EventData is being added.</exception>
-        /// <remarks>Although this method name starts with a 'Try', it will throw Exceptions.</remarks>
+        /// <summary>Tries to add an event data to the batch if permitted by the batch's size limit.</summary>
+        /// <param name="eventData">The <see cref="Microsoft.Azure.EventHubs.EventData" /> to add.</param>
+        /// <returns>A boolean value indicating if the event data has been added to the batch or not.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when the EventData is null.</exception>
+        /// <remarks>
+        /// This method checks the sizes of the batch, the EventData object and the specified limit to determine
+        /// if the EventData object can be added.
+        /// </remarks>
         public bool TryAdd(EventData eventData)
         {
             if (eventData == null)
             {
-                throw new InvalidOperationException(Resources.CannotSendAnEmptyEvent.FormatForUser(eventData.GetType().Name));
+                throw new ArgumentNullException(nameof(eventData));
             }
 
             long size = GetSize(eventData, this.eventDataList.Count == 0);
-            if (this.currentSize + size > this.maxMessageSize)
+            if (this.currentSize + size > this.maxSize)
             {
                 return false;
-            }
-
-            if (this.eventDataList.Count > 0)
-            {
-                Validate(this.eventDataList[0], eventData);
             }
 
             this.eventDataList.Add(eventData);
@@ -69,60 +66,12 @@ namespace Microsoft.Azure.EventHubs
             return this.eventDataList;
         }
 
-        static void Validate(EventData first, EventData current)
-        {
-            if ((current.Body == null || current.Body.Count == 0)
-                && current.SystemProperties == null
-                && (current.Properties == null || current.Properties.Count == 0))
-            {
-                throw new InvalidOperationException(Resources.CannotSendAnEmptyEvent.FormatForUser(current.GetType().Name));
-            }
-
-            if (first.SystemProperties.PartitionKey != current.SystemProperties.PartitionKey)
-            {
-                throw new InvalidOperationException(
-                    Resources.EventHubSendBatchMismatchPartitionKey.FormatForUser(
-                        first.SystemProperties.PartitionKey ?? ClientConstants.NullString,
-                        current.SystemProperties.PartitionKey ?? ClientConstants.NullString));
-            }
-        }
-
         static long GetSize(EventData eventData, bool first)
         {
-            long size = 0;
-//            long size = eventData.SerializedSizeInBytes;
-//            size += 16; // Data section overhead
-//            if (first)
-//            {
-//                int propSize = 0;
-//                if (eventData.PartitionKey != null)
-//                {
-//                    propSize += SymbolEncoding.GetEncodeSize(AmqpMessageConverter.PartitionKeyName);
-//                    propSize += StringEncoding.GetEncodeSize(eventData.PartitionKey);
-//                }
+            // Create AMQP message here. We will use the same message while sending to save compute time.
+            eventData.AmqpMessage = AmqpMessageConverter.EventDataToAmqpMessage(eventData);
 
-//                if (eventData.Publisher != null)
-//                {
-//                    propSize += SymbolEncoding.GetEncodeSize(AmqpMessageConverter.PublisherName);
-//                    propSize += StringEncoding.GetEncodeSize(eventData.Publisher);
-//                }
-
-//#if DEBUG
-//                if (eventData.PartitionId != null)
-//                {
-//                    propSize += SymbolEncoding.GetEncodeSize(AmqpMessageConverter.PartitionIdName);
-//                    propSize += ShortEncoding.GetEncodeSize(eventData.PartitionId);
-//                }
-//#endif
-
-//                if (propSize > 0)
-//                {
-//                    size += propSize;
-//                    size += 16; // message-annotation overhead
-//                }
-//            }
-
-            return size;
+            return eventData.AmqpMessage.SerializedMessageSize;
         }
     }
 }
