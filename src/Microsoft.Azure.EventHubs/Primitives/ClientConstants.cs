@@ -7,6 +7,5 @@ namespace Microsoft.Azure.EventHubs
     {
         public const int TimerToleranceInSeconds = 5;
         public const int ServerBusyBaseSleepTimeInSecs = 4;
-        public const string NullString = "(null)";
     }
 }
