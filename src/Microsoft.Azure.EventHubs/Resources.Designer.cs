@@ -105,15 +105,6 @@ namespace Microsoft.Azure.EventHubs {
         }
         
         /// <summary>
-        ///    Looks up a localized string similar to All event data in a SendBatch operation must have the same partition key. Expected key is &apos;{0}&apos; but encountered another key of &apos;{1}&apos;.
-        /// </summary>
-        public static string EventHubSendBatchMismatchPartitionKey {
-            get {
-                return ResourceManager.GetString("EventHubSendBatchMismatchPartitionKey", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///    Looks up a localized string similar to Serialization operation failed due to unsupported type {0}..
         /// </summary>
         public static string FailedToSerializeUnsupportedType {
