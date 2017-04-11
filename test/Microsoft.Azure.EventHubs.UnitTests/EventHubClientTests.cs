@@ -973,6 +973,25 @@ namespace Microsoft.Azure.EventHubs.UnitTests
             Assert.True(edReceived.Body.Count == byteArr.Count(), $"Sent {byteArr.Count()} bytes and received {edReceived.Body.Count}");
         }
 
+        /// <summary>
+        /// Utilizes EventDataBatch to send messages as the messages are batched up to max batch size.
+        /// </summary>
+        [Fact]
+        async Task BatchSender()
+        {
+            await SendWithEventDataBatch();
+        }
+
+        /// <summary>
+        /// Utilizes EventDataBatch to send messages as the messages are batched up to max batch size.
+        /// This unit test sends with partition key.
+        /// </summary>
+        [Fact]
+        async Task BatchSenderWithPartitionKey()
+        {
+            await SendWithEventDataBatch(Guid.NewGuid().ToString());
+        }
+        
         // Send and receive given event on given partition.
         async Task<EventData> SendAndReceiveEvent(string partitionId, EventData sendEvent)
         {
@@ -1135,25 +1154,6 @@ namespace Microsoft.Azure.EventHubs.UnitTests
             {
                 await Task.WhenAll(receivers.Select(r => r.CloseAsync()));
             }
-        }
-
-        /// <summary>
-        /// Utilizes EventDataBatch to send messages as the messages are batched up to max batch size.
-        /// </summary>
-        [Fact]
-        async Task BatchSender()
-        {
-            await SendWithEventDataBatch();
-        }
-
-        /// <summary>
-        /// Utilizes EventDataBatch to send messages as the messages are batched up to max batch size.
-        /// This unit test sends with partition key.
-        /// </summary>
-        [Fact]
-        async Task BatchSenderWithPartitionKey()
-        {
-            await SendWithEventDataBatch(Guid.NewGuid().ToString());
         }
 
         protected void Log(string message)

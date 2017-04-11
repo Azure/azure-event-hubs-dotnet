@@ -8,12 +8,13 @@ namespace Microsoft.Azure.EventHubs
     using Microsoft.Azure.EventHubs.Amqp;
 
     /// <summary>A helper class for creating a batch of EventData objects to be used for SendBatch or SendBatchAsync call.</summary>
-    public class EventDataBatch
+    public class EventDataBatch : IDisposable
     {
         const int MaxSizeLimit = 4 * 1024 * 1024;
         readonly List<EventData> eventDataList;
         long maxSize;
         long currentSize;
+        bool disposed;
 
         public EventDataBatch(long maxSizeInBytes)
         {
@@ -27,6 +28,7 @@ namespace Microsoft.Azure.EventHubs
         {
             get
             {
+                this.ThrowIfDisposed();
                 return this.eventDataList.Count;
             }
         }
@@ -35,6 +37,7 @@ namespace Microsoft.Azure.EventHubs
         /// <param name="eventData">The <see cref="Microsoft.Azure.EventHubs.EventData" /> to add.</param>
         /// <returns>A boolean value indicating if the event data has been added to the batch or not.</returns>
         /// <exception cref="ArgumentNullException">Thrown when the EventData is null.</exception>
+        /// <exception cref="ObjectDisposedException">Thrown when the batch is already disposed.</exception>
         /// <remarks>
         /// This method checks the sizes of the batch, the EventData object and the specified limit to determine
         /// if the EventData object can be added.
@@ -46,6 +49,7 @@ namespace Microsoft.Azure.EventHubs
                 throw new ArgumentNullException(nameof(eventData));
             }
 
+            this.ThrowIfDisposed();
             long size = GetSize(eventData, this.eventDataList.Count == 0);
             if (this.currentSize + size > this.maxSize)
             {
@@ -59,10 +63,11 @@ namespace Microsoft.Azure.EventHubs
         }
 
         /// <summary>Converts the batch to an IEnumerable of EventData objects that can be accepted by the
-        /// SendBatch or SendBatchAsync method.</summary>
+        /// SendBatchAsync method.</summary>
         /// <returns>Returns an IEnumerable of EventData objects.</returns>
         public IEnumerable<EventData> ToEnumerable()
         {
+            this.ThrowIfDisposed();
             return this.eventDataList;
         }
 
@@ -73,5 +78,35 @@ namespace Microsoft.Azure.EventHubs
 
             return eventData.AmqpMessage.SerializedMessageSize;
         }
-    }
+
+        public void Dispose()
+        {
+            Dispose(true);
+        }
+
+        void Dispose(bool disposing)
+        {
+            if (!disposed)
+            {
+                if (disposing)
+                {
+                    this.disposed = true;
+                    foreach (var e in this.eventDataList)
+                    {
+                        e.Dispose();
+                    }
+                }
+
+                disposed = true;
+            }
+        }
+
+        void ThrowIfDisposed()
+        {
+            if (this.disposed)
+            {
+                throw new ObjectDisposedException(this.GetType().Name);
+            }
+        }
+   }
 }
