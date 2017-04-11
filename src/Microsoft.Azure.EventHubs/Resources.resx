@@ -132,9 +132,6 @@
   <data name="EventDataListIsNullOrEmpty" xml:space="preserve">
     <value>There are no event data supplied. Please make sure input events are not empty.</value>
   </data>
-  <data name="EventHubSendBatchMismatchPartitionKey" xml:space="preserve">
-    <value>All event data in a SendBatch operation must have the same partition key. Expected key is '{0}' but encountered another key of '{1}'</value>
-  </data>
   <data name="FailedToSerializeUnsupportedType" xml:space="preserve">
     <value>Serialization operation failed due to unsupported type {0}.</value>
   </data>
