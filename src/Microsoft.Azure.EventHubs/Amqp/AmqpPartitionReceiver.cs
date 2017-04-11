@@ -163,7 +163,12 @@ namespace Microsoft.Azure.EventHubs.Amqp
         async Task<ReceivingAmqpLink> CreateLinkAsync(TimeSpan timeout)
         {
             var amqpEventHubClient = ((AmqpEventHubClient)this.EventHubClient);
-            var timeoutHelper = new TimeoutHelper(timeout);
+
+            // Allow at least AmqpMinimumOpenSessionTimeoutInSeconds seconds to open the session.
+            var openSessionTimeout = AmqpClientConstants.AmqpMinimumOpenSessionTimeoutInSeconds > timeout.TotalSeconds ?
+                TimeSpan.FromSeconds(AmqpClientConstants.AmqpMinimumOpenSessionTimeoutInSeconds) : timeout;
+            var timeoutHelper = new TimeoutHelper(openSessionTimeout);
+
             AmqpConnection connection = await amqpEventHubClient.ConnectionManager.GetOrCreateAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
 
             // Authenticate over CBS
@@ -300,7 +305,11 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     {
                         EventHubsEventSource.Log.ReceiveHandlerExitingWithError(this.ClientId, this.PartitionId, e.Message);
                         await this.ReceiveHandlerProcessErrorAsync(e).ConfigureAwait(false);
-                        break;
+
+                        // Avoid tight loop if Receieve call keeps faling.
+                        await Task.Delay(100);
+
+                        continue;
                     }
 
                     try
@@ -311,7 +320,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     {
                         EventHubsEventSource.Log.ReceiveHandlerExitingWithError(this.ClientId, this.PartitionId, userCodeError.Message);
                         await this.ReceiveHandlerProcessErrorAsync(userCodeError).ConfigureAwait(false);
-                        break;
                     }
                 }
             }

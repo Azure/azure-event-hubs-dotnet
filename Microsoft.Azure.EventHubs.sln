@@ -20,12 +20,6 @@ Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Microsoft.Azure.EventHubs.P
 EndProject
 Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "Microsoft.Azure.EventHubs.Processor.UnitTests", "test\Microsoft.Azure.EventHubs.Processor.UnitTests\Microsoft.Azure.EventHubs.Processor.UnitTests.xproj", "{F7F892F4-4490-4BC9-BB18-F42F2C85E345}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{188550D8-80F0-410D-AECA-BC3C1F96CF95}"
-EndProject
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "SampleSender", "samples\SampleSender\SampleSender.xproj", "{940BCA4A-B154-4667-8A03-57E6B689866D}"
-EndProject
-Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "SampleEphReceiver", "samples\SampleEphReceiver\SampleEphReceiver.xproj", "{679DFCC5-76BD-4725-A51E-AFBB01565401}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

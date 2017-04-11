@@ -192,19 +192,19 @@ namespace Microsoft.Azure.EventHubs.Processor
                 // Renew any leases that currently belong to us.
                 IEnumerable<Task<Lease>> gettingAllLeases = leaseManager.GetAllLeases();
                 List<Lease> leasesOwnedByOthers = new List<Lease>();
-                int ourLeasesCount = 0;
-                foreach (Task<Lease> getLeastTask in gettingAllLeases)
+                int ourLeaseCount = 0;
+                foreach (Task<Lease> getLeaseTask in gettingAllLeases)
                 {
                     try
                     {
-                        Lease possibleLease = await getLeastTask.ConfigureAwait(false);
+                        Lease possibleLease = await getLeaseTask.ConfigureAwait(false);
                         allLeases[possibleLease.PartitionId] = possibleLease;
                         if (await possibleLease.IsExpired().ConfigureAwait(false))
                         {
                             ProcessorEventSource.Log.PartitionPumpInfo(this.host.Id, possibleLease.PartitionId, "Trying to acquire lease.");
                             if (await leaseManager.AcquireLeaseAsync(possibleLease).ConfigureAwait(false))
                             {
-                                ourLeasesCount++;
+                                ourLeaseCount++;
                             }
                             else
                             {
@@ -215,11 +215,15 @@ namespace Microsoft.Azure.EventHubs.Processor
                         else if (possibleLease.Owner == this.host.HostName)
                         {
                             ProcessorEventSource.Log.PartitionPumpInfo(this.host.Id, possibleLease.PartitionId, "Trying to renew lease.");
-                            if (await leaseManager.RenewLeaseAsync(possibleLease).ConfigureAwait(false))
+
+                            // Try to renew the lease. If successful then this lease belongs to us,
+                            // if throws LeaseLostException then we don't own it anymore.
+                            try
                             {
-                                ourLeasesCount++;
+                                await leaseManager.RenewLeaseAsync(possibleLease).ConfigureAwait(false);
+                                ourLeaseCount++;
                             }
-                            else
+                            catch (LeaseLostException)
                             {
                                 // Probably failed because another host stole it between get and renew 
                                 leasesOwnedByOthers.Add(possibleLease);
@@ -240,30 +244,29 @@ namespace Microsoft.Azure.EventHubs.Processor
                 // Grab more leases if available and needed for load balancing
                 if (leasesOwnedByOthers.Count > 0)
                 {
-                    IEnumerable<Lease> stealTheseLeases = WhichLeasesToSteal(leasesOwnedByOthers, ourLeasesCount);
-                    if (stealTheseLeases != null)
+                    Lease stealThisLease = WhichLeaseToSteal(leasesOwnedByOthers, ourLeaseCount);
+                    if (stealThisLease != null)
                     {
-                        foreach (Lease stealee in stealTheseLeases)
+                        try
                         {
-                            try
+                            ProcessorEventSource.Log.PartitionPumpStealLeaseStart(this.host.Id, stealThisLease.PartitionId);
+                            if (await leaseManager.AcquireLeaseAsync(stealThisLease).ConfigureAwait(false))
                             {
-                                ProcessorEventSource.Log.PartitionPumpStealLeaseStart(this.host.Id, stealee.PartitionId);
-                                if (await leaseManager.AcquireLeaseAsync(stealee).ConfigureAwait(false))
-                                {
-                                    // Succeeded in stealing lease
-                                    ProcessorEventSource.Log.PartitionPumpStealLeaseStop(this.host.Id, stealee.PartitionId);
-                                    ourLeasesCount++;
-                                }
-                                else
-                                {
-                                    ProcessorEventSource.Log.EventProcessorHostWarning(this.host.Id, "Failed to steal lease for partition " + stealee.PartitionId, null);
-                                }
+                                // Succeeded in stealing lease
+                                ProcessorEventSource.Log.PartitionPumpStealLeaseStop(this.host.Id, stealThisLease.PartitionId);
                             }
-                            catch (Exception e)
+                            else
                             {
-                                ProcessorEventSource.Log.EventProcessorHostError(this.host.Id, "Exception during stealing lease for partition " + stealee.PartitionId, e.ToString());
-                                this.host.EventProcessorOptions.NotifyOfException(this.host.HostName, stealee.PartitionId, e, EventProcessorHostActionStrings.StealingLease);
+                                ProcessorEventSource.Log.EventProcessorHostWarning(this.host.Id,
+                                    "Failed to steal lease for partition " + stealThisLease.PartitionId, null);
                             }
+                        }
+                        catch (Exception e)
+                        {
+                            ProcessorEventSource.Log.EventProcessorHostError(this.host.Id,
+                                "Exception during stealing lease for partition " + stealThisLease.PartitionId, e.ToString());
+                            this.host.EventProcessorOptions.NotifyOfException(this.host.HostName,
+                                stealThisLease.PartitionId, e, EventProcessorHostActionStrings.StealingLease);
                         }
                     }
                 }
@@ -366,12 +369,11 @@ namespace Microsoft.Azure.EventHubs.Processor
             return Task.WhenAll(tasks);
         }
 
-        IEnumerable<Lease> WhichLeasesToSteal(List<Lease> stealableLeases, int haveLeaseCount)
+        Lease WhichLeaseToSteal(List<Lease> stealableLeases, int haveLeaseCount)
         {
             IDictionary<string, int> countsByOwner = CountLeasesByOwner(stealableLeases);
-            string biggestOwner = FindBiggestOwner(countsByOwner);
-            int biggestCount = countsByOwner[biggestOwner];
-            List<Lease> stealTheseLeases = null;
+            var biggestOwner = countsByOwner.OrderByDescending(o => o.Value).First();
+            Lease stealThisLease = null;
 
             // If the number of leases is a multiple of the number of hosts, then the desired configuration is
             // that all hosts own the name number of leases, and the difference between the "biggest" owner and
@@ -384,7 +386,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             //
             // In either case, if the difference between this host and the biggest owner is 2 or more, then the
             // system is not in the most evenly-distributed configuration, so steal one lease from the biggest.
-            // If there is a tie for biggest, findBiggestOwner() picks whichever appears first in the list because
+            // If there is a tie for biggest, we pick whichever appears first in the list because
             // it doesn't really matter which "biggest" is trimmed down.
             //
             // Stealing one at a time prevents flapping because it reduces the difference between the biggest and
@@ -392,61 +394,31 @@ namespace Microsoft.Azure.EventHubs.Processor
             // end up below 0. This host may become tied for biggest, but it cannot become larger than the host that
             // it is stealing from.
 
-            if ((biggestCount - haveLeaseCount) >= 2)
+            if ((biggestOwner.Value - haveLeaseCount) >= 2)
             {
-                stealTheseLeases = new List<Lease>();
-                foreach (Lease l in stealableLeases)
-                {
-                    if (l.Owner == biggestOwner)
-                    {
-                        stealTheseLeases.Add(l);
-                        ProcessorEventSource.Log.EventProcessorHostInfo(this.host.Id, $"Proposed to steal lease for partition {l.PartitionId} from {biggestOwner}");
-                        break;
-                    }
-                }
+                stealThisLease = stealableLeases.Where(l => l.Owner == biggestOwner.Key).First();
+                ProcessorEventSource.Log.EventProcessorHostInfo(this.host.Id, $"Proposed to steal lease for partition {stealThisLease.PartitionId} from {biggestOwner.Key}");
             }
 
-            return stealTheseLeases;
+            return stealThisLease;
         }
 
-        string FindBiggestOwner(IDictionary<string, int> countsByOwner)
+        Dictionary<string, int> CountLeasesByOwner(IEnumerable<Lease> leases)
         {
-            int biggestCount = 0;
-            string biggestOwner = null;
-            foreach (string owner in countsByOwner.Keys)
-            {
-                if (countsByOwner[owner] > biggestCount)
-                {
-                    biggestCount = countsByOwner[owner];
-                    biggestOwner = owner;
-                }
-            }
-            return biggestOwner;
-        }
+            var counts = leases.GroupBy(lease => lease.Owner).Select(group => new {
+                Owner = group.Key,
+                Count = group.Count()
+            });
 
-        IDictionary<string, int> CountLeasesByOwner(IEnumerable<Lease> leases)
-        {
-            IDictionary<string, int> counts = new Dictionary<string, int>();
-            foreach (Lease l in leases)
+            // Log ownership mapping.
+            foreach (var owner in counts)
             {
-                if (counts.ContainsKey(l.Owner))
-                {
-                    int oldCount = counts[l.Owner];
-                    counts[l.Owner] =  oldCount + 1;
-                }
-                else
-                {
-                    counts[l.Owner] = 1;
-                }
+                ProcessorEventSource.Log.EventProcessorHostInfo(this.host.Id, $"Host {owner.Owner} owns {owner.Count} leases");
             }
 
-            foreach (string owner in counts.Keys)
-            {
-                ProcessorEventSource.Log.EventProcessorHostInfo(this.host.Id, $"Host {owner} owns {counts[owner]} leases");
-            }
+            ProcessorEventSource.Log.EventProcessorHostInfo(this.host.Id, $"Total hosts in list: {counts.Count()}");
 
-            ProcessorEventSource.Log.EventProcessorHostInfo(this.host.Id, $"Total hosts in list: {counts.Count}");
-            return counts;
+            return counts.ToDictionary(e => e.Owner, e => e.Count);
         }
     }
 }

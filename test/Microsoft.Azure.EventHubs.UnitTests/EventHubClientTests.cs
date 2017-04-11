@@ -118,22 +118,27 @@ namespace Microsoft.Azure.EventHubs.UnitTests
             var pSender = this.EventHubClient.CreatePartitionSender("0");
             var pReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", PartitionReceiver.StartOfStream);
 
-            Log("Sending single event to partition 0");
-            var eventData = new EventData(Encoding.UTF8.GetBytes("Hello EventHub!"));
-            await pSender.SendAsync(eventData);
-
-            Log("Closing partition sender");
-            await pSender.CloseAsync();
-
-            await Assert.ThrowsAsync<ObjectDisposedException>(async () =>
+            try
             {
-                Log("Sending another event to partition 0 on the closed sender, this should fail");
-                eventData = new EventData(Encoding.UTF8.GetBytes("Hello EventHub!"));
+                Log("Sending single event to partition 0");
+                var eventData = new EventData(Encoding.UTF8.GetBytes("Hello EventHub!"));
                 await pSender.SendAsync(eventData);
-                throw new InvalidOperationException("Send should have failed");
-            });
 
-            await pReceiver.CloseAsync();
+                Log("Closing partition sender");
+                await pSender.CloseAsync();
+
+                await Assert.ThrowsAsync<ObjectDisposedException>(async () =>
+                {
+                    Log("Sending another event to partition 0 on the closed sender, this should fail");
+                    eventData = new EventData(Encoding.UTF8.GetBytes("Hello EventHub!"));
+                    await pSender.SendAsync(eventData);
+                    throw new InvalidOperationException("Send should have failed");
+                });
+            }
+            finally
+            {
+                await pReceiver.CloseAsync();
+            }
         }
 
         [Fact]
@@ -142,16 +147,21 @@ namespace Microsoft.Azure.EventHubs.UnitTests
             var pSender = this.EventHubClient.CreatePartitionSender("0");
             var pReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", PartitionReceiver.StartOfStream);
 
-            Log("Sending single event to partition 0");
-            var eventData = new EventData(Encoding.UTF8.GetBytes("Hello EventHub!"));
-            await pSender.SendAsync(eventData);
+            try
+            {
+                Log("Sending single event to partition 0");
+                var eventData = new EventData(Encoding.UTF8.GetBytes("Hello EventHub!"));
+                await pSender.SendAsync(eventData);
 
-            Log("Receiving the event.");
-            var events = await pReceiver.ReceiveAsync(1);
-            Assert.True(events != null && events.Count() == 1, "Failed to receive 1 event");
-
-            Log("Closing partition receiver");
-            await pReceiver.CloseAsync();
+                Log("Receiving the event.");
+                var events = await pReceiver.ReceiveAsync(1);
+                Assert.True(events != null && events.Count() == 1, "Failed to receive 1 event");
+            }
+            finally
+            {
+                Log("Closing partition receiver");
+                await pReceiver.CloseAsync();
+            }
 
             await Assert.ThrowsAsync<ObjectDisposedException>(async () =>
             {
@@ -246,35 +256,40 @@ namespace Microsoft.Azure.EventHubs.UnitTests
             Log($"Creating a new receiver with offset EndOFStream");
             var receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, PartitionReceiver.EndOfStream);
 
-            // Attemp to receive the message. This should return only 1 message.
-            var receiveTask = receiver.ReceiveAsync(100);
+            try
+            {
+                // Attemp to receive the message. This should return only 1 message.
+                var receiveTask = receiver.ReceiveAsync(100);
 
-            // Send a new message which is expected to go to the end of stream.
-            // We are expecting to receive only this message.
-            // Wait 5 seconds before sending to avoid race.
-            await Task.Delay(5000);
-            var eventToReceive = new EventData(new byte[1]);
-            eventToReceive.Properties["stamp"] = Guid.NewGuid().ToString();
-            await partitionSender.SendAsync(eventToReceive);
+                // Send a new message which is expected to go to the end of stream.
+                // We are expecting to receive only this message.
+                // Wait 5 seconds before sending to avoid race.
+                await Task.Delay(5000);
+                var eventToReceive = new EventData(new byte[1]);
+                eventToReceive.Properties["stamp"] = Guid.NewGuid().ToString();
+                await partitionSender.SendAsync(eventToReceive);
 
-            // Complete asyncy receive task.
-            var receivedMessages = await receiveTask;
+                // Complete asyncy receive task.
+                var receivedMessages = await receiveTask;
 
-            // We should have received only 1 message from this call.
-            Assert.True(receivedMessages.Count() == 1, $"Didn't receive 1 message. Received {receivedMessages.Count()} messages(s).");
+                // We should have received only 1 message from this call.
+                Assert.True(receivedMessages.Count() == 1, $"Didn't receive 1 message. Received {receivedMessages.Count()} messages(s).");
 
-            // Check stamp.
-            Assert.True(receivedMessages.Single().Properties["stamp"].ToString() == eventToReceive.Properties["stamp"].ToString()
-                , "Stamps didn't match on the message sent and received!");
+                // Check stamp.
+                Assert.True(receivedMessages.Single().Properties["stamp"].ToString() == eventToReceive.Properties["stamp"].ToString()
+                    , "Stamps didn't match on the message sent and received!");
 
-            Log("Received correct message as expected.");
+                Log("Received correct message as expected.");
 
-            // Next receive on this partition shouldn't return any more messages.
-            receivedMessages = await receiver.ReceiveAsync(100, TimeSpan.FromSeconds(15));
-            Assert.True(receivedMessages == null, $"Received messages at the end.");
-
-            await partitionSender.CloseAsync();
-            await receiver.CloseAsync();
+                // Next receive on this partition shouldn't return any more messages.
+                receivedMessages = await receiver.ReceiveAsync(100, TimeSpan.FromSeconds(15));
+                Assert.True(receivedMessages == null, $"Received messages at the end.");
+            }
+            finally
+            {
+                await partitionSender.CloseAsync();
+                await receiver.CloseAsync();
+            }
         }
 
         [Fact]
@@ -296,22 +311,28 @@ namespace Microsoft.Azure.EventHubs.UnitTests
             // Create a new receiver which will start reading from the last message on the stream.
             Log($"Creating a new receiver with offset {lastMessage.Item1}");
             var receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, lastMessage.Item1);
-            var receivedMessages = await receiver.ReceiveAsync(100);
 
-            // We should have received only 1 message from this call.
-            Assert.True(receivedMessages.Count() == 1, $"Didn't receive 1 message. Received {receivedMessages.Count()} messages(s).");
+            try
+            {
+                var receivedMessages = await receiver.ReceiveAsync(100);
 
-            // Check stamp.
-            Assert.True(receivedMessages.Single().Properties["stamp"].ToString() == eventSent.Properties["stamp"].ToString()
-                , "Stamps didn't match on the message sent and received!");
+                // We should have received only 1 message from this call.
+                Assert.True(receivedMessages.Count() == 1, $"Didn't receive 1 message. Received {receivedMessages.Count()} messages(s).");
 
-            Log("Received correct message as expected.");
+                // Check stamp.
+                Assert.True(receivedMessages.Single().Properties["stamp"].ToString() == eventSent.Properties["stamp"].ToString()
+                    , "Stamps didn't match on the message sent and received!");
 
-            // Next receive on this partition shouldn't return any more messages.
-            receivedMessages = await receiver.ReceiveAsync(100, TimeSpan.FromSeconds(15));
-            Assert.True(receivedMessages == null, $"Received messages at the end.");
+                Log("Received correct message as expected.");
 
-            await receiver.CloseAsync();
+                // Next receive on this partition shouldn't return any more messages.
+                receivedMessages = await receiver.ReceiveAsync(100, TimeSpan.FromSeconds(15));
+                Assert.True(receivedMessages == null, $"Received messages at the end.");
+            }
+            finally
+            {
+                await receiver.CloseAsync();
+            }
         }
 
         [Fact]
@@ -333,22 +354,28 @@ namespace Microsoft.Azure.EventHubs.UnitTests
             // Create a new receiver which will start reading from the last message on the stream.
             Log($"Creating a new receiver with date-time {lastMessage.Item2}");
             var receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, lastMessage.Item2);
-            var receivedMessages = await receiver.ReceiveAsync(100);
 
-            // We should have received only 1 message from this call.
-            Assert.True(receivedMessages.Count() == 1, $"Didn't receive 1 message. Received {receivedMessages.Count()} messages(s).");
+            try
+            {
+                var receivedMessages = await receiver.ReceiveAsync(100);
 
-            // Check stamp.
-            Assert.True(receivedMessages.Single().Properties["stamp"].ToString() == eventSent.Properties["stamp"].ToString()
-                , "Stamps didn't match on the message sent and received!");
+                // We should have received only 1 message from this call.
+                Assert.True(receivedMessages.Count() == 1, $"Didn't receive 1 message. Received {receivedMessages.Count()} messages(s).");
 
-            Log("Received correct message as expected.");
+                // Check stamp.
+                Assert.True(receivedMessages.Single().Properties["stamp"].ToString() == eventSent.Properties["stamp"].ToString()
+                    , "Stamps didn't match on the message sent and received!");
 
-            // Next receive on this partition shouldn't return any more messages.
-            receivedMessages = await receiver.ReceiveAsync(100, TimeSpan.FromSeconds(15));
-            Assert.True(receivedMessages == null, $"Received messages at the end.");
+                Log("Received correct message as expected.");
 
-            await receiver.CloseAsync();
+                // Next receive on this partition shouldn't return any more messages.
+                receivedMessages = await receiver.ReceiveAsync(100, TimeSpan.FromSeconds(15));
+                Assert.True(receivedMessages == null, $"Received messages at the end.");
+            }
+            finally
+            {
+                await receiver.CloseAsync();
+            }
         }
 
         [Fact]
@@ -359,6 +386,7 @@ namespace Microsoft.Azure.EventHubs.UnitTests
             const string partitionId = "0";
             PartitionSender partitionSender = this.EventHubClient.CreatePartitionSender(partitionId);
             PartitionReceiver partitionReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, DateTime.UtcNow.AddMinutes(-10));
+
             try
             {
                 int eventCount = 20;
@@ -389,9 +417,8 @@ namespace Microsoft.Azure.EventHubs.UnitTests
             }
             finally
             {
-                await Task.WhenAll(
-                    partitionReceiver.CloseAsync(),
-                    partitionSender.CloseAsync());
+                await partitionReceiver.CloseAsync();
+                await partitionSender.CloseAsync();
             }
         }
 
@@ -522,6 +549,7 @@ namespace Microsoft.Azure.EventHubs.UnitTests
             string partitionId = "1";
             PartitionReceiver partitionReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, DateTime.UtcNow.AddMinutes(-10));
             PartitionSender partitionSender = this.EventHubClient.CreatePartitionSender(partitionId);
+
             try
             {
                 string uniqueEventId = Guid.NewGuid().ToString();
@@ -726,16 +754,16 @@ namespace Microsoft.Azure.EventHubs.UnitTests
         [Fact]
         async Task ReceiveTimeout()
         {
-            var testValues = new[] { 10, 30, 120 };
+            var testValues = new[] { 30, 60, 120 };
 
             PartitionReceiver receiver = null;
 
-            try
+            foreach (var receiveTimeoutInSeconds in testValues)
             {
-                foreach (var receiveTimeoutInSeconds in testValues)
-                {
-                    Log($"Testing with {receiveTimeoutInSeconds} seconds.");
+                Log($"Testing with {receiveTimeoutInSeconds} seconds.");
 
+                try
+                {
                     // Start receiving from a future time so that Receive call won't be able to fetch any events.
                     receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", DateTime.UtcNow.AddMinutes(1));
 
@@ -751,10 +779,10 @@ namespace Microsoft.Azure.EventHubs.UnitTests
                     // This is just a logical buffer for timeout behavior validation.
                     Assert.True(diff < receiveTimeoutInSeconds + 5, $"Hit timeout {diff} seconds into Receive call while testing {receiveTimeoutInSeconds} seconds timeout.");
                 }
-            }
-            finally
-            {
-                await receiver.CloseAsync();
+                finally
+                {
+                    await receiver.CloseAsync();
+                }
             }
         }
 
@@ -792,10 +820,7 @@ namespace Microsoft.Azure.EventHubs.UnitTests
                     }
                     finally
                     {
-                        if (receiver != null)
-                        {
-                            await receiver.CloseAsync();
-                        }
+                        await receiver.CloseAsync();
                     }
                 });
 

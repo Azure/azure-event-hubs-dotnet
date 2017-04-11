@@ -1,4 +1,4 @@
-﻿﻿<p align="center">
+﻿<p align="center">
   <img src="event-hubs.png" alt="Microsoft Azure Event Hubs" width="100"/>
 </p>
 
@@ -6,8 +6,8 @@
 
 |Build/Package|Status|
 |------|-------------|
-|master|[![Build status](https://ci.appveyor.com/api/projects/status/p71xb6o7233m7gi3/branch/master?svg=true)](https://ci.appveyor.com/project/jtaubensee/azure-event-hubs-dotnet/branch/master)|
-|dev|[![Build status](https://ci.appveyor.com/api/projects/status/p71xb6o7233m7gi3/branch/master?svg=true)](https://ci.appveyor.com/project/jtaubensee/azure-event-hubs-dotnet/branch/dev)|
+|master|[![Build status](https://ci.appveyor.com/api/projects/status/p71xb6o7233m7gi3/branch/master?svg=true)](https://ci.appveyor.com/project/jtaubensee/azure-event-hubs-dotnet/branch/master) [![codecov](https://codecov.io/gh/Azure/azure-event-hubs-dotnet/branch/master/graph/badge.svg)](https://codecov.io/gh/Azure/azure-event-hubs-dotnet)|
+|dev|[![Build status](https://ci.appveyor.com/api/projects/status/p71xb6o7233m7gi3/branch/master?svg=true)](https://ci.appveyor.com/project/jtaubensee/azure-event-hubs-dotnet/branch/dev) [![codecov](https://codecov.io/gh/Azure/azure-event-hubs-dotnet/branch/dev/graph/badge.svg)](https://codecov.io/gh/Azure/azure-event-hubs-dotnet)|
 |Microsoft.Azure.EventHubs|[![NuGet Version and Downloads count](https://buildstats.info/nuget/Microsoft.Azure.EventHubs?includePreReleases=true)](https://www.nuget.org/packages/Microsoft.Azure.EventHubs/)|
 |Microsoft.Azure.EventHubs.Processor|[![NuGet Version and Downloads count](https://buildstats.info/nuget/Microsoft.Azure.EventHubs.Processor?includePreReleases=true)](https://www.nuget.org/packages/Microsoft.Azure.EventHubs.Processor/)|
 
@@ -39,9 +39,9 @@ consumers that filter and/or transform event streams and then forward them on to
 
 ### Getting Started
 
-To get started sending events to an Event Hub refer to [Get started sending messages to Event Hubs in .NET Core](./samples/SampleSender/readme.md).
+To get started sending events to an Event Hub refer to [Get started sending messages to Event Hubs in .NET Core](https://github.com/Azure/azure-event-hubs/tree/master/samples/SampleSender).
 
-To get started receiving events with the **EventProcessorHost** refer to [Get started receiving messages with the EventProcessorHost in .NET Core](./samples/SampleEphReceiver/readme.md ).  
+To get started receiving events with the **EventProcessorHost** refer to [Get started receiving messages with the EventProcessorHost in .NET Core](https://github.com/Azure/azure-event-hubs/tree/master/samples/SampleEphReceiver).  
 
 ### Running the unit tests 
 
