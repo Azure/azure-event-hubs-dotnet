@@ -69,6 +69,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
         public const string ResponseErrorCondition = "error-condition";
         public const string ResponseStatusDescription = "status-description";
 
-
+        public const int AmqpMinimumOpenSessionTimeoutInSeconds = 60;
     }
 }
