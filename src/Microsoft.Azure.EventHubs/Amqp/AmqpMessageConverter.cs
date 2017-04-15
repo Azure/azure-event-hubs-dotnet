@@ -46,7 +46,9 @@ namespace Microsoft.Azure.EventHubs.Amqp
         public static AmqpMessage EventDatasToAmqpMessage(IEnumerable<EventData> eventDatas, string partitionKey)
         {
             if (eventDatas == null)
+            {
                 throw new ArgumentNullException(nameof(eventDatas));
+            }
 
             AmqpMessage returnMessage = null;
             var dataCount = eventDatas.Count();
@@ -61,7 +63,14 @@ namespace Microsoft.Azure.EventHubs.Amqp
                         firstEvent = data;
                     }
 
-                    AmqpMessage amqpMessage = EventDataToAmqpMessage(data, partitionKey);
+                    // Create AMQP message if not created yet.
+                    AmqpMessage amqpMessage = data.AmqpMessage;
+                    if (amqpMessage == null)
+                    {
+                        amqpMessage = EventDataToAmqpMessage(data);
+                    }
+
+                    UpdateAmqpMessagePartitionKey(amqpMessage, partitionKey);
                     amqpMessage.Batchable = true;
 
                     if ((amqpMessage.Sections & ClientAmqpPropsSetOnSendToEventHub) == 0 && data.Body.Array == null)
@@ -74,28 +83,36 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 }
 
                 returnMessage = AmqpMessage.Create(bodyList);
-                returnMessage.Batchable = true;
                 returnMessage.MessageFormat = AmqpConstants.AmqpBatchedMessageFormat;
-                UpdateAmqpMessageHeadersAndProperties(returnMessage, null, partitionKey, firstEvent, copyUserProperties: false);
+                UpdateAmqpMessageHeadersAndProperties(returnMessage, null, firstEvent, copyUserProperties: false);
             }
             else if (dataCount == 1) // ??? can't be null
             {
                 var data = eventDatas.First();
-                returnMessage = EventDataToAmqpMessage(data, partitionKey);
-                returnMessage.Batchable = true;
+
+                // Create AMQP message if not created yet.
+                returnMessage = data.AmqpMessage;
+                if (returnMessage == null)
+                {
+                    returnMessage = EventDataToAmqpMessage(data);
+                }
+
                 if ((returnMessage.Sections & ClientAmqpPropsSetOnSendToEventHub) == 0 && data.Body.Array == null)
                 {
                     throw new InvalidOperationException(Resources.CannotSendAnEmptyEvent.FormatForUser(data.GetType().Name));
                 }
             }
 
+            returnMessage.Batchable = true;
+            UpdateAmqpMessagePartitionKey(returnMessage, partitionKey);
+
             return returnMessage;
         }
 
-        static AmqpMessage EventDataToAmqpMessage(EventData eventData, string partitionKey)
+        public static AmqpMessage EventDataToAmqpMessage(EventData eventData)
         {
             AmqpMessage amqpMessage  = AmqpMessage.Create(new Data { Value = eventData.Body });
-            UpdateAmqpMessageHeadersAndProperties(amqpMessage, null, partitionKey, eventData, true);
+            UpdateAmqpMessageHeadersAndProperties(amqpMessage, null, eventData, true);
 
             return amqpMessage;
         }
@@ -103,18 +120,12 @@ namespace Microsoft.Azure.EventHubs.Amqp
         static void UpdateAmqpMessageHeadersAndProperties(
             AmqpMessage message,
             string publisher,
-            string partitionKey,
             EventData eventData,
             bool copyUserProperties = true)
         {
             if (!string.IsNullOrEmpty(publisher))
             {
                 message.MessageAnnotations.Map[PublisherName] = publisher;
-            }
-
-            if (partitionKey != null)
-            {
-                message.MessageAnnotations.Map[PartitionKeyName] = partitionKey;
             }
 
             if (copyUserProperties && eventData.Properties != null && eventData.Properties.Count > 0)
@@ -135,11 +146,16 @@ namespace Microsoft.Azure.EventHubs.Amqp
             }
         }
 
-        private static void UpdateEventDataHeaderAndProperties(AmqpMessage amqpMessage, EventData data)
+        static void UpdateAmqpMessagePartitionKey(AmqpMessage message, string partitionKey)
         {
-            //Fx.AssertAndThrow(amqpMessage.DeliveryTag != null, "AmqpMessage should always contain delivery tag.");
-            //data.DeliveryTag = amqpMessage.DeliveryTag;
+            if (partitionKey != null)
+            {
+                message.MessageAnnotations.Map[PartitionKeyName] = partitionKey;
+            }
+        }
 
+        static void UpdateEventDataHeaderAndProperties(AmqpMessage amqpMessage, EventData data)
+        {
             SectionFlag sections = amqpMessage.Sections;
             if ((sections & SectionFlag.MessageAnnotations) != 0)
             {
