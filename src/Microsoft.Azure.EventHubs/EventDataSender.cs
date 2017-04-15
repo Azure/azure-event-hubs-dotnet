@@ -42,5 +42,11 @@ namespace Microsoft.Azure.EventHubs
 
             return count;
         }
+
+        internal long MaxMessageSize
+        {
+            get;
+            set;
+        }
     }
 }
