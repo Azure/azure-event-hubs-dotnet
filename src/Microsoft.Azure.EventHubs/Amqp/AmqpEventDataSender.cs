@@ -158,7 +158,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     true,
                     expiresAt);
 
-                this.MaxMessageSize = (long)activeClientLink.Link.Settings.MaxMessageSize;
+                this.MaxMessageSize = (long)activeClientLink.Link.Settings.MaxMessageSize();
 
                 this.clientLinkManager.SetActiveLink(activeClientLink);
 
