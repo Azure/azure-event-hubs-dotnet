@@ -2,7 +2,7 @@ function Build-Solution
 {
     Write-Host "Building Event Hubs projects"
 
-    dotnet restore  
+    msbuild.exe /t:restore 
     msbuild.exe src/Microsoft.Azure.EventHubs/Microsoft.Azure.EventHubs.csproj
     msbuild.exe src/Microsoft.Azure.EventHubs.Processor/Microsoft.Azure.EventHubs.Processor.csproj
     msbuild.exe test/Microsoft.Azure.EventHubs.UnitTests/Microsoft.Azure.EventHubs.UnitTests.csproj
