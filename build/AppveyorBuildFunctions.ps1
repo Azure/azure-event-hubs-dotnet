@@ -2,8 +2,8 @@ function Build-Solution
 {
     Write-Host "Building Event Hubs projects"
 
-    MSBuild.exe Microsoft.Azure.EventHubs.sln /t:restore
-    MSBuild.exe Microsoft.Azure.EventHubs.sln
+    MSBuild.exe Microsoft.Azure.EventHubs.sln /t:restore /p:Configuration=Debug /p:Platform="Any CPU"
+    MSBuild.exe Microsoft.Azure.EventHubs.sln /p:Configuration=Debug /p:Platform="Any CPU"
 
     Write-Host "Building complete"
 }
