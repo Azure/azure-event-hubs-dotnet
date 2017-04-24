@@ -3,10 +3,10 @@ function Build-Solution
     Write-Host "Building Event Hubs projects"
 
     dotnet restore  
-    dotnet build src/Microsoft.Azure.EventHubs/Microsoft.Azure.EventHubs.csproj
-    dotnet build src/Microsoft.Azure.EventHubs.Processor/Microsoft.Azure.EventHubs.Processor.csproj
-    dotnet build test/Microsoft.Azure.EventHubs.UnitTests/Microsoft.Azure.EventHubs.UnitTests.csproj
-    dotnet build test/Microsoft.Azure.EventHubs.Processor.UnitTests/Microsoft.Azure.EventHubs.Processor.UnitTests.csproj
+    msbuild.exe src/Microsoft.Azure.EventHubs/Microsoft.Azure.EventHubs.csproj
+    msbuild.exe src/Microsoft.Azure.EventHubs.Processor/Microsoft.Azure.EventHubs.Processor.csproj
+    msbuild.exe test/Microsoft.Azure.EventHubs.UnitTests/Microsoft.Azure.EventHubs.UnitTests.csproj
+    msbuild.exe test/Microsoft.Azure.EventHubs.Processor.UnitTests/Microsoft.Azure.EventHubs.Processor.UnitTests.csproj
 
     Write-Host "Building complete"
 }
