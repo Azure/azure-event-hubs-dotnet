@@ -5,13 +5,16 @@ namespace Microsoft.Azure.EventHubs
 {
     using System;
     using System.Collections.Generic;
+    using Azure.Amqp;
 
     /// <summary>
     /// The data structure encapsulating the Event being sent-to and received-from EventHubs.
     /// Each EventHubs partition can be visualized as a Stream of EventData.
     /// </summary>
-    public class EventData
+    public class EventData : IDisposable
     {
+        bool disposed;
+
         /// <summary>
         /// Construct EventData to send to EventHub.
         /// Typical pattern to create a Sending EventData is:
@@ -75,6 +78,29 @@ namespace Microsoft.Azure.EventHubs
         public SystemPropertiesCollection SystemProperties
         {
             get; internal set;
+        }
+
+        internal AmqpMessage AmqpMessage { get; set; }
+
+        public void Dispose()
+        {
+            Dispose(true);
+        }
+
+        void Dispose(bool disposing)
+        {
+            if (!disposed)
+            {
+                if (disposing)
+                {
+                    if (this.AmqpMessage != null)
+                    {
+                        this.AmqpMessage.Dispose();
+                    }
+                }
+
+                disposed = true;
+            }
         }
 
         public sealed class SystemPropertiesCollection

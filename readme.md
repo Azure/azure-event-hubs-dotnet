@@ -37,11 +37,9 @@ Stream Analytics, Apache Spark, or Apache Storm.
 Most applications will act either as an event publisher or an event consumer, but rarely both. The exception are event 
 consumers that filter and/or transform event streams and then forward them on to another Event Hub; an example for such is Azure Stream Analytics.
 
-### Getting Started
+### Where can I find examples that use this library?
 
-To get started sending events to an Event Hub refer to [Get started sending messages to Event Hubs in .NET Core](https://github.com/Azure/azure-event-hubs/tree/master/samples/SampleSender).
-
-To get started receiving events with the **EventProcessorHost** refer to [Get started receiving messages with the EventProcessorHost in .NET Core](https://github.com/Azure/azure-event-hubs/tree/master/samples/SampleEphReceiver).  
+[https://github.com/Azure/azure-event-hubs/tree/master/samples](https://github.com/Azure/azure-event-hubs/tree/master/samples)
 
 ### Running the unit tests 
 
