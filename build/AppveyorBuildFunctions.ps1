@@ -2,11 +2,8 @@ function Build-Solution
 {
     Write-Host "Building Event Hubs projects"
 
-    dotnet restore  
-    dotnet build src/Microsoft.Azure.EventHubs/project.json
-    dotnet build src/Microsoft.Azure.EventHubs.Processor/project.json
-    dotnet build test/Microsoft.Azure.EventHubs.UnitTests/project.json
-    dotnet build test/Microsoft.Azure.EventHubs.Processor.UnitTests/project.json
+    MSBuild.exe Microsoft.Azure.EventHubs.sln /t:restore /p:Configuration=Debug /p:Platform="Any CPU"
+    MSBuild.exe Microsoft.Azure.EventHubs.sln /p:Configuration=Debug /p:Platform="Any CPU"
 
     Write-Host "Building complete"
 }
@@ -88,13 +85,13 @@ function Run-UnitTests
         $openCoverConsole = $ENV:APPVEYOR_BUILD_FOLDER + '\OpenCover.4.6.519\tools\OpenCover.Console.exe'
         $target = '-target:C:\Program Files\dotnet\dotnet.exe'
         
-        $testProject = $ENV:APPVEYOR_BUILD_FOLDER + '\test\Microsoft.Azure.EventHubs.UnitTests\project.json'
+        $testProject = $ENV:APPVEYOR_BUILD_FOLDER + '\test\Microsoft.Azure.EventHubs.UnitTests\Microsoft.Azure.EventHubs.UnitTests.csproj'
         $targetArgs = '-targetargs: test ' + $testProject + ' -f netcoreapp1.0'
         $filter = '-filter:+[Microsoft.Azure.EventHubs*]* -[Microsoft.Azure.EventHubs.UnitTests]*'
         
         & $openCoverConsole $target $targetArgs $filter '-register:user' '-oldStyle'
 
-        $processorTestProject = $ENV:APPVEYOR_BUILD_FOLDER + '\test\Microsoft.Azure.EventHubs.Processor.UnitTests\project.json'
+        $processorTestProject = $ENV:APPVEYOR_BUILD_FOLDER + '\test\Microsoft.Azure.EventHubs.Processor.UnitTests\Microsoft.Azure.EventHubs.Processor.UnitTests.csproj'
         $processorTargetArgs = '-targetargs: test ' + $processorTestProject + ' -f netcoreapp1.0'
         $processorFilter = '-filter:+[Microsoft.Azure.EventHubs*]* -[Microsoft.Azure.EventHubs.UnitTests]* -[Microsoft.Azure.EventHubs.Processor.UnitTests]*'
         
