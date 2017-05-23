@@ -221,7 +221,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 await link.OpenAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
                 var activeClientLink = new ActiveClientLink(
                     link,
-                    this.EventHubClient.ConnectionStringBuilder.Endpoint.AbsoluteUri, // audience
+                    audience, // audience
                     this.EventHubClient.ConnectionStringBuilder.Endpoint.AbsoluteUri, // endpointUri
                     new[] { ClaimConstants.Listen },
                     true,
