@@ -29,7 +29,7 @@ function Build-Solution
     Write-Host "Building projects"
 
     # Restore solution files
-    &"C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\MSBuild\15.0\Bin\MSBuild.exe" Microsoft.Azure.EventHubs.sln /t:restore /p:Configuration=$configuration /p:Platform=$platform /verbosity:minimal
+    MSBuild.exe Microsoft.Azure.EventHubs.sln /t:restore /p:Configuration=$configuration /p:Platform=$platform /verbosity:minimal
 
     # $? Returns True or False value indicating whether previous command ended with an error.
     # This is used to throw an error that will cause the AppVeyor process to fail as expected.
@@ -39,7 +39,7 @@ function Build-Solution
     }
 
     # Build solution
-    &"C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\MSBuild\15.0\Bin\MSBuild.exe" Microsoft.Azure.EventHubs.sln /p:Configuration=$configuration /p:Platform=$platform /verbosity:minimal
+    MSBuild.exe Microsoft.Azure.EventHubs.sln /p:Configuration=$configuration /p:Platform=$platform /verbosity:minimal
 
     if (-not $?)
     {
