@@ -8,14 +8,11 @@ $buildFolder = $projectFolder + '\build\'
 $runtime = if ($ENV:DotNetRunTime -ne $null) { $ENV:DotNetRunTime } else { 'netcoreapp1.0' }
 $artifactsFolder = $buildFolder + 'artifacts\'
 $appProject = $projectFolder + '\src\Microsoft.Azure.EventHubs\Microsoft.Azure.EventHubs.csproj'
-$testProject = $projectFolder + '\test\Microsoft.Azure.EventHubs.UnitTests\Microsoft.Azure.EventHubs.UnitTests.csproj'
+$testProject = $projectFolder + '\test\Microsoft.Azure.EventHubs.Tests\Microsoft.Azure.EventHubs.Tests.csproj'
 $processorAppProject = $projectFolder + '\src\Microsoft.Azure.EventHubs.Processor\Microsoft.Azure.EventHubs.Processor.csproj'
-$processorTestProject = $projectFolder + '\test\Microsoft.Azure.EventHubs.Processor.UnitTests\Microsoft.Azure.EventHubs.Processor.UnitTests.csproj'
 $coverageFile = $buildFolder + 'coverage.xml'
 $appNamespace = 'Microsoft.Azure.EventHubs'
-$testNamespace = 'Microsoft.Azure.EventHubs.UnitTests'
-$processorAppNamespace = 'Microsoft.Azure.EventHubs.Processor'
-$processorTestNamespace = 'Microsoft.Azure.EventHubs.Processor.UnitTests'
+$testNamespace = 'Microsoft.Azure.EventHubs.Tests'
 
 # Environment variables
 $connectionStringVariableName = 'azure-event-hubs-dotnet/connectionstring'
@@ -159,16 +156,6 @@ function Run-UnitTests
     $output = '-output:' + $coverageFile
 
     & $openCoverConsole $target $targetArgs $filter $output '-register:user' '-oldStyle'
-
-    if (-not $?)
-    {
-        throw "Unit tests failed."
-    }
-
-    $processorTargetArgs = '-targetargs: test ' + $processorTestProject + ' -f ' + $runtime
-    $processorFilter = '-filter:+[' + $appNamespace + '*]* -[' + $testNamespace + ']* -[' + $processorTestNamespace + '*]*'
-
-    & $openCoverConsole $target $processorTargetArgs $processorFilter $output '-mergeoutput' '-register:user' '-oldStyle'
 
     if (-not $?)
     {

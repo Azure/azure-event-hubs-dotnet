@@ -1,15 +1,14 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-namespace Microsoft.Azure.EventHubs.Processor.UnitTests
+namespace Microsoft.Azure.EventHubs.Tests.Processor
 {
     using System;
-    using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Diagnostics;
     using System.Linq;
-    using System.Text;
     using System.Threading.Tasks;
+    using Microsoft.Azure.EventHubs.Processor;
 
     class TestEventProcessor : IEventProcessor
     {
@@ -17,10 +16,6 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
         public event EventHandler<Tuple<PartitionContext, CloseReason>> OnClose;
         public event EventHandler<Tuple<PartitionContext, ReceivedEventArgs>> OnProcessEvents;
         public event EventHandler<Tuple<PartitionContext, Exception>> OnProcessError;
-
-        public TestEventProcessor()
-        {
-        }
 
         Task IEventProcessor.CloseAsync(PartitionContext context, CloseReason reason)
         {
