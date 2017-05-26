@@ -12,7 +12,7 @@ namespace Microsoft.Azure.EventHubs
     /// if you do not care about sending events to specific partitions, instead use <see cref="EventHubClient.SendAsync(EventData)"/>.
     /// </summary>
     /// <seealso cref="EventHubClient.CreatePartitionSender(string)"/>
-    /// <seealso cref="EventHubClient.Create(string)"/>
+    /// <seealso cref="EventHubClient.CreateFromConnectionString(string)"/>
     public sealed class PartitionSender : ClientEntity
     {
         internal PartitionSender(EventHubClient eventHubClient, string partitionId)
@@ -24,8 +24,14 @@ namespace Microsoft.Azure.EventHubs
             EventHubsEventSource.Log.ClientCreated(this.ClientId, null);
         }
 
+        /// <summary>
+        /// Gets the <see cref="EventHubClient"/> associated with this PartitionSender.
+        /// </summary>
         public EventHubClient EventHubClient { get; }
 
+        /// <summary>
+        /// Gets the partition ID for this <see cref="PartitionSender"/>.
+        /// </summary>
         public string PartitionId { get; }
 
         EventDataSender InnerSender { get; }
@@ -43,9 +49,9 @@ namespace Microsoft.Azure.EventHubs
         /// <para>a. The client wants to take direct control of distribution of data across partitions. In this case client is responsible for making sure there is at least one sender per event hub partition.</para>
         /// <para>b. User cannot use partition key as a mean to direct events to specific partition, yet there is a need for data correlation with partitioning scheme.</para>
         /// </summary>
-        /// <param name="data">the <see cref="EventData"/> to be sent.</param>
+        /// <param name="eventData">the <see cref="EventData"/> to be sent.</param>
         /// <returns>A Task that completes when the send operations is done.</returns>
-        /// <exception cref="PayloadSizeExceedeedException">the total size of the <see cref="EventData"/> exceeds a pre-defined limit set by the service. Default is 256k bytes.</exception>
+        /// <exception cref="MessageSizeExceededException">the total size of the <see cref="EventData"/> exceeds a pre-defined limit set by the service. Default is 256k bytes.</exception>
         /// <exception cref="EventHubsException">Event Hubs service encountered problems during the operation.</exception>
         public Task SendAsync(EventData eventData)
         {
@@ -94,7 +100,7 @@ namespace Microsoft.Azure.EventHubs
         /// </example>
         /// <param name="eventDatas">batch of events to send to EventHub</param>
         /// <returns>a Task that completes when the send operation is done.</returns>
-        /// <exception cref="PayloadSizeExceededException">the total size of the <see cref="EventData"/> exceeds a pre-defined limit set by the service. Default is 256k bytes.</exception>
+        /// <exception cref="MessageSizeExceededException">the total size of the <see cref="EventData"/> exceeds a pre-defined limit set by the service. Default is 256k bytes.</exception>
         /// <exception cref="EventHubsException">Event Hubs service encountered problems during the operation.</exception>
         public async Task SendAsync(IEnumerable<EventData> eventDatas)
         {
@@ -120,6 +126,10 @@ namespace Microsoft.Azure.EventHubs
             }
         }
 
+        /// <summary>
+        /// Closes and releases resources for the <see cref="PartitionSender"/>.
+        /// </summary>
+        /// <returns>An asynchronous operation</returns>
         public override async Task CloseAsync()
         {
             EventHubsEventSource.Log.ClientCloseStart(this.ClientId);

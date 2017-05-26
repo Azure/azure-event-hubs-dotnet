@@ -5,6 +5,9 @@ namespace Microsoft.Azure.EventHubs
 {
     using System;
 
+    /// <summary>
+    /// Contains information regarding Event Hubs partitions.
+    /// </summary>
     public class EventHubPartitionRuntimeInformation
     {
         internal string Type { get; set; }

@@ -14,25 +14,42 @@ namespace Microsoft.Azure.EventHubs
     {
         static int nextId;
 
+        /// <summary></summary>
+        /// <param name="clientId"></param>
         protected ClientEntity(string clientId)
         {
             this.ClientId = clientId;
         }
 
+        /// <summary>
+        /// Gets the client ID.
+        /// </summary>
         public string ClientId
         {
             get; private set;
         }
 
+        /// <summary>
+        /// Gets the <see cref="RetryPolicy.RetryPolicy"/> for the ClientEntity.
+        /// </summary>
         public RetryPolicy RetryPolicy { get; set; }
 
+        /// <summary>
+        /// Closes the ClientEntity.
+        /// </summary>
+        /// <returns>The asynchronous operation</returns>
         public abstract Task CloseAsync();
 
+        /// <summary>
+        /// Closes the ClientEntity.
+        /// </summary>
         public void Close()
         {
             this.CloseAsync().GetAwaiter().GetResult();
         }
 
+        /// <summary></summary>
+        /// <returns></returns>
         protected static long GetNextId()
         {
             return Interlocked.Increment(ref nextId);

@@ -3,9 +3,12 @@
 
 namespace Microsoft.Azure.EventHubs
 {
+    /// <summary>
+    /// The exception that is thrown when the Event Hub is not found on the namespace.
+    /// </summary>
     public sealed class MessagingEntityNotFoundException : EventHubsException
     {
-        public MessagingEntityNotFoundException(string message)
+        internal MessagingEntityNotFoundException(string message)
             : base(false, message, null)
         {
         }
