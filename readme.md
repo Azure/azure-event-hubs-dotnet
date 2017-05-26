@@ -49,7 +49,7 @@ In order to run the unit tests, you will need to do the following:
 
 1. Deploy the Azure Resource Manager template located at [/build/azuredeploy.json](./build/azuredeploy.json) by clicking the following button:
 
-    <a href="https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FAzure%2Fazure-event-hubs-dotnet%2Fmaster%2Fbuild%2Fazuredeploy.json" target="_blank">
+    <a href="https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FAzure%2Fazure-event-hubs-dotnet%2Fdev%2Fbuild%2Fazuredeploy.json" target="_blank">
         <img src="http://azuredeploy.net/deploybutton.png"/>
     </a>
 
@@ -59,7 +59,7 @@ In order to run the unit tests, you will need to do the following:
 
 1. Add an Environment Variable named `azure-event-hubs-dotnet/storageconnectionstring` and set the value as the connection string of the newly created storage account.
 
-Once you have completed the above, you can run `dotnet test` from the `/test/Microsoft.Azure.EventHubs.UnitTests` and `test/Microsoft.Azure.EventHubs.Processor.UnitTests` directories.
+Once you have completed the above, you can run `dotnet test` from the `/test/Microsoft.Azure.EventHubs.Tests` directory.
 
 ### Can I manage Event Hubs entities with this library?
 
