@@ -26,7 +26,7 @@ See our [Contribution Guidelines](./.github/CONTRIBUTING.md).
 The .NET client library for Azure Event Hubs allows for both sending events to and receiving events from an Azure Event Hub. 
 
 An **event publisher** is a source of telemetry data, diagnostics information, usage logs, or other log data, as 
-part of an emvbedded device solution, a mobile device application, a game title running on a console or other device, 
+part of an embedded device solution, a mobile device application, a game title running on a console or other device, 
 some client or server based business solution, or a web site.  
 
 An **event consumer** picks up such information from the Event Hub and processes it. Processing may involve aggregation, complex 
@@ -37,26 +37,34 @@ Stream Analytics, Apache Spark, or Apache Storm.
 Most applications will act either as an event publisher or an event consumer, but rarely both. The exception are event 
 consumers that filter and/or transform event streams and then forward them on to another Event Hub; an example for such is Azure Stream Analytics.
 
+## FAQ
+
 ### Where can I find examples that use this library?
 
 [https://github.com/Azure/azure-event-hubs/tree/master/samples](https://github.com/Azure/azure-event-hubs/tree/master/samples)
 
-### Running the unit tests 
+### How do I run the unit tests? 
 
 In order to run the unit tests, you will need to do the following:
 
-1. Create an Event Hub
+1. Deploy the Azure Resource Manager template located at [/build/azuredeploy.json](./build/azuredeploy.json) by clicking the following button:
 
-2. Create a consumer group on that Event Hub called `cgroup1` in addition to the default consumer group.
+    <a href="https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FAzure%2Fazure-event-hubs-dotnet%2Fdev%2Fbuild%2Fazuredeploy.json" target="_blank">
+        <img src="http://azuredeploy.net/deploybutton.png"/>
+    </a>
 
-3. Create a storage account
+    *Running the above template will provision an Event Hubs namespace along with the required entities to successfully run the unit tests.*
 
-4. Add the following Environment Variables with the corresponding connection strings:
+1. Add an Environment Variable named `azure-event-hubs-dotnet/connectionstring` and set the value as the connection string of the newly created namespace. **Please note that if you are using Visual Studio, you must restart Visual Studio in order to use new Environment Variables.**
 
-  1. `EVENTHUBCONNECTIONSTRING` - *The EntityPath is required in this string.*
+1. Add an Environment Variable named `azure-event-hubs-dotnet/storageconnectionstring` and set the value as the connection string of the newly created storage account.
 
-  2. `EVENTPROCESSORSTORAGECONNECTIONSTRING`
+Once you have completed the above, you can run `dotnet test` from the `/test/Microsoft.Azure.EventHubs.Tests` directory.
 
-<a href="https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FAzure%2Fazure-event-hubs-dotnet%2Fmaster%2Ftemplates%2Fazuredeploy.json" target="_blank">
-    <img src="http://azuredeploy.net/deploybutton.png"/>
-</a>
+### Can I manage Event Hubs entities with this library?
+
+The standard way to manage Azure resources is by using [Azure Resource Manager](https://docs.microsoft.com/en-us/azure/azure-resource-manager/resource-group-overview). In order to use functionality that previously existed in the .NET Framework Service Bus client library, you will need to use the `Microsoft.Azure.Management.EventHub` library. This will enable use cases that dynamically create/read/update/delete resources. The following links will provide more information on the new library and how to use it.
+
+* GitHub repo - [https://github.com/Azure/azure-sdk-for-net/tree/AutoRest/src/ResourceManagement/EventHub](https://github.com/Azure/azure-sdk-for-net/tree/AutoRest/src/ResourceManagement/EventHub)
+* NuGet package - [https://www.nuget.org/packages/Microsoft.Azure.Management.EventHub/](https://www.nuget.org/packages/Microsoft.Azure.Management.EventHub/)
+* Sample - [https://github.com/Azure-Samples/event-hubs-dotnet-management](https://github.com/Azure-Samples/event-hubs-dotnet-management)
