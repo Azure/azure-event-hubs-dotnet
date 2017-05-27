@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Microsoft.Azure.EventHubs.Processor.UnitTests
+namespace Microsoft.Azure.EventHubs.Tests.Processor
 {
     public class AsyncAutoResetEvent
     {
