@@ -1,7 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-namespace Microsoft.Azure.EventHubs.Processor.UnitTests
+namespace Microsoft.Azure.EventHubs.Tests.Processor
 {
     using System;
     using System.Collections.Concurrent;
@@ -9,33 +9,30 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
     using System.Linq;
     using System.Text;
     using System.Threading.Tasks;
+    using Microsoft.Azure.EventHubs.Processor;
     using Xunit;
-    using Xunit.Abstractions;
 
-    public class NegativeCases : EventProcessorHostTests
+    public class NegativeCases : ProcessorTestBase
     {
-        public NegativeCases(ITestOutputHelper output)
-            : base(output)
-        { }
-
         [Fact]
+        [DisplayTestMethodName]
         async Task HostReregisterShouldFail()
         {
             var eventProcessorHost = new EventProcessorHost(
                 string.Empty,
                 PartitionReceiver.DefaultConsumerGroupName,
-                this.EventHubConnectionString,
-                this.StorageConnectionString,
+                TestUtility.EventHubsConnectionString,
+                TestUtility.StorageConnectionString,
                 this.LeaseContainerName);
 
             // Calling register for the first time should succeed.
-            Log("Registering EventProcessorHost for the first time.");
+            TestUtility.Log("Registering EventProcessorHost for the first time.");
             await eventProcessorHost.RegisterEventProcessorAsync<TestEventProcessor>();
 
             try
             {
                 // Calling register for the second time should fail.
-                Log("Registering EventProcessorHost for the second time which should fail.");
+                TestUtility.Log("Registering EventProcessorHost for the second time which should fail.");
                 await eventProcessorHost.RegisterEventProcessorAsync<TestEventProcessor>();
                 throw new InvalidOperationException("Second RegisterEventProcessorAsync call should have failed.");
             }
@@ -43,7 +40,7 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
             {
                 if (ex.Message.Contains("A PartitionManager cannot be started multiple times."))
                 {
-                    Log($"Caught {ex.GetType()} as expected");
+                    TestUtility.Log($"Caught {ex.GetType()} as expected");
                 }
                 else
                 {
@@ -57,20 +54,21 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
         }
 
         [Fact]
+        [DisplayTestMethodName]
         async Task NonexsistentEntity()
         {
             // Rebuild connection string with a nonexistent entity.
-            var csb = new EventHubsConnectionStringBuilder(this.EventHubConnectionString);
+            var csb = new EventHubsConnectionStringBuilder(TestUtility.EventHubsConnectionString);
             csb.EntityPath = Guid.NewGuid().ToString();
 
             var eventProcessorHost = new EventProcessorHost(
                 string.Empty,
                 PartitionReceiver.DefaultConsumerGroupName,
                 csb.ToString(),
-                this.StorageConnectionString,
+                TestUtility.StorageConnectionString,
                 this.LeaseContainerName);
 
-            Log("Calling RegisterEventProcessorAsync for a nonexistent entity.");
+            TestUtility.Log("Calling RegisterEventProcessorAsync for a nonexistent entity.");
             var ex = await Assert.ThrowsAsync<EventProcessorConfigurationException>(async () =>
             {
                 await eventProcessorHost.RegisterEventProcessorAsync<TestEventProcessor>();
@@ -86,6 +84,7 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
         /// </summary>
         /// <returns></returns>
         [Fact]
+        [DisplayTestMethodName]
         async Task HostShouldRecoverWhenProcessEventsAsyncThrows()
         {
             var lastReceivedAt = DateTime.Now;
@@ -98,8 +97,8 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
             var eventProcessorHost = new EventProcessorHost(
                 null,
                 PartitionReceiver.DefaultConsumerGroupName,
-                this.EventHubConnectionString,
-                this.StorageConnectionString,
+                TestUtility.EventHubsConnectionString,
+                TestUtility.StorageConnectionString,
                 this.LeaseContainerName);
 
             processorFactory.OnCreateProcessor += (f, createArgs) =>
@@ -108,11 +107,11 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
                 string partitionId = createArgs.Item1.PartitionId;
                 string hostName = createArgs.Item1.Owner;
                 string consumerGroupName = createArgs.Item1.ConsumerGroupName;
-                processor.OnOpen += (_, partitionContext) => Log($"{hostName} > {consumerGroupName} > Partition {partitionId} TestEventProcessor opened");
-                processor.OnClose += (_, closeArgs) => Log($"{hostName} > {consumerGroupName} > Partition {partitionId} TestEventProcessor closing: {closeArgs.Item2}");
+                processor.OnOpen += (_, partitionContext) => TestUtility.Log($"{hostName} > {consumerGroupName} > Partition {partitionId} TestEventProcessor opened");
+                processor.OnClose += (_, closeArgs) => TestUtility.Log($"{hostName} > {consumerGroupName} > Partition {partitionId} TestEventProcessor closing: {closeArgs.Item2}");
                 processor.OnProcessError += (_, errorArgs) =>
                 {
-                    Log($"{hostName} > {consumerGroupName} > Partition {partitionId} TestEventProcessor process error {errorArgs.Item2.Message}");
+                    TestUtility.Log($"{hostName} > {consumerGroupName} > Partition {partitionId} TestEventProcessor process error {errorArgs.Item2.Message}");
 
                     // Throw once more here depending on where we are at exception sequence.
                     if (errorArgs.Item2.Message.Contains("ExceptionSequence1"))
@@ -123,7 +122,7 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
                 processor.OnProcessEvents += (_, eventsArgs) =>
                 {
                     int eventCount = eventsArgs.Item2.events != null ? eventsArgs.Item2.events.Count() : 0;
-                    Log($"{hostName} > {consumerGroupName} > Partition {partitionId} TestEventProcessor processing {eventCount} event(s)");
+                    TestUtility.Log($"{hostName} > {consumerGroupName} > Partition {partitionId} TestEventProcessor processing {eventCount} event(s)");
                     if (eventCount > 0)
                     {
                         lock (lastReceivedAtLock)
@@ -137,7 +136,7 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
                             if (!poisonMessageReceived && e.Properties.ContainsKey(poisonMessageProperty))
                             {
                                 poisonMessageReceived = true;
-                                Log($"Received poisoned message from partition {partitionId}");
+                                TestUtility.Log($"Received poisoned message from partition {partitionId}");
                                 throw new Exception("ExceptionSequence1");
                             }
 
@@ -155,28 +154,28 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
 
             try
             {
-                Log("Registering processorFactory...");
+                TestUtility.Log("Registering processorFactory...");
                 var epo = new EventProcessorOptions()
                 {
                     MaxBatchSize = 100
                 };
                 await eventProcessorHost.RegisterEventProcessorFactoryAsync(processorFactory, epo);
 
-                Log("Waiting for partition ownership to settle...");
+                TestUtility.Log("Waiting for partition ownership to settle...");
                 await Task.Delay(TimeSpan.FromSeconds(5));
 
                 // Send first set of messages.
-                Log("Sending an event to each partition as the first set of messages.");
+                TestUtility.Log("Sending an event to each partition as the first set of messages.");
                 var sendTasks = new List<Task>();
                 foreach (var partitionId in PartitionIds)
                 {
-                    sendTasks.Add(this.SendToPartitionAsync(partitionId, $"{partitionId} event.", this.ConnectionStringBuilder.ToString()));
+                    sendTasks.Add(this.SendToPartitionAsync(partitionId, $"{partitionId} event.", TestUtility.EventHubsConnectionString));
                 }
                 await Task.WhenAll(sendTasks);
 
                 // Now send 1 poisoned message. This will fail one of the partition pumps.
-                Log($"Sending a poison event to partition {PartitionIds.First()}");
-                var client = EventHubClient.CreateFromConnectionString(this.EventHubConnectionString);
+                TestUtility.Log($"Sending a poison event to partition {PartitionIds.First()}");
+                var client = EventHubClient.CreateFromConnectionString(TestUtility.EventHubsConnectionString);
                 var pSender = client.CreatePartitionSender(PartitionIds.First());
                 var ed = new EventData(Encoding.UTF8.GetBytes("This is poison message"));
                 ed.Properties[poisonMessageProperty] = true;
@@ -186,24 +185,24 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
                 await Task.Delay(30000);
 
                 // Send second set of messages.
-                Log("Sending an event to each partition as the second set of messages.");
+                TestUtility.Log("Sending an event to each partition as the second set of messages.");
                 sendTasks.Clear();
                 foreach (var partitionId in PartitionIds)
                 {
-                    sendTasks.Add(this.SendToPartitionAsync(partitionId, $"{partitionId} event.", this.ConnectionStringBuilder.ToString()));
+                    sendTasks.Add(this.SendToPartitionAsync(partitionId, $"{partitionId} event.", TestUtility.EventHubsConnectionString));
                 }
                 await Task.WhenAll(sendTasks);
 
-                Log("Waiting until hosts are idle, i.e. no more messages to receive.");
+                TestUtility.Log("Waiting until hosts are idle, i.e. no more messages to receive.");
                 while (lastReceivedAt > DateTime.Now.AddSeconds(-60))
                 {
                     await Task.Delay(1000);
                 }
 
-                Log("Verifying poison message was received");
+                TestUtility.Log("Verifying poison message was received");
                 Assert.True(poisonMessageReceived, "Didn't receive poison message!");
 
-                Log("Verifying received events by each partition");
+                TestUtility.Log("Verifying received events by each partition");
                 foreach (var partitionId in PartitionIds)
                 {
                     if (!receivedEventCounts.ContainsKey(partitionId))
@@ -217,7 +216,7 @@ namespace Microsoft.Azure.EventHubs.Processor.UnitTests
             }
             finally
             {
-                Log("Calling UnregisterEventProcessorAsync.");
+                TestUtility.Log("Calling UnregisterEventProcessorAsync.");
                 await eventProcessorHost.UnregisterEventProcessorAsync();
             }
         }
