@@ -6,6 +6,10 @@ namespace Microsoft.Azure.EventHubs
     using System;
     using System.Collections.Concurrent;
 
+    /// <summary>
+    /// Represents an abstraction for retrying messaging operations. Users should not 
+    /// implement this class, and instead should use one of the provided implementations.
+    /// </summary>
     public abstract class RetryPolicy
     {
         const int DefaultRetryMaxCount = 10;
@@ -18,12 +22,17 @@ namespace Microsoft.Azure.EventHubs
         ConcurrentDictionary<String, int> retryCounts;
         object serverBusySync;
 
+        /// <summary></summary>
         protected RetryPolicy()
         {
             this.retryCounts = new ConcurrentDictionary<string, int>();
             this.serverBusySync = new Object();
         }
 
+        /// <summary>
+        /// Increases the retry count.
+        /// </summary>
+        /// <param name="clientId">The <see cref="ClientEntity.ClientId"/> associated with the operation to retry</param>
         public void IncrementRetryCount(string clientId)
         {
             int retryCount;
@@ -31,12 +40,21 @@ namespace Microsoft.Azure.EventHubs
             this.retryCounts[clientId] = retryCount + 1;
         }
 
+        /// <summary>
+        /// Resets the retry count to zero.
+        /// </summary>
+        /// <param name="clientId">The <see cref="ClientEntity.ClientId"/> associated with the operation to retry</param>
         public void ResetRetryCount(string clientId)
         {
             int currentRetryCount;
             this.retryCounts.TryRemove(clientId, out currentRetryCount);
         }
 
+        /// <summary>
+        /// Determines whether or not the exception can be retried.
+        /// </summary>
+        /// <param name="exception"></param>
+        /// <returns>A bool indicating whether or not the operation can be retried.</returns>
         public static bool IsRetryableException(Exception exception)
         {
             if (exception == null)
@@ -56,6 +74,9 @@ namespace Microsoft.Azure.EventHubs
             return false;
         }
 
+        /// <summary>
+        /// Returns the default retry policy, <see cref="RetryExponential"/>.
+        /// </summary>
         public static RetryPolicy Default
         {
             get
@@ -64,6 +85,9 @@ namespace Microsoft.Azure.EventHubs
             }
         }
 
+        /// <summary>
+        /// Returns the default retry policy, <see cref="NoRetry"/>.
+        /// </summary>
         public static RetryPolicy NoRetry
         {
             get
@@ -72,6 +96,9 @@ namespace Microsoft.Azure.EventHubs
             }
         }
 
+        /// <summary></summary>
+        /// <param name="clientId"></param>
+        /// <returns></returns>
         protected int GetRetryCount(string clientId)
         {
             int retryCount;
@@ -81,8 +108,21 @@ namespace Microsoft.Azure.EventHubs
             return retryCount;
         }
 
+        /// <summary></summary>
+        /// <param name="clientId"></param>
+        /// <param name="lastException"></param>
+        /// <param name="remainingTime"></param>
+        /// <param name="baseWaitTime"></param>
+        /// <returns></returns>
         protected abstract TimeSpan? OnGetNextRetryInterval(String clientId, Exception lastException, TimeSpan remainingTime, int baseWaitTime);
 
+        /// <summary>
+        /// Gets the timespan for the next retry operation.
+        /// </summary>
+        /// <param name="clientId">The <see cref="ClientEntity.ClientId"/> associated with the operation to retry</param>
+        /// <param name="lastException">The last exception that was thrown</param>
+        /// <param name="remainingTime">Remaining time for the cumulative timeout</param>
+        /// <returns></returns>
         public TimeSpan? GetNextRetryInterval(string clientId, Exception lastException, TimeSpan remainingTime)
         {
             int baseWaitTime = 0;
@@ -90,7 +130,7 @@ namespace Microsoft.Azure.EventHubs
             {
                 if (lastException != null &&
                         (lastException is ServerBusyException || (lastException.InnerException != null && lastException.InnerException is ServerBusyException)))
-			    {
+                {
                     baseWaitTime += ClientConstants.ServerBusyBaseSleepTimeInSecs;
                 }
             }

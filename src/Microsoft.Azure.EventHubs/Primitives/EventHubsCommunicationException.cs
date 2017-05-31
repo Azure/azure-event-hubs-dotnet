@@ -10,11 +10,16 @@ namespace Microsoft.Azure.EventHubs
     /// </summary>
     public class EventHubsCommunicationException : EventHubsException
     {
+        /// <summary></summary>
+        /// <param name="message"></param>
         protected internal EventHubsCommunicationException(string message)
             : this(message, null)
         {
         }
 
+        /// <summary></summary>
+        /// <param name="message"></param>
+        /// <param name="innerException"></param>
         protected internal EventHubsCommunicationException(string message, Exception innerException)
             : base(true, message, innerException)
         {

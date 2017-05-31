@@ -16,6 +16,10 @@ namespace Microsoft.Azure.EventHubs
         long currentSize;
         bool disposed;
 
+        /// <summary>
+        /// Creates a new <see cref="EventDataBatch"/>.
+        /// </summary>
+        /// <param name="maxSizeInBytes">The maximum size allowed for the batch</param>
         public EventDataBatch(long maxSizeInBytes)
         {
             this.maxSize = Math.Min(maxSizeInBytes, MaxSizeLimit);
@@ -79,6 +83,9 @@ namespace Microsoft.Azure.EventHubs
             return eventData.AmqpMessage.SerializedMessageSize;
         }
 
+        /// <summary>
+        /// Disposes resources attached to an EventDataBatch.
+        /// </summary>
         public void Dispose()
         {
             Dispose(true);
