@@ -14,7 +14,7 @@ namespace Microsoft.Azure.EventHubs
     /// map to an EventSource Guid based on the Name (Microsoft-Azure-EventHubs-Processor).
     /// </summary>
     [EventSource(Name = "Microsoft-Azure-EventHubs-Processor")]
-    public class ProcessorEventSource : EventSource
+    internal class ProcessorEventSource : EventSource
     {
         public static ProcessorEventSource Log { get; } = new ProcessorEventSource();
 

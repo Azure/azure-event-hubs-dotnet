@@ -5,19 +5,25 @@ namespace Microsoft.Azure.EventHubs.Processor
 {
     using System;
 
+    /// <summary>
+    /// An exception thrown during event processing.
+    /// </summary>
     public class EventProcessorRuntimeException : EventHubsException
     {
-        public EventProcessorRuntimeException(string message, string action)
+        internal EventProcessorRuntimeException(string message, string action)
             : this(message, action, null)
         {
         }
 
-        public EventProcessorRuntimeException(string message, string action, Exception innerException)
+        internal EventProcessorRuntimeException(string message, string action, Exception innerException)
             : base(true, message, innerException)
         {
             this.Action = action;
         }
 
+        /// <summary>
+        /// Gets the action that was being performed when the exception occured.
+        /// </summary>
         public string Action { get; }
     }
 }

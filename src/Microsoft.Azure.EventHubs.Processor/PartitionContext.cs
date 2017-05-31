@@ -6,6 +6,9 @@ namespace Microsoft.Azure.EventHubs.Processor
     using System;
     using System.Threading.Tasks;
 
+    /// <summary>
+    /// Encapsulates information related to an Event Hubs partition used by <see cref="IEventProcessor"/>.
+    /// </summary>
     public class PartitionContext
     {
         readonly EventProcessorHost host;
@@ -21,12 +24,24 @@ namespace Microsoft.Azure.EventHubs.Processor
             this.SequenceNumber = 0;
         }
 
+        /// <summary>
+        /// Gets or sets the name of the consumer group.
+        /// </summary>
         public string ConsumerGroupName { get; }
 
+        /// <summary>
+        /// Gets or sets the path of the event hub.
+        /// </summary>
         public string EventHubPath { get; }
 
+        /// <summary>
+        /// Gets the partition ID for the context.
+        /// </summary>
         public string PartitionId { get; }
 
+        /// <summary>
+        /// Gets the host owner for the partition.
+        /// </summary>
         public string Owner
         {
             get
@@ -85,16 +100,16 @@ namespace Microsoft.Azure.EventHubs.Processor
                 {
                     throw new ArgumentException("Unexpected object type returned by user-provided initialOffsetProvider");
                 }
-    	    }
-    	    else
-    	    {
+            }
+            else
+            {
                 this.Offset = startingCheckpoint.Offset;
-	    	    this.SequenceNumber = startingCheckpoint.SequenceNumber;
+                this.SequenceNumber = startingCheckpoint.SequenceNumber;
                 ProcessorEventSource.Log.PartitionPumpInfo(this.host.Id, this.PartitionId, $"Retrieved starting offset/sequenceNumber: {this.Offset}/{this.SequenceNumber}");
                 startAt = this.Offset;
             }
 
-    	    return startAt;
+            return startAt;
         }
 
         /// <summary>
@@ -102,11 +117,11 @@ namespace Microsoft.Azure.EventHubs.Processor
         /// </summary>
         public Task CheckpointAsync()
         {
-    	    // Capture the current offset and sequenceNumber. Synchronize to be sure we get a matched pair
-    	    // instead of catching an update halfway through. Do the capturing here because by the time the checkpoint
-    	    // task runs, the fields in this object may have changed, but we should only write to store what the user
-    	    // has directed us to write.
-    	    Checkpoint capturedCheckpoint;
+            // Capture the current offset and sequenceNumber. Synchronize to be sure we get a matched pair
+            // instead of catching an update halfway through. Do the capturing here because by the time the checkpoint
+            // task runs, the fields in this object may have changed, but we should only write to store what the user
+            // has directed us to write.
+            Checkpoint capturedCheckpoint;
             lock(this.ThisLock)
             {
                 capturedCheckpoint = new Checkpoint(this.PartitionId, this.Offset, this.SequenceNumber);
@@ -138,6 +153,10 @@ namespace Microsoft.Azure.EventHubs.Processor
             return this.PersistCheckpointAsync(new Checkpoint(this.PartitionId, eventData.SystemProperties.Offset, eventData.SystemProperties.SequenceNumber));
         }
 
+        /// <summary>
+        /// Provides the parition context in the following format:"PartitionContext({EventHubPath}/{ConsumerGroupName}/{PartitionId}/{SequenceNumber})"
+        /// </summary>
+        /// <returns></returns>
         public override string ToString()
         {
             return $"PartitionContext({this.EventHubPath}/{this.ConsumerGroupName}/{this.PartitionId}/{this.SequenceNumber})";

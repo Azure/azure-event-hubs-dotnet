@@ -5,6 +5,9 @@ namespace Microsoft.Azure.EventHubs.Processor
 {
     using System;
 
+    /// <summary>
+    /// Provides data for the <see cref="EventProcessorOptions.NotifyOfException(string, string, System.Exception, string)"/> event.
+    /// </summary>
     public sealed class ExceptionReceivedEventArgs
     {
         internal ExceptionReceivedEventArgs(string hostname, string partitionId, Exception exception, string action)
