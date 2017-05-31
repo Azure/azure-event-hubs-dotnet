@@ -83,7 +83,7 @@ namespace Microsoft.Azure.EventHubs
         }
 
         /// <summary>
-        /// 
+        /// Closes and releases resources associated with <see cref="EventHubClient"/>.
         /// </summary>
         /// <returns></returns>
         public sealed override async Task CloseAsync()

@@ -59,7 +59,7 @@ namespace Microsoft.Azure.EventHubs
         }
 
         /// <summary>
-        /// Closes and release any resources associated with the AsyncLock.
+        /// Closes and releases any resources associated with the AsyncLock.
         /// </summary>
         public void Dispose()
         {

@@ -25,12 +25,12 @@ namespace Microsoft.Azure.EventHubs.Processor
         }
 
         /// <summary>
-        /// Gets or sets the name of the consumer group.
+        /// Gets the name of the consumer group.
         /// </summary>
         public string ConsumerGroupName { get; }
 
         /// <summary>
-        /// Gets or sets the path of the event hub.
+        /// Gets the path of the event hub.
         /// </summary>
         public string EventHubPath { get; }
 
