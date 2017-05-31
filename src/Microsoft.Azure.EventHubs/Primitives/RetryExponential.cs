@@ -17,6 +17,12 @@ namespace Microsoft.Azure.EventHubs
         readonly int maximumRetryCount;
         readonly double retryFactor;
 
+        /// <summary>
+        /// Returns a new RetryExponential retry policy object.
+        /// </summary>
+        /// <param name="minimumBackoff">Minimum backoff interval.</param>
+        /// <param name="maximumBackoff">Maximum backoff interval.</param>
+        /// <param name="maximumRetryCount">Maximum retry count.</param>
         public RetryExponential(TimeSpan minimumBackoff, TimeSpan maximumBackoff, int maximumRetryCount)
         {
             TimeoutHelper.ThrowIfNegativeArgument(minimumBackoff, nameof(minimumBackoff));
@@ -28,6 +34,12 @@ namespace Microsoft.Azure.EventHubs
             this.retryFactor = this.ComputeRetryFactor();
         }
 
+        /// <summary></summary>
+        /// <param name="clientId"></param>
+        /// <param name="lastException"></param>
+        /// <param name="remainingTime"></param>
+        /// <param name="baseWaitTimeSecs"></param>
+        /// <returns></returns>
         protected override TimeSpan? OnGetNextRetryInterval(string clientId, Exception lastException, TimeSpan remainingTime, int baseWaitTimeSecs)
         {
             int currentRetryCount = this.GetRetryCount(clientId);

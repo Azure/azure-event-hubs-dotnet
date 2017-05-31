@@ -18,8 +18,8 @@ namespace Microsoft.Azure.EventHubs
     /// non-epoch receivers.
     /// </para>
     /// </summary>
-    /// <seealso cref="EventHubClient.CreateReceiver"/>
-    /// <seealso cref="EventHubClient.CreateEpochReceiver"/>
+    /// <seealso cref="EventHubClient.CreateReceiver(string, string, string)"/>
+    /// <seealso cref="EventHubClient.CreateEpochReceiver(string, string, string, long)"/>
     public abstract class PartitionReceiver : ClientEntity
     {
         /// <summary>
@@ -44,6 +44,14 @@ namespace Microsoft.Azure.EventHubs
         const int MaxPrefetchCount = 999;
         const int DefaultPrefetchCount = 300;
 
+        /// <summary></summary>
+        /// <param name="eventHubClient"></param>
+        /// <param name="consumerGroupName"></param>
+        /// <param name="partitionId"></param>
+        /// <param name="startOffset"></param>
+        /// <param name="offsetInclusive"></param>
+        /// <param name="startTime"></param>
+        /// <param name="epoch"></param>
         protected internal PartitionReceiver(
             EventHubClient eventHubClient,
             string consumerGroupName,
@@ -95,10 +103,13 @@ namespace Microsoft.Azure.EventHubs
         /// <value>the epoch value that this receiver is currently using for partition ownership.</value>
         public long? Epoch { get; }
 
+        /// <summary></summary>
         protected DateTime? StartTime { get; private set; }
 
+        /// <summary></summary>
         protected bool OffsetInclusive { get; }
 
+        /// <summary></summary>
         protected string StartOffset { get; private set; }
 
         /// <summary>
@@ -171,6 +182,10 @@ namespace Microsoft.Azure.EventHubs
             }
         }
 
+        /// <summary>
+        /// Sets the <see cref="IPartitionReceiveHandler"/> to process events.
+        /// </summary>
+        /// <param name="receiveHandler">The <see cref="IPartitionReceiveHandler"/> used to process events.</param>
         public void SetReceiveHandler(IPartitionReceiveHandler receiveHandler)
         {
             EventHubsEventSource.Log.SetReceiveHandlerStart(this.ClientId, receiveHandler != null ? receiveHandler.GetType().ToString() : "null");
@@ -178,6 +193,10 @@ namespace Microsoft.Azure.EventHubs
             EventHubsEventSource.Log.SetReceiveHandlerStop(this.ClientId);
         }
 
+        /// <summary>
+        /// Closes and releases resources associated with <see cref="PartitionReceiver"/>.
+        /// </summary>
+        /// <returns>An asynchronous operation</returns>
         public sealed override Task CloseAsync()
         {
             EventHubsEventSource.Log.ClientCloseStart(this.ClientId);
@@ -191,10 +210,18 @@ namespace Microsoft.Azure.EventHubs
             }
         }
 
+        /// <summary></summary>
+        /// <param name="maxMessageCount"></param>
+        /// <param name="waitTime"></param>
+        /// <returns></returns>
         protected abstract Task<IList<EventData>> OnReceiveAsync(int maxMessageCount, TimeSpan waitTime);
 
+        /// <summary></summary>
+        /// <param name="receiveHandler"></param>
         protected abstract void OnSetReceiveHandler(IPartitionReceiveHandler receiveHandler);
 
+        /// <summary></summary>
+        /// <returns></returns>
         protected abstract Task OnCloseAsync();
 
         string FormatTraceDetails()

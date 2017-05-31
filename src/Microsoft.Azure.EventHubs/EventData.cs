@@ -82,6 +82,9 @@ namespace Microsoft.Azure.EventHubs
 
         internal AmqpMessage AmqpMessage { get; set; }
 
+        /// <summary>
+        /// Disposes resources attached to an Event Data
+        /// </summary>
         public void Dispose()
         {
             Dispose(true);
@@ -103,27 +106,37 @@ namespace Microsoft.Azure.EventHubs
             }
         }
 
+        /// <summary>
+        /// A collection used to store properties which are set by the Event Hubs service.
+        /// </summary>
         public sealed class SystemPropertiesCollection
         {
             internal SystemPropertiesCollection()
             {
             }
 
+            /// <summary>Gets the logical sequence number of the event within the partition stream of the Event Hub.</summary>
             public long SequenceNumber
             {
                 get; internal set;
             }
 
+            /// <summary>Gets or sets the date and time of the sent time in UTC.</summary>
+            /// <value>The enqueue time in UTC. This value represents the actual time of enqueuing the message.</value>
             public DateTime EnqueuedTimeUtc
             {
                 get; internal set;
             }
 
+            /// <summary>
+            /// Gets the offset of the data relative to the Event Hub partition stream. The offset is a marker or identifier for an event within the Event Hubs stream. The identifier is unique within a partition of the Event Hubs stream.
+            /// </summary>
             public string Offset
             {
                 get; internal set;
             }
 
+            /// <summary>Gets the partition key of the corresponding partition that stored the <see cref="EventData"/></summary>
             public string PartitionKey
             {
                 get; internal set;

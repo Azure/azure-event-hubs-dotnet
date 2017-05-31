@@ -3,9 +3,19 @@
 
 namespace Microsoft.Azure.EventHubs.Processor
 {
+    /// <summary>
+    /// Reason for closing an <see cref="EventProcessorHost"/>.
+    /// </summary>
     public enum CloseReason
     {
+        /// <summary>
+        /// The lease was lost or transitioned to a new processor instance. 
+        /// </summary>
         LeaseLost,
+
+        /// <summary>
+        /// The <see cref="EventProcessorHost"/> was shutdown.
+        /// </summary>
         Shutdown
     }
 }

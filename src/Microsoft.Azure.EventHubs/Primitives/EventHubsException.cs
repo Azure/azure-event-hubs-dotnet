@@ -10,29 +10,52 @@ namespace Microsoft.Azure.EventHubs
     /// </summary>
     public class EventHubsException : Exception
     {
+        /// <summary>
+        /// Returns a new EventHubsException
+        /// </summary>
+        /// <param name="isTransient">Specifies whether or not the exception is transient.</param>
         public EventHubsException(bool isTransient)
         {
             this.IsTransient = isTransient;
         }
 
+        /// <summary>
+        /// Returns a new EventHubsException
+        /// </summary>
+        /// <param name="isTransient">Specifies whether or not the exception is transient.</param>
+        /// <param name="message">The detailed message exception.</param>
         public EventHubsException(bool isTransient, string message)
             : base(message)
         {
             this.IsTransient = isTransient;
         }
 
+        /// <summary>
+        /// Returns a new EventHubsException
+        /// </summary>
+        /// <param name="isTransient">Specifies whether or not the exception is transient.</param>
+        /// <param name="innerException">The inner exception.</param>
         public EventHubsException(bool isTransient, Exception innerException)
             : base(innerException.Message, innerException)
         {
             this.IsTransient = isTransient;
         }
 
+        /// <summary>
+        /// Returns a new EventHubsException
+        /// </summary>
+        /// <param name="isTransient">Specifies whether or not the exception is transient.</param>
+        /// <param name="message">The detailed message exception.</param>
+        /// <param name="innerException">The inner exception.</param>
         public EventHubsException(bool isTransient, string message, Exception innerException)
             : base(message, innerException)
         {
             this.IsTransient = isTransient;
         }
 
+        /// <summary>
+        /// Gets the message as a formatted string.
+        /// </summary>
         public override string Message
         {
             get
@@ -53,6 +76,9 @@ namespace Microsoft.Azure.EventHubs
         /// <value>returns true when user can retry the operation that generated the exception without additional intervention.</value>
         public bool IsTransient { get; }
 
+        /// <summary>
+        /// Gets the Event Hubs namespace from which the exception occured, if available.
+        /// </summary>
         public string EventHubsNamespace { get; internal set; }
     }
 }

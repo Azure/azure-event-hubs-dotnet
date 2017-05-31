@@ -117,6 +117,9 @@ namespace Microsoft.Azure.EventHubs
             this.ParseConnectionString(connectionString);
         }
 
+        /// <summary>
+        /// Gets or sets the Event Hubs endpoint.
+        /// </summary>
         public Uri Endpoint { get; set; }
 
         /// <summary>
@@ -140,6 +143,10 @@ namespace Microsoft.Azure.EventHubs
         /// </summary>
         public TimeSpan OperationTimeout { get; set; }
 
+        /// <summary>
+        /// Creates a cloned object of the current <see cref="EventHubsConnectionStringBuilder"/>.
+        /// </summary>
+        /// <returns>A new <see cref="EventHubsConnectionStringBuilder"/></returns>
         public EventHubsConnectionStringBuilder Clone()
         {
             var clone = new EventHubsConnectionStringBuilder(this.ToString());

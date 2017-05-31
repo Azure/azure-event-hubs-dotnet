@@ -13,15 +13,23 @@ namespace Microsoft.Azure.EventHubs
     /// </summary>
     public interface IPartitionReceiveHandler
     {
+        /// <summary>
+        /// Gets the maximum batch size.
+        /// </summary>
         int MaxBatchSize { get; }
 
         /// <summary>
         /// Users should implement this method to specify the action to be performed on the received events.
         /// </summary>
-        /// <seealso cref="PartitionReceiver.ReceiveAsync"/>
+        /// <seealso cref="PartitionReceiver.ReceiveAsync(int)"/>
         /// <param name="events">The list of fetched events from the corresponding PartitionReceiver.</param>
         Task ProcessEventsAsync(IEnumerable<EventData> events);
 
+        /// <summary>
+        /// Implement in order to handle exceptions that are thrown during receipt of events.
+        /// </summary>
+        /// <param name="error">The <see cref="Exception"/> to be processed</param>
+        /// <returns>An asynchronour operation</returns>
         Task ProcessErrorAsync(Exception error);
     }
 }

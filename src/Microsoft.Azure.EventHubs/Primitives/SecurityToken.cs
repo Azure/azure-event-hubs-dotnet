@@ -9,13 +9,16 @@ namespace Microsoft.Azure.EventHubs
     using System.Globalization;
     using System.Net;
 
+    /// <summary>
+    /// Provides information about a security token such as audience, expiry time, and the string token value.
+    /// </summary>
     public class SecurityToken
     {
         // per Simple Web Token draft specification
-        public const string TokenAudience = "Audience";
-        public const string TokenExpiresOn = "ExpiresOn";
-        public const string TokenIssuer = "Issuer";
-        public const string TokenDigest256 = "HMACSHA256";
+        private const string TokenAudience = "Audience";
+        private const string TokenExpiresOn = "ExpiresOn";
+        private const string TokenIssuer = "Issuer";
+        private const string TokenDigest256 = "HMACSHA256";
 
         const string InternalExpiresOnFieldName = "ExpiresOn";
         const string InternalAudienceFieldName = TokenAudience;
@@ -27,6 +30,12 @@ namespace Microsoft.Azure.EventHubs
         readonly DateTime expiresAtUtc;
         readonly string audience;
 
+        /// <summary>
+        /// Creates a new instance of the <see cref="SecurityToken"/> class.
+        /// </summary>
+        /// <param name="tokenString">The token</param>
+        /// <param name="expiresAtUtc">The expiration time</param>
+        /// <param name="audience">The audience</param>
         public SecurityToken(string tokenString, DateTime expiresAtUtc, string audience)
         {
             if (tokenString == null || audience == null)
@@ -39,7 +48,11 @@ namespace Microsoft.Azure.EventHubs
             this.audience = audience;
         }
 
-        [SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors", Justification = "Existing public class, changes will be breaking. Current usage is safe.")]
+        /// <summary>
+        /// Creates a new instance of the <see cref="SecurityToken"/> class.
+        /// </summary>
+        /// <param name="tokenString">The token</param>
+        /// <param name="expiresAtUtc">The expiration time</param>
         public SecurityToken(string tokenString, DateTime expiresAtUtc)
         {
             if (tokenString == null)
@@ -52,8 +65,10 @@ namespace Microsoft.Azure.EventHubs
             this.audience = GetAudienceFromToken(tokenString);
         }
 
-        [SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors",
-            Justification = "Existing public class, changes will be breaking. Current usage is safe.")]
+        /// <summary>
+        /// Creates a new instance of the <see cref="SecurityToken"/> class.
+        /// </summary>
+        /// <param name="tokenString">The token</param>
         public SecurityToken(string tokenString)
         {
             if (tokenString == null)
@@ -65,18 +80,31 @@ namespace Microsoft.Azure.EventHubs
             GetExpirationDateAndAudienceFromToken(tokenString, out this.expiresAtUtc, out this.audience);
         }
 
+        /// <summary>
+        /// Gets the audience of this token.
+        /// </summary>
         public string Audience => this.audience;
 
+        /// <summary>
+        /// Gets the expiration time of this token.
+        /// </summary>
         public DateTime ExpiresAtUtc => this.expiresAtUtc;
 
+        /// <summary></summary>
         protected virtual string ExpiresOnFieldName => InternalExpiresOnFieldName;
 
+        /// <summary></summary>
         protected virtual string AudienceFieldName => InternalAudienceFieldName;
 
+        /// <summary></summary>
         protected virtual string KeyValueSeparator => InternalKeyValueSeparator;
 
+        /// <summary></summary>
         protected virtual string PairSeparator => InternalPairSeparator;
 
+        /// <summary>
+        /// Gets the actual token.
+        /// </summary>
         public object TokenValue => this.token;
 
         string GetAudienceFromToken(string token)

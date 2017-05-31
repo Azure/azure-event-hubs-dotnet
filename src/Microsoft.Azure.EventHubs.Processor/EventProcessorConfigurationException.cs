@@ -5,14 +5,17 @@ namespace Microsoft.Azure.EventHubs.Processor
 {
     using System;
 
+    /// <summary>
+    /// An exception which specifies that the <see cref="EventProcessorHost"/> configuration is incorrect.
+    /// </summary>
     public class EventProcessorConfigurationException : EventHubsException
     {
-        public EventProcessorConfigurationException(string message)
+        internal EventProcessorConfigurationException(string message)
             : this(message, null)
         {
         }
 
-        public EventProcessorConfigurationException(string message, Exception innerException)
+        internal EventProcessorConfigurationException(string message, Exception innerException)
             : base(false, message, innerException)
         {
         }

@@ -6,6 +6,9 @@ namespace Microsoft.Azure.EventHubs.Processor
     using System;
     using System.Threading.Tasks;
 
+    /// <summary>
+    /// Represents a host for processing Event Hubs event data.
+    /// </summary>
     public sealed class EventProcessorHost
     {
         readonly bool initializeLeaseManager;
@@ -160,8 +163,14 @@ namespace Microsoft.Azure.EventHubs.Processor
         /// </summary>
         public string HostName { get; }
 
+        /// <summary>
+        /// Gets the event hub path.
+        /// </summary>
         public string EventHubPath { get; }
 
+        /// <summary>
+        /// Gets the consumer group name.
+        /// </summary>
         public string ConsumerGroupName { get; }
 
         // All of these accessors are for internal use only.
