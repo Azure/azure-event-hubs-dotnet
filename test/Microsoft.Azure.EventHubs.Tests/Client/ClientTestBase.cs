@@ -80,12 +80,6 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             return receivedEvent;
         }
 
-        protected async Task<Tuple<string, DateTime, string>> DiscoverEndOfStreamForPartition(string pid)
-        {
-            var pInfo = await this.EventHubClient.GetPartitionRuntimeInformationAsync(pid);
-            return Tuple.Create(pInfo.LastEnqueuedOffset, pInfo.LastEnqueuedTimeUtc, pInfo.LastEnqueuedOffset);
-        }
-
         // Receives all messages on the given receiver.
         protected async Task<List<EventData>> ReceiveAllMessages(PartitionReceiver receiver)
         {
@@ -116,8 +110,8 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             TestUtility.Log("Discovering end of stream on each partition.");
             foreach (var partitionId in this.PartitionIds)
             {
-                var lastEvent = await DiscoverEndOfStreamForPartition(partitionId);
-                receivers.Add(this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, lastEvent.Item3));
+                var lastEvent = await this.EventHubClient.GetPartitionRuntimeInformationAsync(partitionId);
+                receivers.Add(this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, lastEvent.LastEnqueuedOffset));
             }
 
             try

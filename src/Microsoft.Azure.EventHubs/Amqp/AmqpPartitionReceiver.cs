@@ -130,15 +130,16 @@ namespace Microsoft.Azure.EventHubs.Amqp
         {
             lock (this.receivePumpLock)
             {
-                if (newReceiveHandler != null && this.receiveHandler != null)
+                if (newReceiveHandler != null)
                 {
-                    // Notify existing handler first (but don't wait).
-                    this.receiveHandler.ProcessErrorAsync(new OperationCanceledException("New handler has registered for this receiver."));
-                }
+                    if (this.receiveHandler != null)
+                    {
+                        // Notify existing handler first (but don't wait).
+                        this.receiveHandler.ProcessErrorAsync(new OperationCanceledException("New handler has registered for this receiver."));
+                    }
 
-                this.receiveHandler = newReceiveHandler;
-                if (this.receiveHandler != null)
-                {
+                    this.receiveHandler = newReceiveHandler;
+
                     // We have a new receiveHandler, ensure pump is running.
                     if (this.receivePumpTask == null)
                     {
@@ -148,14 +149,13 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 }
                 else
                 {
-                    // We have no receiveHandler, ensure pump is shut down.
+                    // newReceiveHandler == null, so this is an unregister call, ensure pump is shut down.
                     if (this.receivePumpTask != null)
                     {
-                        this.receivePumpCancellationSource.Cancel();
-                        this.receivePumpCancellationSource.Dispose();
-                        this.receivePumpCancellationSource = null;
-                        this.receivePumpTask = null;
+                        this.ReceiveHandlerClose();
                     }
+
+                    this.receiveHandler = null;
                 }
             }
         }
@@ -288,18 +288,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
                     try
                     {
-                        int batchSize;
-                        lock (this.receivePumpLock)
-                        {
-                            if (this.receiveHandler == null)
-                            {
-                                // Pump has been shutdown, nothing more to do.
-                                return;
-                            }
-                            batchSize = receiveHandler.MaxBatchSize;
-                        }
-
-                        receivedEvents = await this.ReceiveAsync(batchSize);
+                        receivedEvents = await this.ReceiveAsync(receiveHandler.MaxBatchSize);
                     }
                     catch (Exception e)
                     {
@@ -329,8 +318,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 EventHubsEventSource.Log.ReceiveHandlerExitingWithError(this.ClientId, this.PartitionId, ex.Message);
                 Environment.FailFast(ex.ToString());
             }
-
-            this.ReceiveHandlerClose();
         }
 
         // Encapsulates taking the receivePumpLock, checking this.receiveHandler for null,
@@ -375,6 +362,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
         Task ReceiveHandlerProcessEventsAsync(IEnumerable<EventData> eventDatas)
         {
             Task processEventsTask = null;
+
             lock (this.receivePumpLock)
             {
                 if (this.receiveHandler != null)

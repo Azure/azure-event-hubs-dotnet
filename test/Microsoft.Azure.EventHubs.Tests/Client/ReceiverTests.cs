@@ -93,7 +93,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             TestUtility.Log($"Randomly picked partition {partitionId}");
 
             // Send and receive a message to identify the end of stream.
-            var lastMessage = await DiscoverEndOfStreamForPartition(partitionId);
+            var pInfo = await this.EventHubClient.GetPartitionRuntimeInformationAsync(partitionId);
 
             // Send a new message which is expected to go to the end of stream.
             // We are expecting to receive only this message.
@@ -102,8 +102,8 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             await this.EventHubClient.CreatePartitionSender(partitionId).SendAsync(eventSent);
 
             // Create a new receiver which will start reading from the last message on the stream.
-            TestUtility.Log($"Creating a new receiver with offset {lastMessage.Item1}");
-            var receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, lastMessage.Item1);
+            TestUtility.Log($"Creating a new receiver with offset {pInfo.LastEnqueuedOffset}");
+            var receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, pInfo.LastEnqueuedOffset);
 
             try
             {
@@ -137,7 +137,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             TestUtility.Log($"Randomly picked partition {partitionId}");
 
             // Send and receive a message to identify the end of stream.
-            var lastMessage = await DiscoverEndOfStreamForPartition(partitionId);
+            var pInfo = await this.EventHubClient.GetPartitionRuntimeInformationAsync(partitionId);
 
             // Send a new message which is expected to go to the end of stream.
             // We are expecting to receive only this message.
@@ -146,8 +146,8 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             await this.EventHubClient.CreatePartitionSender(partitionId).SendAsync(eventSent);
 
             // Create a new receiver which will start reading from the last message on the stream.
-            TestUtility.Log($"Creating a new receiver with date-time {lastMessage.Item2}");
-            var receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, lastMessage.Item2);
+            TestUtility.Log($"Creating a new receiver with date-time {pInfo.LastEnqueuedTimeUtc}");
+            var receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, pInfo.LastEnqueuedTimeUtc);
 
             try
             {
@@ -342,72 +342,6 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
 
         [Fact]
         [DisplayTestMethodName]
-        async Task PartitionReceiverSetReceiveHandler()
-        {
-            TestUtility.Log("Receiving Events via PartitionReceiver.SetReceiveHandler()");
-            string partitionId = "1";
-            PartitionReceiver partitionReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, DateTime.UtcNow.AddMinutes(-10));
-            PartitionSender partitionSender = this.EventHubClient.CreatePartitionSender(partitionId);
-
-            try
-            {
-                string uniqueEventId = Guid.NewGuid().ToString();
-                TestUtility.Log($"Sending an event to Partition {partitionId} with custom property EventId {uniqueEventId}");
-                var sendEvent = new EventData(Encoding.UTF8.GetBytes("Hello EventHub!"));
-                sendEvent.Properties["EventId"] = uniqueEventId;
-                await partitionSender.SendAsync(sendEvent);
-
-                EventWaitHandle dataReceivedEvent = new EventWaitHandle(false, EventResetMode.ManualReset);
-                var handler = new TestPartitionReceiveHandler();
-
-                // Not expecting any errors.
-                handler.ErrorReceived += (s, e) =>
-                {
-                    throw new Exception($"TestPartitionReceiveHandler.ProcessError {e.GetType().Name}: {e.Message}");
-                };
-
-                handler.EventsReceived += (s, eventDatas) =>
-                {
-                    int count = eventDatas != null ? eventDatas.Count() : 0;
-                    TestUtility.Log($"Received {count} event(s):");
-
-                    foreach (var eventData in eventDatas)
-                    {
-                        object objectValue;
-                        if (eventData.Properties != null && eventData.Properties.TryGetValue("EventId", out objectValue))
-                        {
-                            TestUtility.Log($"Received message with EventId {objectValue}");
-                            string receivedId = objectValue.ToString();
-                            if (receivedId == uniqueEventId)
-                            {
-                                TestUtility.Log("Success");
-                                dataReceivedEvent.Set();
-                                break;
-                            }
-                        }
-                    }
-                };
-
-                partitionReceiver.SetReceiveHandler(handler);
-
-                if (!dataReceivedEvent.WaitOne(TimeSpan.FromSeconds(20)))
-                {
-                    throw new InvalidOperationException("Data Received Event was not signaled.");
-                }
-            }
-            finally
-            {
-                // Unregister handler.
-                partitionReceiver.SetReceiveHandler(null);
-
-                // Close clients.
-                await partitionSender.CloseAsync();
-                await partitionReceiver.CloseAsync();
-            }
-        }
-
-        [Fact]
-        [DisplayTestMethodName]
         async Task CloseReceiverClient()
         {
             var pSender = this.EventHubClient.CreatePartitionSender("0");
@@ -435,32 +369,6 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
                 await pReceiver.ReceiveAsync(1);
                 throw new InvalidOperationException("Receive should have failed");
             });
-        }
-
-        class TestPartitionReceiveHandler : IPartitionReceiveHandler
-        {
-            public event EventHandler<IEnumerable<EventData>> EventsReceived;
-
-            public event EventHandler<Exception> ErrorReceived;
-
-            public TestPartitionReceiveHandler()
-            {
-                this.MaxBatchSize = 10;
-            }
-
-            public int MaxBatchSize { get; set; }
-
-            Task IPartitionReceiveHandler.ProcessErrorAsync(Exception error)
-            {
-                this.ErrorReceived?.Invoke(this, error);
-                return Task.CompletedTask;
-            }
-
-            Task IPartitionReceiveHandler.ProcessEventsAsync(IEnumerable<EventData> events)
-            {
-                this.EventsReceived?.Invoke(this, events);
-                return Task.CompletedTask;
-            }
         }
     }
 }

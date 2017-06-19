@@ -1,0 +1,166 @@
+﻿// Copyright (c) Microsoft. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for full license information.
+
+namespace Microsoft.Azure.EventHubs.Tests.Client
+{
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Text;
+    using System.Threading;
+    using System.Threading.Tasks;
+    using Xunit;
+
+    public class PartitionPumpTests : ClientTestBase
+    {
+        [Fact]
+        [DisplayTestMethodName]
+        async Task SendReceiveBasic()
+        {
+            TestUtility.Log("Receiving Events via PartitionReceiver.SetReceiveHandler()");
+            string partitionId = "1";
+            PartitionReceiver partitionReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, DateTime.UtcNow.AddMinutes(-10));
+            PartitionSender partitionSender = this.EventHubClient.CreatePartitionSender(partitionId);
+
+            try
+            {
+                string uniqueEventId = Guid.NewGuid().ToString();
+                TestUtility.Log($"Sending an event to Partition {partitionId} with custom property EventId {uniqueEventId}");
+                var sendEvent = new EventData(Encoding.UTF8.GetBytes("Hello EventHub!"));
+                sendEvent.Properties["EventId"] = uniqueEventId;
+                await partitionSender.SendAsync(sendEvent);
+
+                EventWaitHandle dataReceivedEvent = new EventWaitHandle(false, EventResetMode.ManualReset);
+                var handler = new TestPartitionReceiveHandler();
+
+                // Not expecting any errors.
+                handler.ErrorReceived += (s, e) =>
+                {
+                    throw new Exception($"TestPartitionReceiveHandler.ProcessError {e.GetType().Name}: {e.Message}");
+                };
+
+                handler.EventsReceived += (s, eventDatas) =>
+                {
+                    int count = eventDatas != null ? eventDatas.Count() : 0;
+                    TestUtility.Log($"Received {count} event(s):");
+
+                    if (eventDatas != null)
+                    {
+                        foreach (var eventData in eventDatas)
+                        {
+                            object objectValue;
+                            if (eventData.Properties != null && eventData.Properties.TryGetValue("EventId", out objectValue))
+                            {
+                                TestUtility.Log($"Received message with EventId {objectValue}");
+                                string receivedId = objectValue.ToString();
+                                if (receivedId == uniqueEventId)
+                                {
+                                    TestUtility.Log("Success");
+                                    dataReceivedEvent.Set();
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                };
+
+                partitionReceiver.SetReceiveHandler(handler);
+
+                await Task.Delay(TimeSpan.FromSeconds(60));
+
+                if (!dataReceivedEvent.WaitOne(TimeSpan.FromSeconds(20)))
+                {
+                    throw new InvalidOperationException("Data Received Event was not signaled.");
+                }
+            }
+            finally
+            {
+                // Unregister handler.
+                partitionReceiver.SetReceiveHandler(null);
+
+                // Close clients.
+                await partitionSender.CloseAsync();
+                await partitionReceiver.CloseAsync();
+            }
+        }
+
+        [Fact]
+        [DisplayTestMethodName]
+        async Task ReceiveHandlerReregister()
+        {
+            int totalNumberOfMessagesToSend = 100;
+            string partitionId = "0";
+
+            var pInfo = await this.EventHubClient.GetPartitionRuntimeInformationAsync(partitionId);
+
+            PartitionReceiver partitionReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, pInfo.LastEnqueuedOffset);
+            await TestUtility.SendToPartitionAsync(this.EventHubClient, partitionId, $"{partitionId} event.", totalNumberOfMessagesToSend);
+
+            try
+            {
+                var handler = new TestPartitionReceiveHandler();
+                handler.MaxBatchSize = 1;
+
+                // Not expecting any errors.
+                handler.ErrorReceived += (s, e) =>
+                {
+                    throw new Exception($"TestPartitionReceiveHandler.ProcessError {e.GetType().Name}: {e.Message}");
+                };
+
+                int totalnumberOfMessagesReceived = 0;
+                handler.EventsReceived += (s, eventDatas) =>
+                {
+                    int count = eventDatas != null ? eventDatas.Count() : 0;
+                    Interlocked.Add(ref totalnumberOfMessagesReceived, count);
+                    TestUtility.Log($"Received {count} event(s).");
+                };
+
+                TestUtility.Log("Registering");
+                partitionReceiver.SetReceiveHandler(handler);
+                TestUtility.Log("Unregistering");
+                partitionReceiver.SetReceiveHandler(null);
+                TestUtility.Log("Registering");
+                partitionReceiver.SetReceiveHandler(handler);
+                TestUtility.Log("All register calls done.");
+
+                // Allow 1 minute to receive all messages.
+                await Task.Delay(TimeSpan.FromSeconds(60));
+                TestUtility.Log($"Received {totalnumberOfMessagesReceived}.");
+                Assert.True(totalnumberOfMessagesReceived == totalNumberOfMessagesToSend, $"Did not receive {totalNumberOfMessagesToSend} messages.");
+            }
+            finally
+            {
+                // Unregister handler.
+                partitionReceiver.SetReceiveHandler(null);
+
+                // Close clients.
+                await partitionReceiver.CloseAsync();
+            }
+        }
+
+        class TestPartitionReceiveHandler : IPartitionReceiveHandler
+        {
+            public event EventHandler<IEnumerable<EventData>> EventsReceived;
+            public event EventHandler<Exception> ErrorReceived;
+
+            public TestPartitionReceiveHandler()
+            {
+                this.MaxBatchSize = 10;
+            }
+
+            public int MaxBatchSize { get; set; }
+
+            Task IPartitionReceiveHandler.ProcessErrorAsync(Exception error)
+            {
+                this.ErrorReceived?.Invoke(this, error);
+                return Task.CompletedTask;
+            }
+
+            Task IPartitionReceiveHandler.ProcessEventsAsync(IEnumerable<EventData> events)
+            {
+                this.EventsReceived?.Invoke(this, events);
+                return Task.CompletedTask;
+            }
+        }
+    }
+}
