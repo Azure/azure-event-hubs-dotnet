@@ -7,6 +7,22 @@ namespace Microsoft.Azure.EventHubs
     using System.Text;
 
     /// <summary>
+    ///  Supported transport types
+    /// </summary>
+    public enum TransportTypes
+    {
+        /// <summary>
+        /// Transport type AMQP
+        /// </summary>
+        Amqp,
+
+        /// <summary>
+        /// Transport type AMQP over web sockets
+        /// </summary>
+        AmqpWebSockets
+    }
+
+    /// <summary>
     /// EventHubsConnectionStringBuilder can be used to construct a connection string which can establish communication with Event Hubs entities.
     /// It can also be used to perform basic validation on an existing connection string.
     /// <para/>
@@ -39,7 +55,8 @@ namespace Microsoft.Azure.EventHubs
         static readonly string SharedAccessKeyNameConfigName = "SharedAccessKeyName";
         static readonly string SharedAccessKeyConfigName = "SharedAccessKey";
         static readonly string EntityPathConfigName = "EntityPath";
-        static readonly string OperationTimeoutName = "OperationTimeout";
+        static readonly string OperationTimeoutConfigName = "OperationTimeout";
+        static readonly string ConnectivityModeConfigName = "ConnectivityMode";
 
         /// <summary>
         /// Build a connection string consumable by <see cref="EventHubClient.CreateFromConnectionString(string)"/>
@@ -85,17 +102,17 @@ namespace Microsoft.Azure.EventHubs
                 throw Fx.Exception.ArgumentNullOrWhiteSpace(string.IsNullOrWhiteSpace(sharedAccessKeyName) ? nameof(sharedAccessKeyName) : nameof(sharedAccessKey));
             }
 
+            this.EntityPath = entityPath;
+            this.SasKey = sharedAccessKey;
+            this.SasKeyName = sharedAccessKeyName;
+            this.OperationTimeout = operationTimeout;
+
             // Replace the scheme. We cannot really make sure that user passed an amps:// scheme to us.
             var uriBuilder = new UriBuilder(endpointAddress.AbsoluteUri)
             {
                 Scheme = EndpointScheme
             };
             this.Endpoint = uriBuilder.Uri;
-
-            this.EntityPath = entityPath;
-            this.SasKey = sharedAccessKey;
-            this.SasKeyName = sharedAccessKeyName;
-            this.OperationTimeout = operationTimeout;
         }
 
         /// <summary>
@@ -144,6 +161,13 @@ namespace Microsoft.Azure.EventHubs
         public TimeSpan OperationTimeout { get; set; }
 
         /// <summary>
+        /// Transport type for the client connection.
+        /// Avaiable options are Amqp and AmqpWebSockets.
+        /// Defaults to Amqp if not specified.
+        /// </summary>
+        public TransportTypes? TransportType { get; set; }
+
+        /// <summary>
         /// Creates a cloned object of the current <see cref="EventHubsConnectionStringBuilder"/>.
         /// </summary>
         /// <returns>A new <see cref="EventHubsConnectionStringBuilder"/></returns>
@@ -183,7 +207,12 @@ namespace Microsoft.Azure.EventHubs
 
             if (this.OperationTimeout != DefaultOperationTimeout)
             {
-                connectionStringBuilder.Append($"{OperationTimeoutName}{KeyValueSeparator}{this.OperationTimeout}");
+                connectionStringBuilder.Append($"{OperationTimeoutConfigName}{KeyValueSeparator}{this.OperationTimeout}");
+            }
+
+            if (this.TransportType != null)
+            {
+                connectionStringBuilder.Append($"{ConnectivityModeConfigName}{KeyValueSeparator}{this.SasKey}{TransportType}");
             }
 
             return connectionStringBuilder.ToString();
@@ -220,9 +249,13 @@ namespace Microsoft.Azure.EventHubs
                 {
                     this.SasKey = value;
                 }
-                else if (key.Equals(OperationTimeoutName, StringComparison.OrdinalIgnoreCase))
+                else if (key.Equals(OperationTimeoutConfigName, StringComparison.OrdinalIgnoreCase))
                 {
                     this.OperationTimeout = TimeSpan.Parse(value);
+                }
+                else if (key.Equals(ConnectivityModeConfigName, StringComparison.OrdinalIgnoreCase))
+                {
+                    this.TransportType = (TransportTypes)Enum.Parse(typeof(TransportTypes), value);
                 }
                 else
                 {

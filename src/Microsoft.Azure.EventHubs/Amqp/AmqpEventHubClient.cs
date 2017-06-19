@@ -9,7 +9,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
     using System.Threading.Tasks;
     using Microsoft.Azure.Amqp.Sasl;
     using Microsoft.Azure.Amqp;
-    using Microsoft.Azure.Amqp.Framing;
     using Microsoft.Azure.Amqp.Transport;
     using Microsoft.Azure.EventHubs.Amqp.Management;
 
@@ -151,33 +150,33 @@ namespace Microsoft.Azure.EventHubs.Amqp
             return settings;
         }
 
-        static TransportSettings CreateTcpTransportSettings(
-            string networkHost,
+        static TransportSettings CreateTcpTlsTransportSettings(
             string hostName,
-            int port,
-            bool useSslStreamSecurity,
-            bool sslStreamUpgrade = false,
-            string sslHostName = null)
+            int port)
         {
             TcpTransportSettings tcpSettings = new TcpTransportSettings
             {
-                Host = networkHost,
+                Host = hostName,
                 Port = port < 0 ? AmqpConstants.DefaultSecurePort : port,
                 ReceiveBufferSize = AmqpConstants.TransportBufferSize,
                 SendBufferSize = AmqpConstants.TransportBufferSize
             };
 
-            TransportSettings tpSettings = tcpSettings;
-            if (useSslStreamSecurity && !sslStreamUpgrade)
+            TlsTransportSettings tlsSettings = new TlsTransportSettings(tcpSettings)
             {
-                TlsTransportSettings tlsSettings = new TlsTransportSettings(tcpSettings)
-                {
-                    TargetHost = sslHostName ?? hostName,
-                };
-                tpSettings = tlsSettings;
-            }
+                TargetHost = hostName,
+            };
 
-            return tpSettings;
+            return tlsSettings;
+        }
+
+        static TransportSettings CreateWebSocketsTransportSettings(
+            string networkHost,
+            string hostName,
+            int port)
+        {
+            var ts = new WebSocketTransportSettings();
+            return ts;
         }
 
         static AmqpConnectionSettings CreateAmqpConnectionSettings(uint maxFrameSize, string containerId, string hostName)
@@ -196,20 +195,18 @@ namespace Microsoft.Azure.EventHubs.Amqp
         async Task<AmqpConnection> CreateConnectionAsync(TimeSpan timeout)
         {
             string hostName = this.ConnectionStringBuilder.Endpoint.Host;
-            string networkHost = this.ConnectionStringBuilder.Endpoint.Host;
             int port = this.ConnectionStringBuilder.Endpoint.Port;
+            bool useWebSockets = this.ConnectionStringBuilder.TransportType != null
+                && this.ConnectionStringBuilder.TransportType == TransportTypes.AmqpWebSockets;
 
             var timeoutHelper = new TimeoutHelper(timeout);
             var amqpSettings = CreateAmqpSettings(
                 amqpVersion: this.AmqpVersion,
                 useSslStreamSecurity: true,
-                hasTokenProvider: true);
+                hasTokenProvider: true,
+                useWebSockets: useWebSockets);
 
-            TransportSettings tpSettings = CreateTcpTransportSettings(
-                networkHost: networkHost,
-                hostName: hostName,
-                port: port,
-                useSslStreamSecurity: true);
+            TransportSettings tpSettings = CreateTcpTlsTransportSettings(hostName, port);
 
             var initiator = new AmqpTransportInitiator(amqpSettings, tpSettings);
             var transport = await initiator.ConnectTaskAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
