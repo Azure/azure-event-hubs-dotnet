@@ -150,9 +150,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
             return settings;
         }
 
-        static TransportSettings CreateTcpTlsTransportSettings(
-            string hostName,
-            int port)
+        static TransportSettings CreateTcpTlsTransportSettings(string hostName, int port)
         {
             TcpTransportSettings tcpSettings = new TcpTransportSettings
             {
@@ -170,12 +168,19 @@ namespace Microsoft.Azure.EventHubs.Amqp
             return tlsSettings;
         }
 
-        static TransportSettings CreateWebSocketsTransportSettings(
-            string networkHost,
-            string hostName,
-            int port)
+        static TransportSettings CreateWebSocketsTransportSettings(string hostName)
         {
-            var ts = new WebSocketTransportSettings();
+            var uriBuilder = new UriBuilder(hostName)
+            {
+                Path = AmqpClientConstants.WebSocketsPathSuffix,
+                Scheme = AmqpClientConstants.UriSchemeWss,
+                Port = -1 // Port will be assigned on transport listener.
+            };
+            var ts = new WebSocketTransportSettings()
+            {
+                Uri = uriBuilder.Uri
+            };
+
             return ts;
         }
 
@@ -206,7 +211,15 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 hasTokenProvider: true,
                 useWebSockets: useWebSockets);
 
-            TransportSettings tpSettings = CreateTcpTlsTransportSettings(hostName, port);
+            TransportSettings tpSettings = null;
+            if (useWebSockets)
+            {
+                tpSettings = CreateWebSocketsTransportSettings(hostName);
+            }
+            else
+            {
+                tpSettings = CreateTcpTlsTransportSettings(hostName, port);
+            }
 
             var initiator = new AmqpTransportInitiator(amqpSettings, tpSettings);
             var transport = await initiator.ConnectTaskAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);

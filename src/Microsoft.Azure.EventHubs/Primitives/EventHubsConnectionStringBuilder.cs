@@ -56,7 +56,7 @@ namespace Microsoft.Azure.EventHubs
         static readonly string SharedAccessKeyConfigName = "SharedAccessKey";
         static readonly string EntityPathConfigName = "EntityPath";
         static readonly string OperationTimeoutConfigName = "OperationTimeout";
-        static readonly string ConnectivityModeConfigName = "ConnectivityMode";
+        static readonly string TransportTypeConfigName = "TransportType";
 
         /// <summary>
         /// Build a connection string consumable by <see cref="EventHubClient.CreateFromConnectionString(string)"/>
@@ -207,12 +207,12 @@ namespace Microsoft.Azure.EventHubs
 
             if (this.OperationTimeout != DefaultOperationTimeout)
             {
-                connectionStringBuilder.Append($"{OperationTimeoutConfigName}{KeyValueSeparator}{this.OperationTimeout}");
+                connectionStringBuilder.Append($"{OperationTimeoutConfigName}{KeyValueSeparator}{this.OperationTimeout}{KeyValuePairDelimiter}");
             }
 
             if (this.TransportType != null)
             {
-                connectionStringBuilder.Append($"{ConnectivityModeConfigName}{KeyValueSeparator}{this.SasKey}{TransportType}");
+                connectionStringBuilder.Append($"{TransportTypeConfigName}{KeyValueSeparator}{TransportType}{KeyValuePairDelimiter}");
             }
 
             return connectionStringBuilder.ToString();
@@ -253,7 +253,7 @@ namespace Microsoft.Azure.EventHubs
                 {
                     this.OperationTimeout = TimeSpan.Parse(value);
                 }
-                else if (key.Equals(ConnectivityModeConfigName, StringComparison.OrdinalIgnoreCase))
+                else if (key.Equals(TransportTypeConfigName, StringComparison.OrdinalIgnoreCase))
                 {
                     this.TransportType = (TransportTypes)Enum.Parse(typeof(TransportTypes), value);
                 }
