@@ -13,7 +13,7 @@ namespace Microsoft.Azure.EventHubs.Processor
         readonly string partitionId;
 
         internal LeaseLostException(string partitionId, Exception innerException)
-            : base(string.Empty, innerException)
+            : base(innerException.Message, innerException)
         {
             if (partitionId == null)
             {
