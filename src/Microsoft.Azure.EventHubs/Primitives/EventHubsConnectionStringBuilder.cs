@@ -87,7 +87,7 @@ namespace Microsoft.Azure.EventHubs
                 throw Fx.Exception.ArgumentNullOrWhiteSpace(string.IsNullOrWhiteSpace(sharedAccessKeyName) ? nameof(sharedAccessKeyName) : nameof(sharedAccessKey));
             }
 
-            // Replace the scheme. We cannot really make sure that user passed an amps:// scheme to us.
+            // Replace the scheme. We cannot really make sure that user passed an amqps:// scheme to us.
             var uriBuilder = new UriBuilder(endpointAddress.AbsoluteUri)
             {
                 Scheme = EndpointScheme
