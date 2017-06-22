@@ -19,7 +19,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
         {
             // Create connection string builder with web-sockets enabled.
             var csb = new EventHubsConnectionStringBuilder(TestUtility.EventHubsConnectionString);
-            csb.TransportType = TransportTypes.AmqpWebSockets;
+            csb.TransportType = TransportType.AmqpWebSockets;
             csb.OperationTimeout = TimeSpan.FromMinutes(5);
 
             // Confirm connection string has transport-type set as desired.
