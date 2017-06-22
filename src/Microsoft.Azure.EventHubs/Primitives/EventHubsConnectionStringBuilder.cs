@@ -40,6 +40,8 @@ namespace Microsoft.Azure.EventHubs
         static readonly string SharedAccessKeyConfigName = "SharedAccessKey";
         static readonly string EntityPathConfigName = "EntityPath";
         static readonly string OperationTimeoutName = "OperationTimeout";
+        static readonly string SharedAccessSignatureConfigName = "SharedAccessSignature";
+
 
         /// <summary>
         /// Build a connection string consumable by <see cref="EventHubClient.CreateFromConnectionString(string)"/>
@@ -85,7 +87,7 @@ namespace Microsoft.Azure.EventHubs
                 throw Fx.Exception.ArgumentNullOrWhiteSpace(string.IsNullOrWhiteSpace(sharedAccessKeyName) ? nameof(sharedAccessKeyName) : nameof(sharedAccessKey));
             }
 
-            // Replace the scheme. We cannot really make sure that user passed an amps:// scheme to us.
+            // Replace the scheme. We cannot really make sure that user passed an amqps:// scheme to us.
             var uriBuilder = new UriBuilder(endpointAddress.AbsoluteUri)
             {
                 Scheme = EndpointScheme
@@ -95,6 +97,44 @@ namespace Microsoft.Azure.EventHubs
             this.EntityPath = entityPath;
             this.SasKey = sharedAccessKey;
             this.SasKeyName = sharedAccessKeyName;
+            this.OperationTimeout = operationTimeout;
+        }
+
+        /// <summary>
+        /// Build a connection string consumable by <see cref="EventHubClient.CreateFromConnectionString(string)"/>
+        /// </summary>
+        /// <param name="endpointAddress">Fully qualified domain name for Event Hubs. Most likely, {yournamespace}.servicebus.windows.net</param>
+        /// <param name="entityPath">Entity path or Event Hub name.</param>
+        /// <param name="sharedAccessSignature">Shared Access Signature</param>
+        /// <param name="operationTimeout">Operation timeout for Event Hubs operations</param>
+        public EventHubsConnectionStringBuilder(
+            Uri endpointAddress,
+            string entityPath,
+            string sharedAccessSignature,
+            TimeSpan operationTimeout)
+        {
+            if (endpointAddress == null)
+            {
+                throw Fx.Exception.ArgumentNull(nameof(endpointAddress));
+            }
+            if (string.IsNullOrWhiteSpace(entityPath))
+            {
+                throw Fx.Exception.ArgumentNullOrWhiteSpace(nameof(entityPath));
+            }
+            if (string.IsNullOrWhiteSpace(SharedAccessSignature))
+            {
+                throw Fx.Exception.ArgumentNullOrWhiteSpace(nameof(sharedAccessSignature));
+            }
+
+            // Replace the scheme. We cannot really make sure that user passed an amps:// scheme to us.
+            var uriBuilder = new UriBuilder(endpointAddress.AbsoluteUri)
+            {
+                Scheme = EndpointScheme
+            };
+            this.Endpoint = uriBuilder.Uri;
+
+            this.EntityPath = entityPath;
+            this.SharedAccessSignature = sharedAccessSignature;
             this.OperationTimeout = operationTimeout;
         }
 
@@ -134,6 +174,12 @@ namespace Microsoft.Azure.EventHubs
         public string SasKeyName { get; set; }
 
         /// <summary>
+        /// Gets or sets the SAS access token.
+        /// </summary>
+        /// <value>Shared Access Signature</value>
+        public string SharedAccessSignature { get; set; }
+        
+        /// <summary>
         /// Get the entity path value from the connection string
         /// </summary>
         public string EntityPath { get; set; }
@@ -160,6 +206,7 @@ namespace Microsoft.Azure.EventHubs
         /// <returns>the connection string</returns>
         public override string ToString()
         {
+            this.Validate();
             var connectionStringBuilder = new StringBuilder();
             if (this.Endpoint != null)
             {
@@ -181,12 +228,55 @@ namespace Microsoft.Azure.EventHubs
                 connectionStringBuilder.Append($"{SharedAccessKeyConfigName}{KeyValueSeparator}{this.SasKey}{KeyValuePairDelimiter}");
             }
 
+            if (!string.IsNullOrWhiteSpace(this.SharedAccessSignature))
+            {
+                connectionStringBuilder.Append($"{SharedAccessSignatureConfigName}{KeyValueSeparator}{this.SharedAccessSignature}{KeyValuePairDelimiter}");
+            }
+
             if (this.OperationTimeout != DefaultOperationTimeout)
             {
                 connectionStringBuilder.Append($"{OperationTimeoutName}{KeyValueSeparator}{this.OperationTimeout}");
             }
 
             return connectionStringBuilder.ToString();
+        }
+
+        void Validate()
+        {
+            if (this.Endpoint == null)
+            {
+                throw Fx.Exception.ArgumentNullOrWhiteSpace(EndpointConfigName);
+            }
+
+            // if one supplied sharedAccessKeyName, they need to supply sharedAccesssecret, and vise versa
+            // if SharedAccessSignature is specified, SasKey or SasKeyName should not be specified
+            var hasSasKeyName = !string.IsNullOrWhiteSpace(this.SasKeyName);
+            var hasSasKey = !string.IsNullOrWhiteSpace(this.SasKey);
+            var hasSharedAccessSignature = !string.IsNullOrWhiteSpace(this.SharedAccessSignature);
+
+            if (hasSharedAccessSignature)
+            {
+                if (hasSasKeyName)
+                {
+                    throw Fx.Exception.Argument(
+                        string.Format("{0},{1}", SharedAccessSignatureConfigName, SharedAccessKeyNameConfigName),
+                        Resources.SasTokenShouldBeAlone.FormatForUser(SharedAccessSignatureConfigName, SharedAccessKeyNameConfigName));
+                }
+
+                if (hasSasKey)
+                {
+                    throw Fx.Exception.Argument(
+                        string.Format("{0},{1}", SharedAccessSignatureConfigName, SharedAccessKeyConfigName),
+                        Resources.SasTokenShouldBeAlone.FormatForUser(SharedAccessSignatureConfigName, SharedAccessKeyConfigName));
+                }
+            }
+
+            if (hasSasKeyName && !hasSasKey || !hasSasKeyName && hasSasKey)
+            {
+                throw Fx.Exception.Argument(
+                    string.Format("{0},{1}", SharedAccessKeyNameConfigName, SharedAccessKeyConfigName),
+                    Resources.ArgumentInvalidCombination.FormatForUser(SharedAccessKeyNameConfigName, SharedAccessKeyConfigName));
+            }
         }
 
         void ParseConnectionString(string connectionString)
@@ -219,6 +309,10 @@ namespace Microsoft.Azure.EventHubs
                 else if (key.Equals(SharedAccessKeyConfigName, StringComparison.OrdinalIgnoreCase))
                 {
                     this.SasKey = value;
+                }
+                else if (key.Equals(SharedAccessSignatureConfigName, StringComparison.OrdinalIgnoreCase))
+                {
+                    this.SharedAccessSignature = value;
                 }
                 else if (key.Equals(OperationTimeoutName, StringComparison.OrdinalIgnoreCase))
                 {
