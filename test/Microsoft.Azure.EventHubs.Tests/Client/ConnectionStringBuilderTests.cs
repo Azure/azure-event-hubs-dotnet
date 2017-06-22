@@ -4,6 +4,7 @@
 namespace Microsoft.Azure.EventHubs.Tests.Client
 {
     using System;
+    using System.Collections.Generic;
     using Xunit;
 
     public class ConnectionStringBuilderTests
@@ -77,6 +78,38 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             Assert.True(csbNew.SasKeyName == csb.SasKeyName, $"Original and New CSB mismatch at SasKeyName. Original: {csb.SasKeyName} New: {csbNew.SasKeyName}");
             Assert.True(csbNew.SasKey == csb.SasKey, $"Original and New CSB mismatch at SasKey. Original: {csb.SasKey} New: {csbNew.SasKey}");
             Assert.True(csbNew.EntityPath == csb.EntityPath, $"Original and New CSB mismatch at EntityPath. Original: {csb.EntityPath} New: {csbNew.EntityPath}");
+        }
+
+        [Fact]
+        [DisplayTestMethodName]
+        void InvalidConnectionStrings()
+        {
+            var invalidStrings = new List<string>();
+
+            // Missing the endpoint definition.
+            invalidStrings.Add("SharedAccessKeyName=xxxxxx;SharedAccessKey=xxxx;");
+
+            // Missing SAS key name.
+            invalidStrings.Add("Endpoint=sb://myehnamespace.servicebus.windows.net;SharedAccessKey=xxxx;");
+
+            // Missing SAS key.
+            invalidStrings.Add("SharedAccessKeyName=xxxxxx;SharedAccessKeyName=xxxx;");
+
+            // SAS token with SAS key.
+            invalidStrings.Add("Endpoint=sb://myehnamespace.servicebus.windows.net;SharedAccessKeyName=xxxxxx;SharedAccessKey=xxxx;SharedAccessSignature=xxxxx;");
+
+            foreach (var invalidString in invalidStrings)
+            {
+                TestUtility.Log($"Testing invalid connection string '{invalidString}'");
+                var csb = new EventHubsConnectionStringBuilder(invalidString);
+
+                // ToString should throw.
+                Assert.ThrowsAsync<ArgumentException>(() =>
+                {
+                    csb.ToString();
+                    throw new InvalidOperationException("ToString() should have failed");
+                });
+            }
         }
     }
 }
