@@ -333,14 +333,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             }
     	    catch (StorageException se)
             {
-                if (WasLeaseLost(partitionId, se))
-                {
-                    retval = false;
-                }
-                else
-                {
-                    throw;
-                }
+                throw HandleStorageException(partitionId, se);
             }
     	
     	    return retval;
@@ -362,12 +355,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             }
     	    catch (StorageException se)
             {
-                if (WasLeaseLost(partitionId, se))
-                {
-                    throw new LeaseLostException(partitionId, se);
-                }
-
-                throw;
+                throw HandleStorageException(partitionId, se);
             }
     	
  	        return true;
@@ -398,12 +386,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             }
     	    catch (StorageException se)
             {
-                if (WasLeaseLost(partitionId, se))
-                {
-                    throw new LeaseLostException(partitionId, se);
-                }
-
-                throw;
+                throw HandleStorageException(partitionId, se);
             }
     	
         	return true;
@@ -442,12 +425,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             }
     	    catch (StorageException se)
 	        {
-	            if (WasLeaseLost(partitionId, se))
-                {
-                    throw new LeaseLostException(partitionId, se);
-                }
-
-                throw;
+                throw HandleStorageException(partitionId, se);
 	        }
     	
         	return true;
@@ -462,31 +440,32 @@ namespace Microsoft.Azure.EventHubs.Processor
     	    AzureBlobLease blobLease = new AzureBlobLease(rehydrated, blob);
     	    return blobLease;
         }
-    
-        bool WasLeaseLost(string partitionId, StorageException se)
+
+        Exception HandleStorageException(string partitionId, StorageException se)
         {
-            bool retval = false;
-            ProcessorEventSource.Log.AzureStorageManagerInfo(this.host.Id, partitionId, "WAS LEASE LOST?");
-            ProcessorEventSource.Log.AzureStorageManagerInfo(this.host.Id, partitionId, "HttpStatusCode " + se.RequestInformation.HttpStatusCode);
+            ProcessorEventSource.Log.AzureStorageManagerInfo(this.host.Id, partitionId, "HandleStorageException - HttpStatusCode " + se.RequestInformation.HttpStatusCode);
             if (se.RequestInformation.HttpStatusCode == 409 || // conflict
                 se.RequestInformation.HttpStatusCode == 412) // precondition failed
             {
                 StorageExtendedErrorInformation extendedErrorInfo = se.RequestInformation.ExtendedErrorInformation;
+
                 if (extendedErrorInfo != null)
                 {
                     string errorCode = extendedErrorInfo.ErrorCode;
-                    ProcessorEventSource.Log.AzureStorageManagerInfo(this.host.Id, partitionId, "Error code: " + errorCode);
-                    ProcessorEventSource.Log.AzureStorageManagerInfo(this.host.Id, partitionId, "Error message: " + extendedErrorInfo.ErrorMessage);
-                    if (errorCode == BlobErrorCodeStrings.LeaseLost ||
-                        errorCode == BlobErrorCodeStrings.LeaseIdMismatchWithLeaseOperation ||
-                        errorCode == BlobErrorCodeStrings.LeaseIdMismatchWithBlobOperation)
-                    {
-                        retval = true;
-                    }
+                    ProcessorEventSource.Log.AzureStorageManagerInfo(this.host.Id, partitionId, "HandleStorageException - Error code: " + errorCode);
+                    ProcessorEventSource.Log.AzureStorageManagerInfo(this.host.Id, partitionId, "HandleStorageException - Error message: " + extendedErrorInfo.ErrorMessage);
+                }
+
+                if (extendedErrorInfo == null ||
+                    extendedErrorInfo.ErrorCode == BlobErrorCodeStrings.LeaseLost ||
+                    extendedErrorInfo.ErrorCode == BlobErrorCodeStrings.LeaseIdMismatchWithLeaseOperation ||
+                    extendedErrorInfo.ErrorCode == BlobErrorCodeStrings.LeaseIdMismatchWithBlobOperation)
+                {
+                    return new LeaseLostException(partitionId, se);
                 }
             }
 
-            return retval;
+            return se;
         }
 
         CloudBlockBlob GetBlockBlobReference(string partitionId)
