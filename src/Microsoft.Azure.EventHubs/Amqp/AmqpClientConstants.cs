@@ -14,6 +14,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
         public static readonly AmqpSymbol BatchFlushIntervalName = AmqpConstants.Vendor + ":batch-flush-interval";
         public static readonly AmqpSymbol EntityTypeName = AmqpConstants.Vendor + ":entity-type";
         public static readonly AmqpSymbol TimeoutName = AmqpConstants.Vendor + ":timeout";
+        public static readonly AmqpSymbol EnableReceiverRuntimeMetricName = AmqpConstants.Vendor + ":enable-receiver-runtime-metric";
 
         // Error codes
         public static readonly AmqpSymbol DeadLetterName = AmqpConstants.Vendor + ":dead-letter";
@@ -64,6 +65,11 @@ namespace Microsoft.Azure.EventHubs.Amqp
         public const string ManagementEventHubCreatedAt = "created_at";
         public const string ManagementEventHubPartitionCount = "partition_count";
         public const string ManagementEventHubPartitionIds = "partition_ids";
+        public const string ManagementPartitionBeginSequenceNumber = "begin_sequence_number";
+        public const string ManagementPartitionLastEnqueuedSequenceNumber = "last_enqueued_sequence_number";
+        public const string ManagementPartitionLastEnqueuedOffset = "last_enqueued_offset";
+        public const string ManagementPartitionLastEnqueuedTimeUtc = "last_enqueued_time_utc";
+        public const string ManagementPartitionRuntimeInfoRetrievalTimeUtc = "runtime_info_retrieval_time_utc";
 
         public const string ResponseStatusCode = "status-code";
         public const string ResponseErrorCondition = "error-condition";

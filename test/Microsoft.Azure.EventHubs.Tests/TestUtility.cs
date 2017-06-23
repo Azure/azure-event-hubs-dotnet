@@ -5,6 +5,8 @@ namespace Microsoft.Azure.EventHubs.Tests
 {
     using System;
     using System.Diagnostics;
+    using System.Text;
+    using System.Threading.Tasks;
     using Microsoft.Azure.EventHubs;
 
     static class TestUtility
@@ -50,6 +52,19 @@ namespace Microsoft.Azure.EventHubs.Tests
                 EntityPath = entityName
             };
             return connectionStringBuilder.ToString();
+        }
+
+        internal static async Task SendToPartitionAsync(EventHubClient ehClient, string partitionId, string messageBody, int numberOfMessages = 1)
+        {
+            TestUtility.Log($"Starting to send {numberOfMessages} to partition {partitionId}.");
+            var partitionSender = ehClient.CreatePartitionSender(partitionId);
+
+            for (int i = 0; i<numberOfMessages; i++)
+            {
+                await partitionSender.SendAsync(new EventData(Encoding.UTF8.GetBytes(messageBody)));
+            }
+
+            TestUtility.Log("Sends done.");
         }
 
         internal static void Log(string message)

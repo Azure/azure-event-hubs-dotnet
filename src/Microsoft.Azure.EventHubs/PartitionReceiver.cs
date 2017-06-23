@@ -18,8 +18,8 @@ namespace Microsoft.Azure.EventHubs
     /// non-epoch receivers.
     /// </para>
     /// </summary>
-    /// <seealso cref="EventHubClient.CreateReceiver(string, string, string)"/>
-    /// <seealso cref="EventHubClient.CreateEpochReceiver(string, string, string, long)"/>
+    /// <seealso cref="EventHubClient.CreateReceiver(string, string, string, ReceiverOptions)"/>
+    /// <seealso cref="EventHubClient.CreateEpochReceiver(string, string, string, long, ReceiverOptions)"/>
     public abstract class PartitionReceiver : ClientEntity
     {
         /// <summary>
@@ -52,6 +52,7 @@ namespace Microsoft.Azure.EventHubs
         /// <param name="offsetInclusive"></param>
         /// <param name="startTime"></param>
         /// <param name="epoch"></param>
+        /// <param name="receiverOptions"></param>
         protected internal PartitionReceiver(
             EventHubClient eventHubClient,
             string consumerGroupName,
@@ -59,7 +60,8 @@ namespace Microsoft.Azure.EventHubs
             string startOffset,
             bool offsetInclusive,
             DateTime? startTime,
-            long? epoch)
+            long? epoch,
+            ReceiverOptions receiverOptions)
             : base($"{nameof(PartitionReceiver)}{ClientEntity.GetNextId()}({eventHubClient.EventHubName},{consumerGroupName},{partitionId})")
         {
             this.EventHubClient = eventHubClient;
@@ -70,6 +72,9 @@ namespace Microsoft.Azure.EventHubs
             this.StartTime = startTime;
             this.PrefetchCount = DefaultPrefetchCount;
             this.Epoch = epoch;
+            this.RuntimeInfo = new ReceiverRuntimeInfo(partitionId);
+            this.ReceiverRuntimeMetricEnabled = receiverOptions == null ? this.EventHubClient.EnableReceiverRuntimeMetric
+                : receiverOptions.EnableReceiverRuntimeMetric;
 
             EventHubsEventSource.Log.ClientCreated(this.ClientId, this.FormatTraceDetails());
         }
@@ -167,6 +172,15 @@ namespace Microsoft.Azure.EventHubs
                     // Store the current position in the stream of messages
                     this.StartOffset = lastEvent.SystemProperties.Offset;
                     this.StartTime = lastEvent.SystemProperties.EnqueuedTimeUtc;
+
+                    // Update receiver runtime metrics?
+                    if (this.ReceiverRuntimeMetricEnabled)
+                    {
+                        this.RuntimeInfo.LastSequenceNumber = lastEvent.LastSequenceNumber;
+                        this.RuntimeInfo.LastEnqueuedOffset = lastEvent.LastEnqueuedOffset;
+                        this.RuntimeInfo.LastEnqueuedTimeUtc = lastEvent.LastEnqueuedTime;
+                        this.RuntimeInfo.RetrievalTime = lastEvent.RetrievalTime;
+                    }
                 }
 
                 return events;
@@ -219,6 +233,23 @@ namespace Microsoft.Azure.EventHubs
         /// <summary></summary>
         /// <param name="receiveHandler"></param>
         protected abstract void OnSetReceiveHandler(IPartitionReceiveHandler receiveHandler);
+
+        /// <summary>
+        /// Gets the approximate receiver runtime information for a logical partition of an Event Hub.
+        /// To enable the setting, refer to <see cref="ReceiverOptions"/> and <see cref="EventHubClient.EnableReceiverRuntimeMetric"/>
+        /// </summary>
+        public ReceiverRuntimeInfo RuntimeInfo
+        {
+            get;
+            private set;
+        }
+
+        /// <summary> Gets a value indicating whether the runtime metric of a receiver is enabled. </summary>
+        public bool ReceiverRuntimeMetricEnabled
+        {
+            get;
+            private set;
+        }
 
         /// <summary></summary>
         /// <returns></returns>
