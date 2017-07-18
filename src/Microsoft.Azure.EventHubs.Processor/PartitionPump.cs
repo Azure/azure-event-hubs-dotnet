@@ -166,7 +166,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                 catch (Exception e)
                 {
                     ProcessorEventSource.Log.PartitionPumpInvokeProcessorEventsError(this.Host.Id, this.PartitionContext.PartitionId, e.ToString());
-                    await this.ProcessErrorAsync(e);
+                    await this.ProcessErrorAsync(e).ConfigureAwait(false);
                 }
                 finally
                 {
