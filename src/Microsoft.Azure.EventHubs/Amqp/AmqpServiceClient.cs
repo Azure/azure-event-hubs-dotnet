@@ -171,7 +171,7 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
         async Task<RequestResponseAmqpLink> OpenLinkAsync(TimeSpan timeout)
         {
             ActiveClientRequestResponseLink activeClientLink = await OpenRequestResponseLinkAsync(
-                "svc", this.Address, null, AmqpServiceClient.RequiredClaims, timeout);
+                "svc", this.Address, null, AmqpServiceClient.RequiredClaims, timeout).ConfigureAwait(false);
             return activeClientLink.Link;
         }
 
