@@ -1,25 +1,32 @@
 version: 1.0.{build}
+branches:
+  only:
+  - master
+  - dev
+skip_tags: true
+matrix:
+  fast_finish: true 
+image: Visual Studio 2017
 environment:
-  ClientSecret:
+  azure-event-hubs-dotnet/ClientSecret:
     secure: /8H7C81iNS+gVi7LhJCEOPUlNaa30y4KcY4nw/g2C4HGxOv6SrcroyDvMnqD+5GN
-  TenantId:
+  azure-event-hubs-dotnet/TenantId:
     secure: xohonz/X8PPLOVIdT3ch2C5XeSa30RwR6NuXFh4e85svXT1mJNGGO1HQEGxCk3wp
-  AppId:
+  azure-event-hubs-dotnet/AppId:
     secure: c+H140oRJfHtmFHZxSRLWocv5AU0q33X7kgMcTcXxhJvtVhk2WAk1dRQkSN+SyoA
-before_build:
-- ps: >-
-    . .\build\AppveyorBuildFunctions.ps1
+  matrix:
+    # First build
+    - DotNetRunTime: netcoreapp1.0
+      azure-event-hubs-dotnet/CodeCovSecret:
+        secure: pmpPpo9faBysYDhkDrKv4zOm1UOmdpga7+sZEcjYOITwzph24z947KugpQMLMGrx
+    # Second build
+    - DotNetRunTime: net46
+      azure-event-hubs-dotnet/SkipCodeCoverage: true
+skip_commits:
+  files:
+    - '**/*.md'
+artifacts:
+- path: .\build\artifacts\*
 build_script:
-- ps: >-
-    Build-Solution
-before_test:
-- ps: >-
-    Set-XUnitConfig
-
-    Deploy-AzureResources
-test_script:
-- ps: >-
-    Run-UnitTests
-after_test:
-- ps: >-
-    Delete-AzureResources
+- ps: .\build\build.ps1
+test: off

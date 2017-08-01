@@ -163,7 +163,12 @@ namespace Microsoft.Azure.EventHubs.Amqp
         async Task<ReceivingAmqpLink> CreateLinkAsync(TimeSpan timeout)
         {
             var amqpEventHubClient = ((AmqpEventHubClient)this.EventHubClient);
-            var timeoutHelper = new TimeoutHelper(timeout);
+
+            // Allow at least AmqpMinimumOpenSessionTimeoutInSeconds seconds to open the session.
+            var openSessionTimeout = AmqpClientConstants.AmqpMinimumOpenSessionTimeoutInSeconds > timeout.TotalSeconds ?
+                TimeSpan.FromSeconds(AmqpClientConstants.AmqpMinimumOpenSessionTimeoutInSeconds) : timeout;
+            var timeoutHelper = new TimeoutHelper(openSessionTimeout);
+
             AmqpConnection connection = await amqpEventHubClient.ConnectionManager.GetOrCreateAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
 
             // Authenticate over CBS
@@ -216,7 +221,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 await link.OpenAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
                 var activeClientLink = new ActiveClientLink(
                     link,
-                    this.EventHubClient.ConnectionStringBuilder.Endpoint.AbsoluteUri, // audience
+                    audience, // audience
                     this.EventHubClient.ConnectionStringBuilder.Endpoint.AbsoluteUri, // endpointUri
                     new[] { ClaimConstants.Listen },
                     true,

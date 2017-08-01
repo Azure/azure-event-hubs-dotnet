@@ -5,6 +5,9 @@ namespace Microsoft.Azure.EventHubs.Processor
 {
     using System;
 
+    /// <summary>
+    /// Defines the runtime options when registering an <see cref="IEventProcessor"/> interface with an EventHubConsumerGroup. This is also the mechanism for catching exceptions from an IEventProcessor instance used by an <see cref="EventProcessorHost"/> object.
+    /// </summary>
     public sealed class EventProcessorOptions
     {
         Action<ExceptionReceivedEventArgs> exceptionHandler;
@@ -27,6 +30,9 @@ namespace Microsoft.Azure.EventHubs.Processor
             }
         }
 
+        /// <summary>
+        /// Creates a new <see cref="EventProcessorOptions"/> object.
+        /// </summary>
         public EventProcessorOptions()
         {
             this.MaxBatchSize = 10;

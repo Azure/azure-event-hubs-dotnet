@@ -29,6 +29,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
             this.SendLinkManager = new FaultTolerantAmqpObject<SendingAmqpLink>(this.CreateLinkAsync, this.CloseSession);
             this.clientLinkManager = new ActiveClientLinkManager((AmqpEventHubClient)this.EventHubClient);
+            this.MaxMessageSize = 256 * 1024;   // Default. Updated when link is opened
         }
 
         string Path { get; }
@@ -109,7 +110,12 @@ namespace Microsoft.Azure.EventHubs.Amqp
         async Task<SendingAmqpLink> CreateLinkAsync(TimeSpan timeout)
         {
             var amqpEventHubClient = ((AmqpEventHubClient)this.EventHubClient);
-            var timeoutHelper = new TimeoutHelper(timeout);
+
+            // Allow at least AmqpMinimumOpenSessionTimeoutInSeconds seconds to open the session.
+            var openSessionTimeout = AmqpClientConstants.AmqpMinimumOpenSessionTimeoutInSeconds > timeout.TotalSeconds ?
+                TimeSpan.FromSeconds(AmqpClientConstants.AmqpMinimumOpenSessionTimeoutInSeconds) : timeout;
+            var timeoutHelper = new TimeoutHelper(openSessionTimeout);
+
             AmqpConnection connection = await amqpEventHubClient.ConnectionManager.GetOrCreateAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
 
             // Authenticate over CBS
@@ -146,11 +152,13 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
                 var activeClientLink = new ActiveClientLink(
                     link,
-                    this.EventHubClient.ConnectionStringBuilder.Endpoint.AbsoluteUri, // audience
+                    audience, // audience
                     this.EventHubClient.ConnectionStringBuilder.Endpoint.AbsoluteUri, // endpointUri
                     new[] { ClaimConstants.Send },
                     true,
                     expiresAt);
+
+                this.MaxMessageSize = (long)activeClientLink.Link.Settings.MaxMessageSize();
 
                 this.clientLinkManager.SetActiveLink(activeClientLink);
 

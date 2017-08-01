@@ -38,6 +38,10 @@ namespace Microsoft.Azure.EventHubs.Processor
         /// <returns>Checkpoint info for the given partition, or null if none has been previously stored.</returns>
         Task<Checkpoint> GetCheckpointAsync(string partitionId);
 
+        /// <summary>
+        /// Update the checkpoint in the store with the offset/sequenceNumber in the provided checkpoint.
+        /// </summary>
+        /// <param name="checkpoint">offset/sequeceNumber to update the store with.</param>
         [System.Obsolete("Use UpdateCheckpointAsync(Lease lease, Checkpoint checkpoint) instead", true)]
         Task UpdateCheckpointAsync(Checkpoint checkpoint);
 

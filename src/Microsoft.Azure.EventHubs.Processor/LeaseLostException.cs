@@ -5,6 +5,9 @@ namespace Microsoft.Azure.EventHubs.Processor
 {
     using System;
 
+    /// <summary>
+    /// Represents an exception that occurs when the service lease has been lost.
+    /// </summary>
     public class LeaseLostException : Exception
     {
         readonly string partitionId;
@@ -20,6 +23,9 @@ namespace Microsoft.Azure.EventHubs.Processor
             this.partitionId = partitionId;
         }
 
+        /// <summary>
+        /// Gets the partition ID where the exception occured.
+        /// </summary>
         public string PartitionId
         {
             get { return this.partitionId; }

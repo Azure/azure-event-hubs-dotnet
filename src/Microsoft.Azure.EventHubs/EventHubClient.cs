@@ -10,7 +10,7 @@ namespace Microsoft.Azure.EventHubs
 
     /// <summary>
     /// Anchor class - all EventHub client operations start here.
-    /// See <see cref="EventHubClient.Create(string)"/>
+    /// See <see cref="EventHubClient.CreateFromConnectionString(string)"/>
     /// </summary>
     public abstract class EventHubClient : ClientEntity
     {
@@ -24,10 +24,14 @@ namespace Microsoft.Azure.EventHubs
             this.RetryPolicy = RetryPolicy.Default;
         }
 
+        /// <summary>
+        /// Gets the name of the EventHub.
+        /// </summary>
         public string EventHubName { get; }
 
         internal EventHubsConnectionStringBuilder ConnectionStringBuilder { get; }
 
+        /// <summary></summary>
         protected object ThisLock { get; } = new object();
 
         EventDataSender InnerSender
@@ -49,6 +53,11 @@ namespace Microsoft.Azure.EventHubs
             }
         }
 
+        /// <summary>
+        /// Creates a new instance of the Event Hubs client using the specified connection string. You can populate the EntityPath property with the name of the Event Hub.
+        /// </summary>
+        /// <param name="connectionString"></param>
+        /// <returns></returns>
         public static EventHubClient CreateFromConnectionString(string connectionString)
         {
             if (string.IsNullOrWhiteSpace(connectionString))
@@ -73,6 +82,10 @@ namespace Microsoft.Azure.EventHubs
             return eventHubClient;
         }
 
+        /// <summary>
+        /// Closes and releases resources associated with <see cref="EventHubClient"/>.
+        /// </summary>
+        /// <returns></returns>
         public sealed override async Task CloseAsync()
         {
             EventHubsEventSource.Log.ClientCloseStart(this.ClientId);
@@ -172,7 +185,7 @@ namespace Microsoft.Azure.EventHubs
         ///  Using this type of send (Sending using a specific partitionKey) could sometimes result in partitions which are not evenly distributed. 
         /// </summary>
         /// <param name="eventData">the <see cref="EventData"/> to be sent.</param>
-        /// <param name="partitionKey">the partitionKey will be hashed to determine the partitionId to send the EventData to. On the Received message this can be accessed at <see cref="EventData.SystemProperties.PartitionKey"/>.</param>
+        /// <param name="partitionKey">the partitionKey will be hashed to determine the partitionId to send the EventData to. On the Received message this can be accessed at <see cref="EventData.SystemPropertiesCollection.PartitionKey"/>.</param>
         /// <returns>A Task that completes when the send operation is done.</returns>
         /// <seealso cref="SendAsync(EventData)"/>
         /// <seealso cref="PartitionSender.SendAsync(EventData)"/>
@@ -198,7 +211,7 @@ namespace Microsoft.Azure.EventHubs
         /// <para>ii.   Sending multiple events in One Transaction. This is the reason why all events sent in a batch needs to have same partitionKey (so that they are sent to one partition only).</para>
         /// </summary>
         /// <param name="eventDatas">the batch of events to send to EventHub</param>
-        /// <param name="partitionKey">the partitionKey will be hashed to determine the partitionId to send the EventData to. On the Received message this can be accessed at <see cref="EventData.SystemProperties.PartitionKey"/>.</param>
+        /// <param name="partitionKey">the partitionKey will be hashed to determine the partitionId to send the EventData to. On the Received message this can be accessed at <see cref="EventData.SystemPropertiesCollection.PartitionKey"/>.</param>
         /// <returns>A Task that completes when the send operation is done.</returns>
         /// <seealso cref="SendAsync(EventData)"/>
         /// <see cref="PartitionSender.SendAsync(EventData)"/>
@@ -287,7 +300,7 @@ namespace Microsoft.Azure.EventHubs
         /// </summary>
         /// <param name="consumerGroupName">the consumer group name that this receiver should be grouped under.</param>
         /// <param name="partitionId">the partition Id that the receiver belongs to. All data received will be from this partition only.</param>
-        /// <param name="startTime">the DateTime instant that receive operations will start receive events from. Events received will have <see cref="EventData.SystemProperties.EnqueuedTime"/> later than this Instant.</param>
+        /// <param name="startTime">the DateTime instant that receive operations will start receive events from. Events received will have <see cref="EventData.SystemPropertiesCollection.EnqueuedTimeUtc"/> later than this Instant.</param>
         /// <returns>The created PartitionReceiver</returns>
         /// <seealso cref="PartitionReceiver"/>
         public PartitionReceiver CreateReceiver(string consumerGroupName, string partitionId, DateTime startTime)
@@ -360,7 +373,7 @@ namespace Microsoft.Azure.EventHubs
         /// </summary>
         /// <param name="consumerGroupName">the consumer group name that this receiver should be grouped under.</param>
         /// <param name="partitionId">the partition Id that the receiver belongs to. All data received will be from this partition only.</param>
-        /// <param name="startTime">the date time instant that receive operations will start receive events from. Events received will have <see cref="EventData.SystemProperties.EnqueuedTime"/> later than this instant.</param>
+        /// <param name="startTime">the date time instant that receive operations will start receive events from. Events received will have <see cref="EventData.SystemPropertiesCollection.EnqueuedTimeUtc"/> later than this instant.</param>
         /// <param name="epoch">a unique identifier (epoch value) that the service uses, to enforce partition/lease ownership.</param>
         /// <returns>The created PartitionReceiver</returns>
         /// <seealso cref="PartitionReceiver"/>
@@ -400,6 +413,9 @@ namespace Microsoft.Azure.EventHubs
             }
         }
 
+        /// <summary>Retrieves runtime information for the specified partition of the Event Hub.</summary>
+        /// <param name="partitionId">The partition ID.</param>
+        /// <returns>Returns <see cref="EventHubPartitionRuntimeInformation" />.</returns>
         public async Task<EventHubPartitionRuntimeInformation> GetPartitionRuntimeInformationAsync(string partitionId)
         {
             if (string.IsNullOrWhiteSpace(partitionId))
@@ -424,6 +440,13 @@ namespace Microsoft.Azure.EventHubs
             }
         }
 
+        /// <summary>Creates a batch where event data objects can be added for later SendAsync call.</summary>
+        /// <returns>Returns <see cref="EventDataBatch" />.</returns>
+        public EventDataBatch CreateBatch()
+        {
+            return new EventDataBatch(this.InnerSender.MaxMessageSize);
+        }
+
         internal EventDataSender CreateEventSender(string partitionId = null)
         {
             return this.OnCreateEventSender(partitionId);
@@ -431,12 +454,27 @@ namespace Microsoft.Azure.EventHubs
 
         internal abstract EventDataSender OnCreateEventSender(string partitionId);
 
+        /// <summary></summary>
+        /// <param name="consumerGroupName"></param>
+        /// <param name="partitionId"></param>
+        /// <param name="startOffset"></param>
+        /// <param name="offsetInclusive"></param>
+        /// <param name="startTime"></param>
+        /// <param name="epoch"></param>
+        /// <returns></returns>
         protected abstract PartitionReceiver OnCreateReceiver(string consumerGroupName, string partitionId, string startOffset, bool offsetInclusive, DateTime? startTime, long? epoch);
 
+        /// <summary></summary>
+        /// <returns></returns>
         protected abstract Task<EventHubRuntimeInformation> OnGetRuntimeInformationAsync();
 
+        /// <summary></summary>
+        /// <param name="partitionId"></param>
+        /// <returns></returns>
         protected abstract Task<EventHubPartitionRuntimeInformation> OnGetPartitionRuntimeInformationAsync(string partitionId);
 
+        /// <summary></summary>
+        /// <returns></returns>
         protected abstract Task OnCloseAsync();
     }
 }

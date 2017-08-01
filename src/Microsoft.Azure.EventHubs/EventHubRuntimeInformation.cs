@@ -5,6 +5,9 @@ namespace Microsoft.Azure.EventHubs
 {
     using System;
 
+    /// <summary>
+    /// Contains information regarding Event Hubs.
+    /// </summary>
     public class EventHubRuntimeInformation
     {
         internal string Type { get; set; }

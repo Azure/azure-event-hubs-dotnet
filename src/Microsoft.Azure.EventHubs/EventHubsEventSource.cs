@@ -14,7 +14,7 @@ namespace Microsoft.Azure.EventHubs
     /// map to an EventSource Guid based on the Name (Microsoft-Azure-EventHubs).
     /// </summary>
     [EventSource(Name = "Microsoft-Azure-EventHubs")]
-    public class EventHubsEventSource : EventSource
+    internal sealed class EventHubsEventSource : EventSource
     {
         public static EventHubsEventSource Log { get; } = new EventHubsEventSource();
 

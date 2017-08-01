@@ -10,7 +10,7 @@ namespace Microsoft.Azure.EventHubs.Processor
 
     abstract class PartitionPump
     {   
-	    protected PartitionPump(EventProcessorHost host, Lease lease)
+        protected PartitionPump(EventProcessorHost host, Lease lease)
         {
             this.Host = host;
             this.Lease = lease;

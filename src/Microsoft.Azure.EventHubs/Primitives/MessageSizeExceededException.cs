@@ -10,7 +10,7 @@ namespace Microsoft.Azure.EventHubs
     /// </summary>
     public sealed class MessageSizeExceededException : EventHubsException
     {
-        public MessageSizeExceededException(string message)
+        internal MessageSizeExceededException(string message)
             : this(message, null)
         {
         }
