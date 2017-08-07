@@ -75,7 +75,7 @@ namespace Microsoft.Azure.EventHubs
             return this.eventDataList;
         }
 
-        static long GetSize(EventData eventData, bool first)
+        static long GetSize(EventData eventData)
         {
             // Create AMQP message here. We will use the same message while sending to save compute time.
             eventData.AmqpMessage = AmqpMessageConverter.EventDataToAmqpMessage(eventData);
