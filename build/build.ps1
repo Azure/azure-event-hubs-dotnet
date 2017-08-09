@@ -17,7 +17,7 @@ $testNamespace = 'Microsoft.Azure.EventHubs.Tests'
 # Environment variables
 $connectionStringVariableName = 'azure-event-hubs-dotnet/connectionstring'
 $storageConnectionStringVariableName = 'azure-event-hubs-dotnet/storageconnectionstring'
-<#$codeCovSecret = [Environment]::GetEnvironmentVariable('azure-event-hubs-dotnet/CodeCovSecret')#>
+$codeCovSecret = [Environment]::GetEnvironmentVariable('azure-event-hubs-dotnet/CodeCovSecret')
 $clientSecret = [Environment]::GetEnvironmentVariable('azure-event-hubs-dotnet/ClientSecret')
 $tenantId = [Environment]::GetEnvironmentVariable('azure-event-hubs-dotnet/TenantId')
 $appId = [Environment]::GetEnvironmentVariable('azure-event-hubs-dotnet/AppId')
