@@ -214,6 +214,7 @@ function Delete-AzureResources
 
 Build-Solution
 if (-Not $canDeploy -and -Not [bool][Environment]::GetEnvironmentVariable($connectionStringVariableName)) {
+    Write-Host 'Skipping deploy and unit tests - canDeploy:' $canDeploy
     return
 }
 try {
