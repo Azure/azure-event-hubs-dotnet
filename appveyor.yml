@@ -9,11 +9,11 @@ matrix:
 image: Visual Studio 2017
 environment:
   azure-event-hubs-dotnet/ClientSecret:
-    secure: /8H7C81iNS+gVi7LhJCEOPUlNaa30y4KcY4nw/g2C4HGxOv6SrcroyDvMnqD+5GN
+    secure: +30vtVYAECW7t7ieidatPhCEhvVjjbDUc2UA1SYtDwHa8NxR354pfn9ezxaMqIAR
   azure-event-hubs-dotnet/TenantId:
-    secure: xohonz/X8PPLOVIdT3ch2C5XeSa30RwR6NuXFh4e85svXT1mJNGGO1HQEGxCk3wp
+    secure: pDX+hB+9zbM0v7OQ44t1Ols0mfRl0BQlJY+ycuteSdZaK1NGJuMHFwS9ULeSBYS/
   azure-event-hubs-dotnet/AppId:
-    secure: c+H140oRJfHtmFHZxSRLWocv5AU0q33X7kgMcTcXxhJvtVhk2WAk1dRQkSN+SyoA
+    secure: NYwBqWBHvwwNfcKZjjLjCDSxPEVq1AH0DvJXQjVjPA/xpDT/e9SxCj4YpIMWwd+t
   matrix:
     # First build
     - DotNetRunTime: netcoreapp1.0
