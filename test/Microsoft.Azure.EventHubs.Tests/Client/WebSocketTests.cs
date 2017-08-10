@@ -26,7 +26,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             this.webSocketConnString = csb.ToString();
 
             // Remove secrets.
-            csb.SasKey = "";
+            csb.SasKey = "XXX";
             var webSocketConnStringTest = csb.ToString();
 
             Assert.True(webSocketConnString.Contains("TransportType=AmqpWebSockets"),
