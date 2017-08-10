@@ -179,7 +179,7 @@ namespace Microsoft.Azure.EventHubs {
         }
 
         /// <summary>
-        /// Gets localized string like: Please make sure either all or none of the following arguments are defined: '{0}'.
+        ///    Gets localized string like: Please make sure either all or none of the following arguments are defined: '{0}'.
         /// </summary>
         public static string ArgumentInvalidCombination
         {

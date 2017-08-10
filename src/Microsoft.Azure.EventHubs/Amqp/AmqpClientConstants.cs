@@ -65,10 +65,16 @@ namespace Microsoft.Azure.EventHubs.Amqp
         public const string ManagementEventHubPartitionCount = "partition_count";
         public const string ManagementEventHubPartitionIds = "partition_ids";
 
+        // Response codes
         public const string ResponseStatusCode = "status-code";
         public const string ResponseErrorCondition = "error-condition";
         public const string ResponseStatusDescription = "status-description";
 
+        // Web-sockets related constants
+        public const string WebSocketsPathSuffix = "/$servicebus/websocket/";
+        public const string UriSchemeWss = "wss";
+
+        // Miscellaneous 
         public const int AmqpMinimumOpenSessionTimeoutInSeconds = 60;
     }
 }
