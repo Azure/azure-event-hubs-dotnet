@@ -24,8 +24,13 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
 
             // Confirm connection string has transport-type set as desired.
             this.webSocketConnString = csb.ToString();
+
+            // Remove secrets.
+            csb.SasKey = "";
+            var webSocketConnStringTest = csb.ToString();
+
             Assert.True(webSocketConnString.Contains("TransportType=AmqpWebSockets"),
-                $"Web-sockets enabled connection string doesn't contain desired setting: {this.webSocketConnString}");
+                $"Web-sockets enabled connection string doesn't contain desired setting: {webSocketConnStringTest}");
         }
 
         [Fact]
