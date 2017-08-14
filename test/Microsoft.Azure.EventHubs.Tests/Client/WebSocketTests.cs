@@ -63,18 +63,33 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             TestUtility.Log("Creating Event Hub client");
             var ehClient = EventHubClient.CreateFromConnectionString(webSocketConnString);
 
-            // Send single message
-            TestUtility.Log("Sending single event");
-            var sender = ehClient.CreatePartitionSender(targetPartitionId);
-            var eventData = new EventData(Encoding.UTF8.GetBytes("This event will be transported via web-sockets"));
-            await sender.SendAsync(eventData);
+            PartitionSender sender = null;
+            try
+            {
+                // Send single message
+                TestUtility.Log("Sending single event");
+                sender = ehClient.CreatePartitionSender(targetPartitionId);
+                var eventData = new EventData(Encoding.UTF8.GetBytes("This event will be transported via web-sockets"));
+                await sender.SendAsync(eventData);
+            }
+            finally
+            {
+                await sender?.CloseAsync();
+            }
 
-            // Receive single message.
-            TestUtility.Log("Receiving single event");
-            var receiver = ehClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, targetPartitionId, PartitionReceiver.StartOfStream);
-            var msg = await receiver.ReceiveAsync(1);
-
-            Assert.True(msg != null, $"Failed to receive single event from partition {targetPartitionId}");
+            PartitionReceiver receiver = null;
+            try
+            {
+                // Receive single message.
+                TestUtility.Log("Receiving single event");
+                receiver = ehClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, targetPartitionId, PartitionReceiver.StartOfStream);
+                var msg = await receiver.ReceiveAsync(1);
+                Assert.True(msg != null, $"Failed to receive single event from partition {targetPartitionId}");
+            }
+            finally
+            {
+                await receiver?.CloseAsync();
+            }
         }
     }
 }
