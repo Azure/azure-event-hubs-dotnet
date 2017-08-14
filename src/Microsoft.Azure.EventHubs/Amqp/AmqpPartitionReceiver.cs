@@ -142,7 +142,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                                 {
                                     // We omit any failures from ProcessErrorAsync
                                     return true;
-                                }));
+                                }), TaskContinuationOptions.OnlyOnFaulted);
                     }
 
                     this.receiveHandler = newReceiveHandler;
