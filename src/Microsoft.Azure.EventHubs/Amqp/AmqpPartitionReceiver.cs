@@ -310,7 +310,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                             batchSize = receiveHandler.MaxBatchSize;
                         }
 
-                        receivedEvents = await this.ReceiveAsync(batchSize);
+                        receivedEvents = await this.ReceiveAsync(batchSize).ConfigureAwait(false);
                     }
                     catch (Exception e)
                     {
@@ -318,7 +318,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                         await this.ReceiveHandlerProcessErrorAsync(e).ConfigureAwait(false);
 
                         // Avoid tight loop if Receieve call keeps faling.
-                        await Task.Delay(100);
+                        await Task.Delay(100).ConfigureAwait(false);
 
                         continue;
                     }

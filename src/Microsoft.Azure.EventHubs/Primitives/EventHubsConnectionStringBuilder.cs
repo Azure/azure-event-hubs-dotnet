@@ -7,6 +7,22 @@ namespace Microsoft.Azure.EventHubs
     using System.Text;
 
     /// <summary>
+    ///  Supported transport types
+    /// </summary>
+    public enum TransportType
+    {
+        /// <summary>
+        /// AMQP over the default TCP transport protocol
+        /// </summary>
+        Amqp,
+
+        /// <summary>
+        /// AMQP over the Web Sockets transport protocol
+        /// </summary>
+        AmqpWebSockets
+    }
+
+    /// <summary>
     /// EventHubsConnectionStringBuilder can be used to construct a connection string which can establish communication with Event Hubs entities.
     /// It can also be used to perform basic validation on an existing connection string.
     /// <para/>
@@ -34,14 +50,16 @@ namespace Microsoft.Azure.EventHubs
         const char KeyValuePairDelimiter = ';';
 
         static readonly TimeSpan DefaultOperationTimeout = TimeSpan.FromMinutes(1);
+        static readonly TransportType DefaultTransportType = TransportType.Amqp;
         static readonly string EndpointScheme = "amqps";
         static readonly string EndpointConfigName = "Endpoint";
         static readonly string SharedAccessKeyNameConfigName = "SharedAccessKeyName";
         static readonly string SharedAccessKeyConfigName = "SharedAccessKey";
         static readonly string EntityPathConfigName = "EntityPath";
+        static readonly string OperationTimeoutConfigName = "OperationTimeout";
+        static readonly string TransportTypeConfigName = "TransportType";
         static readonly string OperationTimeoutName = "OperationTimeout";
         static readonly string SharedAccessSignatureConfigName = "SharedAccessSignature";
-
 
         /// <summary>
         /// Build a connection string consumable by <see cref="EventHubClient.CreateFromConnectionString(string)"/>
@@ -73,31 +91,15 @@ namespace Microsoft.Azure.EventHubs
             string sharedAccessKeyName,
             string sharedAccessKey,
             TimeSpan operationTimeout)
+            : this(endpointAddress, entityPath, operationTimeout)
         {
-            if (endpointAddress == null)
-            {
-                throw Fx.Exception.ArgumentNull(nameof(endpointAddress));
-            }
-            if (string.IsNullOrWhiteSpace(entityPath))
-            {
-                throw Fx.Exception.ArgumentNullOrWhiteSpace(nameof(entityPath));
-            }
             if (string.IsNullOrWhiteSpace(sharedAccessKeyName) || string.IsNullOrWhiteSpace(sharedAccessKey))
             {
                 throw Fx.Exception.ArgumentNullOrWhiteSpace(string.IsNullOrWhiteSpace(sharedAccessKeyName) ? nameof(sharedAccessKeyName) : nameof(sharedAccessKey));
             }
 
-            // Replace the scheme. We cannot really make sure that user passed an amqps:// scheme to us.
-            var uriBuilder = new UriBuilder(endpointAddress.AbsoluteUri)
-            {
-                Scheme = EndpointScheme
-            };
-            this.Endpoint = uriBuilder.Uri;
-
-            this.EntityPath = entityPath;
             this.SasKey = sharedAccessKey;
             this.SasKeyName = sharedAccessKeyName;
-            this.OperationTimeout = operationTimeout;
         }
 
         /// <summary>
@@ -112,6 +114,20 @@ namespace Microsoft.Azure.EventHubs
             string entityPath,
             string sharedAccessSignature,
             TimeSpan operationTimeout)
+            : this(endpointAddress, entityPath, operationTimeout)
+        {
+            if (string.IsNullOrWhiteSpace(SharedAccessSignature))
+            {
+                throw Fx.Exception.ArgumentNullOrWhiteSpace(nameof(sharedAccessSignature));
+            }
+
+            this.SharedAccessSignature = sharedAccessSignature;
+        }
+
+        EventHubsConnectionStringBuilder(
+            Uri endpointAddress,
+            string entityPath,
+            TimeSpan operationTimeout)
         {
             if (endpointAddress == null)
             {
@@ -120,10 +136,6 @@ namespace Microsoft.Azure.EventHubs
             if (string.IsNullOrWhiteSpace(entityPath))
             {
                 throw Fx.Exception.ArgumentNullOrWhiteSpace(nameof(entityPath));
-            }
-            if (string.IsNullOrWhiteSpace(SharedAccessSignature))
-            {
-                throw Fx.Exception.ArgumentNullOrWhiteSpace(nameof(sharedAccessSignature));
             }
 
             // Replace the scheme. We cannot really make sure that user passed an amps:// scheme to us.
@@ -134,8 +146,8 @@ namespace Microsoft.Azure.EventHubs
             this.Endpoint = uriBuilder.Uri;
 
             this.EntityPath = entityPath;
-            this.SharedAccessSignature = sharedAccessSignature;
             this.OperationTimeout = operationTimeout;
+            this.TransportType = DefaultTransportType;
         }
 
         /// <summary>
@@ -152,6 +164,7 @@ namespace Microsoft.Azure.EventHubs
 
             // Assign default values.
             this.OperationTimeout = DefaultOperationTimeout;
+            this.TransportType = TransportType.Amqp;
 
             // Parse the connection string now and override default values if any provided.
             this.ParseConnectionString(connectionString);
@@ -188,6 +201,13 @@ namespace Microsoft.Azure.EventHubs
         /// OperationTimeout is applied in erroneous situations to notify the caller about the relevant <see cref="EventHubsException"/>
         /// </summary>
         public TimeSpan OperationTimeout { get; set; }
+
+        /// <summary>
+        /// Transport type for the client connection.
+        /// Avaiable options are Amqp and AmqpWebSockets.
+        /// Defaults to Amqp if not specified.
+        /// </summary>
+        public TransportType TransportType { get; set; }
 
         /// <summary>
         /// Creates a cloned object of the current <see cref="EventHubsConnectionStringBuilder"/>.
@@ -235,7 +255,12 @@ namespace Microsoft.Azure.EventHubs
 
             if (this.OperationTimeout != DefaultOperationTimeout)
             {
-                connectionStringBuilder.Append($"{OperationTimeoutName}{KeyValueSeparator}{this.OperationTimeout}");
+                connectionStringBuilder.Append($"{OperationTimeoutConfigName}{KeyValueSeparator}{this.OperationTimeout}{KeyValuePairDelimiter}");
+            }
+
+            if (this.TransportType != DefaultTransportType)
+            {
+                connectionStringBuilder.Append($"{TransportTypeConfigName}{KeyValueSeparator}{TransportType}{KeyValuePairDelimiter}");
             }
 
             return connectionStringBuilder.ToString();
@@ -317,6 +342,10 @@ namespace Microsoft.Azure.EventHubs
                 else if (key.Equals(OperationTimeoutName, StringComparison.OrdinalIgnoreCase))
                 {
                     this.OperationTimeout = TimeSpan.Parse(value);
+                }
+                else if (key.Equals(TransportTypeConfigName, StringComparison.OrdinalIgnoreCase))
+                {
+                    this.TransportType = (TransportType)Enum.Parse(typeof(TransportType), value);
                 }
                 else
                 {
