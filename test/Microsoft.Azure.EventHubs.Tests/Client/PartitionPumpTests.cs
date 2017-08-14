@@ -104,6 +104,8 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
                 // Not expecting any errors.
                 handler.ErrorReceived += (s, e) =>
                 {
+                    // SetReceiveHandler will ignore any exception thrown so log here for output.
+                    TestUtility.Log($"TestPartitionReceiveHandler.ProcessError {e.GetType().Name}: {e.Message}");
                     throw new Exception($"TestPartitionReceiveHandler.ProcessError {e.GetType().Name}: {e.Message}");
                 };
 
@@ -121,12 +123,23 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
                 partitionReceiver.SetReceiveHandler(null);
                 TestUtility.Log("Registering");
                 partitionReceiver.SetReceiveHandler(handler);
+                await Task.Delay(3000);
+
+                // Second register call will trigger error handler but throw from handler should be ignored
+                // so below register call should not fail.
+                TestUtility.Log("Registering when already registered");
+                partitionReceiver.SetReceiveHandler(handler);
+
                 TestUtility.Log("All register calls done.");
+
+                // Send another set of messages.
+                // Since handler is still registered we should be able to receive these messages just fine.
+                await TestUtility.SendToPartitionAsync(this.EventHubClient, partitionId, $"{partitionId} event.", totalNumberOfMessagesToSend);
 
                 // Allow 1 minute to receive all messages.
                 await Task.Delay(TimeSpan.FromSeconds(60));
                 TestUtility.Log($"Received {totalnumberOfMessagesReceived}.");
-                Assert.True(totalnumberOfMessagesReceived == totalNumberOfMessagesToSend, $"Did not receive {totalNumberOfMessagesToSend} messages.");
+                Assert.True(totalnumberOfMessagesReceived == totalNumberOfMessagesToSend * 2, $"Did not receive {totalNumberOfMessagesToSend * 2} messages, received {totalnumberOfMessagesReceived}.");
             }
             finally
             {

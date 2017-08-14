@@ -135,7 +135,14 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     if (this.receiveHandler != null)
                     {
                         // Notify existing handler first (but don't wait).
-                        this.receiveHandler.ProcessErrorAsync(new OperationCanceledException("New handler has registered for this receiver."));
+                        Task.Run(() =>
+                            this.receiveHandler.ProcessErrorAsync(new OperationCanceledException("New handler has registered for this receiver.")))
+                            .ContinueWith(t =>
+                                t.Exception.Handle(ex =>
+                                {
+                                    // We omit any failures from ProcessErrorAsync
+                                    return true;
+                                }));
                     }
 
                     this.receiveHandler = newReceiveHandler;
