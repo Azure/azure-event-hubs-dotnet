@@ -120,6 +120,9 @@
   <data name="AmqpMessageSizeExceeded" xml:space="preserve">
     <value>The received message (delivery-id:{0}, size:{1} bytes) exceeds the limit ({2} bytes) currently allowed on the link.</value>
   </data>
+  <data name="ArgumentInvalidCombination" xml:space="preserve">
+    <value>Please make sure either all or none of the following arguments are defined: '{0},{1}'.</value>
+  </data>
   <data name="ArgumentNullOrWhiteSpace" xml:space="preserve">
     <value>The argument {0} is null or white space.</value>
   </data>
@@ -140,6 +143,9 @@
   </data>
   <data name="PartitionInvalidPartitionKey" xml:space="preserve">
     <value>The specified partitionKey '{0}' is invalid for partition '{1}'. Do not specify a partitionKey when sending using a PartitionedSender.  Instead use EventHubClient.Send.</value>
+  </data>
+  <data name="SasTokenShouldBeAlone" xml:space="preserve">
+    <value>{0} cannot be specified along with {1}. {0} alone should be sufficient to Authenticate the request.</value>
   </data>
   <data name="TimeoutMustBeNonNegative" xml:space="preserve">
     <value>Argument {0} must be a non-negative timeout value. The provided value was {1}.</value>

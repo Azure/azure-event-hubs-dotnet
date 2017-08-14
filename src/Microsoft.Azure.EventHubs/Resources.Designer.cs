@@ -166,5 +166,27 @@ namespace Microsoft.Azure.EventHubs {
                 return ResourceManager.GetString("TokenMissingExpiresOn", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///    Looks up a localized string similar to {0} cannot be specified along with {1}. {0} alone should be...
+        /// </summary>
+        public static string SasTokenShouldBeAlone
+        {
+            get
+            {
+                return ResourceManager.GetString("SasTokenShouldBeAlone", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///    Gets localized string like: Please make sure either all or none of the following arguments are defined: '{0}'.
+        /// </summary>
+        public static string ArgumentInvalidCombination
+        {
+            get
+            {
+                return ResourceManager.GetString("ArgumentInvalidCombination", resourceCulture);
+            }
+        }
     }
 }

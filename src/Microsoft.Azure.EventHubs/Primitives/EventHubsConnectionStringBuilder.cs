@@ -7,6 +7,22 @@ namespace Microsoft.Azure.EventHubs
     using System.Text;
 
     /// <summary>
+    ///  Supported transport types
+    /// </summary>
+    public enum TransportType
+    {
+        /// <summary>
+        /// AMQP over the default TCP transport protocol
+        /// </summary>
+        Amqp,
+
+        /// <summary>
+        /// AMQP over the Web Sockets transport protocol
+        /// </summary>
+        AmqpWebSockets
+    }
+
+    /// <summary>
     /// EventHubsConnectionStringBuilder can be used to construct a connection string which can establish communication with Event Hubs entities.
     /// It can also be used to perform basic validation on an existing connection string.
     /// <para/>
@@ -34,12 +50,16 @@ namespace Microsoft.Azure.EventHubs
         const char KeyValuePairDelimiter = ';';
 
         static readonly TimeSpan DefaultOperationTimeout = TimeSpan.FromMinutes(1);
+        static readonly TransportType DefaultTransportType = TransportType.Amqp;
         static readonly string EndpointScheme = "amqps";
         static readonly string EndpointConfigName = "Endpoint";
         static readonly string SharedAccessKeyNameConfigName = "SharedAccessKeyName";
         static readonly string SharedAccessKeyConfigName = "SharedAccessKey";
         static readonly string EntityPathConfigName = "EntityPath";
+        static readonly string OperationTimeoutConfigName = "OperationTimeout";
+        static readonly string TransportTypeConfigName = "TransportType";
         static readonly string OperationTimeoutName = "OperationTimeout";
+        static readonly string SharedAccessSignatureConfigName = "SharedAccessSignature";
 
         /// <summary>
         /// Build a connection string consumable by <see cref="EventHubClient.CreateFromConnectionString(string)"/>
@@ -71,6 +91,43 @@ namespace Microsoft.Azure.EventHubs
             string sharedAccessKeyName,
             string sharedAccessKey,
             TimeSpan operationTimeout)
+            : this(endpointAddress, entityPath, operationTimeout)
+        {
+            if (string.IsNullOrWhiteSpace(sharedAccessKeyName) || string.IsNullOrWhiteSpace(sharedAccessKey))
+            {
+                throw Fx.Exception.ArgumentNullOrWhiteSpace(string.IsNullOrWhiteSpace(sharedAccessKeyName) ? nameof(sharedAccessKeyName) : nameof(sharedAccessKey));
+            }
+
+            this.SasKey = sharedAccessKey;
+            this.SasKeyName = sharedAccessKeyName;
+        }
+
+        /// <summary>
+        /// Build a connection string consumable by <see cref="EventHubClient.CreateFromConnectionString(string)"/>
+        /// </summary>
+        /// <param name="endpointAddress">Fully qualified domain name for Event Hubs. Most likely, {yournamespace}.servicebus.windows.net</param>
+        /// <param name="entityPath">Entity path or Event Hub name.</param>
+        /// <param name="sharedAccessSignature">Shared Access Signature</param>
+        /// <param name="operationTimeout">Operation timeout for Event Hubs operations</param>
+        public EventHubsConnectionStringBuilder(
+            Uri endpointAddress,
+            string entityPath,
+            string sharedAccessSignature,
+            TimeSpan operationTimeout)
+            : this(endpointAddress, entityPath, operationTimeout)
+        {
+            if (string.IsNullOrWhiteSpace(SharedAccessSignature))
+            {
+                throw Fx.Exception.ArgumentNullOrWhiteSpace(nameof(sharedAccessSignature));
+            }
+
+            this.SharedAccessSignature = sharedAccessSignature;
+        }
+
+        EventHubsConnectionStringBuilder(
+            Uri endpointAddress,
+            string entityPath,
+            TimeSpan operationTimeout)
         {
             if (endpointAddress == null)
             {
@@ -79,10 +136,6 @@ namespace Microsoft.Azure.EventHubs
             if (string.IsNullOrWhiteSpace(entityPath))
             {
                 throw Fx.Exception.ArgumentNullOrWhiteSpace(nameof(entityPath));
-            }
-            if (string.IsNullOrWhiteSpace(sharedAccessKeyName) || string.IsNullOrWhiteSpace(sharedAccessKey))
-            {
-                throw Fx.Exception.ArgumentNullOrWhiteSpace(string.IsNullOrWhiteSpace(sharedAccessKeyName) ? nameof(sharedAccessKeyName) : nameof(sharedAccessKey));
             }
 
             // Replace the scheme. We cannot really make sure that user passed an amps:// scheme to us.
@@ -93,9 +146,8 @@ namespace Microsoft.Azure.EventHubs
             this.Endpoint = uriBuilder.Uri;
 
             this.EntityPath = entityPath;
-            this.SasKey = sharedAccessKey;
-            this.SasKeyName = sharedAccessKeyName;
             this.OperationTimeout = operationTimeout;
+            this.TransportType = DefaultTransportType;
         }
 
         /// <summary>
@@ -112,6 +164,7 @@ namespace Microsoft.Azure.EventHubs
 
             // Assign default values.
             this.OperationTimeout = DefaultOperationTimeout;
+            this.TransportType = TransportType.Amqp;
 
             // Parse the connection string now and override default values if any provided.
             this.ParseConnectionString(connectionString);
@@ -134,6 +187,12 @@ namespace Microsoft.Azure.EventHubs
         public string SasKeyName { get; set; }
 
         /// <summary>
+        /// Gets or sets the SAS access token.
+        /// </summary>
+        /// <value>Shared Access Signature</value>
+        public string SharedAccessSignature { get; set; }
+        
+        /// <summary>
         /// Get the entity path value from the connection string
         /// </summary>
         public string EntityPath { get; set; }
@@ -142,6 +201,13 @@ namespace Microsoft.Azure.EventHubs
         /// OperationTimeout is applied in erroneous situations to notify the caller about the relevant <see cref="EventHubsException"/>
         /// </summary>
         public TimeSpan OperationTimeout { get; set; }
+
+        /// <summary>
+        /// Transport type for the client connection.
+        /// Avaiable options are Amqp and AmqpWebSockets.
+        /// Defaults to Amqp if not specified.
+        /// </summary>
+        public TransportType TransportType { get; set; }
 
         /// <summary>
         /// Creates a cloned object of the current <see cref="EventHubsConnectionStringBuilder"/>.
@@ -160,6 +226,7 @@ namespace Microsoft.Azure.EventHubs
         /// <returns>the connection string</returns>
         public override string ToString()
         {
+            this.Validate();
             var connectionStringBuilder = new StringBuilder();
             if (this.Endpoint != null)
             {
@@ -181,12 +248,60 @@ namespace Microsoft.Azure.EventHubs
                 connectionStringBuilder.Append($"{SharedAccessKeyConfigName}{KeyValueSeparator}{this.SasKey}{KeyValuePairDelimiter}");
             }
 
+            if (!string.IsNullOrWhiteSpace(this.SharedAccessSignature))
+            {
+                connectionStringBuilder.Append($"{SharedAccessSignatureConfigName}{KeyValueSeparator}{this.SharedAccessSignature}{KeyValuePairDelimiter}");
+            }
+
             if (this.OperationTimeout != DefaultOperationTimeout)
             {
-                connectionStringBuilder.Append($"{OperationTimeoutName}{KeyValueSeparator}{this.OperationTimeout}");
+                connectionStringBuilder.Append($"{OperationTimeoutConfigName}{KeyValueSeparator}{this.OperationTimeout}{KeyValuePairDelimiter}");
+            }
+
+            if (this.TransportType != DefaultTransportType)
+            {
+                connectionStringBuilder.Append($"{TransportTypeConfigName}{KeyValueSeparator}{TransportType}{KeyValuePairDelimiter}");
             }
 
             return connectionStringBuilder.ToString();
+        }
+
+        void Validate()
+        {
+            if (this.Endpoint == null)
+            {
+                throw Fx.Exception.ArgumentNullOrWhiteSpace(EndpointConfigName);
+            }
+
+            // if one supplied sharedAccessKeyName, they need to supply sharedAccesssecret, and vise versa
+            // if SharedAccessSignature is specified, SasKey or SasKeyName should not be specified
+            var hasSasKeyName = !string.IsNullOrWhiteSpace(this.SasKeyName);
+            var hasSasKey = !string.IsNullOrWhiteSpace(this.SasKey);
+            var hasSharedAccessSignature = !string.IsNullOrWhiteSpace(this.SharedAccessSignature);
+
+            if (hasSharedAccessSignature)
+            {
+                if (hasSasKeyName)
+                {
+                    throw Fx.Exception.Argument(
+                        string.Format("{0},{1}", SharedAccessSignatureConfigName, SharedAccessKeyNameConfigName),
+                        Resources.SasTokenShouldBeAlone.FormatForUser(SharedAccessSignatureConfigName, SharedAccessKeyNameConfigName));
+                }
+
+                if (hasSasKey)
+                {
+                    throw Fx.Exception.Argument(
+                        string.Format("{0},{1}", SharedAccessSignatureConfigName, SharedAccessKeyConfigName),
+                        Resources.SasTokenShouldBeAlone.FormatForUser(SharedAccessSignatureConfigName, SharedAccessKeyConfigName));
+                }
+            }
+
+            if (hasSasKeyName && !hasSasKey || !hasSasKeyName && hasSasKey)
+            {
+                throw Fx.Exception.Argument(
+                    string.Format("{0},{1}", SharedAccessKeyNameConfigName, SharedAccessKeyConfigName),
+                    Resources.ArgumentInvalidCombination.FormatForUser(SharedAccessKeyNameConfigName, SharedAccessKeyConfigName));
+            }
         }
 
         void ParseConnectionString(string connectionString)
@@ -220,9 +335,17 @@ namespace Microsoft.Azure.EventHubs
                 {
                     this.SasKey = value;
                 }
+                else if (key.Equals(SharedAccessSignatureConfigName, StringComparison.OrdinalIgnoreCase))
+                {
+                    this.SharedAccessSignature = value;
+                }
                 else if (key.Equals(OperationTimeoutName, StringComparison.OrdinalIgnoreCase))
                 {
                     this.OperationTimeout = TimeSpan.Parse(value);
+                }
+                else if (key.Equals(TransportTypeConfigName, StringComparison.OrdinalIgnoreCase))
+                {
+                    this.TransportType = (TransportType)Enum.Parse(typeof(TransportType), value);
                 }
                 else
                 {

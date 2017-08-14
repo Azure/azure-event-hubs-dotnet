@@ -55,7 +55,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
         [DisplayTestMethodName]
         async Task SmallReceiveTimeout()
         {
-            var maxClients = 5;
+            var maxClients = 4;
 
             // Issue receives with 1 second so that some of the Receive calls will timeout while creating AMQP link.
             // Even those Receive calls should return NULL instead of bubbling the exception up.

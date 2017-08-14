@@ -75,5 +75,46 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             Assert.True(totalReceived == NumberOfMessagesToSend,
                 $"Didn't receive the same number of messages that we sent. Sent: {NumberOfMessagesToSend}, Received: {totalReceived}");
         }
+
+        [Fact]
+        [DisplayTestMethodName]
+        async Task UseSharedAccessSignature()
+        {
+            // Generate shared access token.
+            var csb = new EventHubsConnectionStringBuilder(TestUtility.EventHubsConnectionString);
+            var tokenProvider = TokenProvider.CreateSharedAccessSignatureTokenProvider(csb.SasKeyName, csb.SasKey);
+            var token = await tokenProvider.GetTokenAsync(csb.Endpoint.ToString(), "Send,Receive", TimeSpan.FromSeconds(120));
+            var sas = token.TokenValue.ToString();
+
+            // Update connection string builder to use shared access signature instead.
+            csb.SasKey = "";
+            csb.SasKeyName = "";
+            csb.SharedAccessSignature = sas;
+
+            // Create new client with updated connection string.
+            var ehClient = EventHubClient.CreateFromConnectionString(csb.ToString());
+
+            // Send one event
+            TestUtility.Log($"Sending one message.");
+            var ehSender = ehClient.CreatePartitionSender("0");
+            var eventData = new EventData(Encoding.UTF8.GetBytes("Hello EventHub by partitionKey!"));
+            await ehSender.SendAsync(eventData);
+
+            // Receive event.
+            TestUtility.Log($"Receiving one message.");
+            var ehReceiver = ehClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", PartitionReceiver.StartOfStream);
+            var msg = await ehReceiver.ReceiveAsync(1);
+            Assert.True(msg != null, "Failed to receive message.");
+
+            // Get EH runtime information.
+            TestUtility.Log($"Getting Event Hub runtime information.");
+            var ehInfo = await ehClient.GetRuntimeInformationAsync();
+            Assert.True(ehInfo != null, "Failed to get runtime information.");
+
+            // Get EH partition runtime information.
+            TestUtility.Log($"Getting Event Hub partition '0' runtime information.");
+            var partitionInfo = await ehClient.GetPartitionRuntimeInformationAsync("0");
+            Assert.True(ehInfo != null, "Failed to get runtime partition information.");
+        }
     }
 }
