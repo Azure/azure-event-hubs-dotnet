@@ -22,9 +22,9 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             TestUtility.Log("Discovering end of stream on each partition.");
             foreach (var partitionId in this.PartitionIds)
             {
-                var lastEvent = await DiscoverEndOfStreamForPartition(partitionId);
-                partitionOffsets.Add(partitionId, lastEvent.Item1);
-                TestUtility.Log($"Partition {partitionId} has last message with offset {lastEvent.Item1}");
+                var lastEvent = await this.EventHubClient.GetPartitionRuntimeInformationAsync(partitionId);
+                partitionOffsets.Add(partitionId, lastEvent.LastEnqueuedOffset);
+                TestUtility.Log($"Partition {partitionId} has last message with offset {lastEvent.LastEnqueuedOffset}");
             }
 
             // Now send a set of messages with different partition keys.
