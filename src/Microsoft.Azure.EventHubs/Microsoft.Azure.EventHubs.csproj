@@ -53,7 +53,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Azure.Amqp" Version="2.1.0" />
+    <PackageReference Include="Microsoft.Azure.Amqp" Version="2.1.1" />
   </ItemGroup>
 
 </Project>
