@@ -75,6 +75,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
         public const string UriSchemeWss = "wss";
 
         // Miscellaneous 
-        public const int AmqpMinimumOpenSessionTimeoutInSeconds = 60;
+        public const int AmqpSessionTimeoutInSeconds = 30;
     }
 }
