@@ -4,15 +4,18 @@
 namespace Microsoft.Azure.EventHubs
 {
     using System;
+    using System.Collections;
     using System.Collections.Generic;
     using Microsoft.Azure.EventHubs.Amqp;
 
     /// <summary>A helper class for creating a batch of EventData objects to be used for SendBatch or SendBatchAsync call.</summary>
-    public class EventDataBatch : IDisposable
+    public class EventDataBatch : IEnumerable<EventData>, IDisposable
     {
         const int MaxSizeLimit = 4 * 1024 * 1024;
+
         readonly List<EventData> eventDataList;
-        long maxSize;
+        readonly long maxSize;
+
         long currentSize;
         bool disposed;
 
@@ -20,8 +23,10 @@ namespace Microsoft.Azure.EventHubs
         /// Creates a new <see cref="EventDataBatch"/>.
         /// </summary>
         /// <param name="maxSizeInBytes">The maximum size allowed for the batch</param>
-        public EventDataBatch(long maxSizeInBytes)
+        /// <param name="partitionKey">Partition key associated with the batch</param>
+        public EventDataBatch(long maxSizeInBytes, string partitionKey = null)
         {
+            this.PartitionKey = partitionKey;
             this.maxSize = Math.Min(maxSizeInBytes, MaxSizeLimit);
             this.eventDataList = new List<EventData>();
             this.currentSize = (maxSizeInBytes / 65536) * 1024;    // reserve 1KB for every 64KB
@@ -66,20 +71,17 @@ namespace Microsoft.Azure.EventHubs
             return true;
         }
 
-        /// <summary>Converts the batch to an IEnumerable of EventData objects that can be accepted by the
-        /// SendBatchAsync method.</summary>
-        /// <returns>Returns an IEnumerable of EventData objects.</returns>
-        public IEnumerable<EventData> ToEnumerable()
+        internal string PartitionKey
         {
-            this.ThrowIfDisposed();
-            return this.eventDataList;
+            get; set;
         }
 
-        static long GetSize(EventData eventData)
+        long GetSize(EventData eventData)
         {
             // Create AMQP message here. We will use the same message while sending to save compute time.
-            eventData.AmqpMessage = AmqpMessageConverter.EventDataToAmqpMessage(eventData);
-
+            var amqpMessage = AmqpMessageConverter.EventDataToAmqpMessage(eventData);
+            AmqpMessageConverter.UpdateAmqpMessagePartitionKey(amqpMessage, this.PartitionKey);
+            eventData.AmqpMessage = amqpMessage;
             return eventData.AmqpMessage.SerializedMessageSize;
         }
 
@@ -115,5 +117,19 @@ namespace Microsoft.Azure.EventHubs
                 throw new ObjectDisposedException(this.GetType().Name);
             }
         }
-   }
+
+        /// <summary>Converts the batch to an IEnumerable of EventData objects that can be accepted by the
+        /// SendBatchAsync method.</summary>
+        /// <returns>Returns an IEnumerable of EventData objects.</returns>
+        public IEnumerator<EventData> GetEnumerator()
+        {
+            this.ThrowIfDisposed();
+            return this.eventDataList.GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return (IEnumerator)GetEnumerator();
+        }
+    }
 }

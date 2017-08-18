@@ -116,5 +116,21 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             var partitionInfo = await ehClient.GetPartitionRuntimeInformationAsync("0");
             Assert.True(ehInfo != null, "Failed to get runtime partition information.");
         }
+
+        [Fact]
+        [DisplayTestMethodName]
+        async Task SendAndReceiveLargeMessage()
+        {
+            var bodySize = 250 * 1024;
+            var targetPartition = "0";
+
+            var edToSend = new EventData(new byte[bodySize]);
+
+            TestUtility.Log($"Sending one message with body size {bodySize} bytes.");
+            var edReceived = await SendAndReceiveEvent(targetPartition, edToSend);
+
+            // Validate array segment count.
+            Assert.True(edReceived.Body.Count == bodySize, $"Sent {bodySize} bytes and received {edReceived.Body.Count}");
+        }
     }
 }

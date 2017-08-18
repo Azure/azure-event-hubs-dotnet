@@ -38,6 +38,13 @@ namespace Microsoft.Azure.EventHubs
 
         object ThisLock { get; } = new object();
 
+        /// <summary>Creates a batch where event data objects can be added for later SendAsync call.</summary>
+        /// <returns>Returns <see cref="EventDataBatch" />.</returns>
+        public EventDataBatch CreateBatch()
+        {
+            return new EventDataBatch(this.InnerSender.MaxMessageSize);
+        }
+
         /// <summary>
         /// Send <see cref="EventData"/> to a specific EventHub partition. The target partition is pre-determined when this PartitionSender was created.
         /// This send pattern emphasizes data correlation over general availability and latency.
@@ -107,6 +114,11 @@ namespace Microsoft.Azure.EventHubs
             if (eventDatas == null)
             {
                 throw Fx.Exception.ArgumentNull(nameof(eventDatas));
+            }
+
+            if (eventDatas is EventDataBatch && !string.IsNullOrEmpty(((EventDataBatch)eventDatas).PartitionKey))
+            {
+                throw Fx.Exception.Argument("partiitonKey", Resources.PartitionSenderInvalidWithPartitionKeyOnBatch);
             }
 
             int count = EventDataSender.ValidateEvents(eventDatas, this.PartitionId, null);

@@ -65,7 +65,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
                     // Create AMQP message if not created yet.
                     AmqpMessage amqpMessage = data.AmqpMessage;
-                    if (amqpMessage == null)
+                    if (true || amqpMessage == null)
                     {
                         amqpMessage = EventDataToAmqpMessage(data);
                     }
@@ -117,6 +117,14 @@ namespace Microsoft.Azure.EventHubs.Amqp
             return amqpMessage;
         }
 
+        public static void UpdateAmqpMessagePartitionKey(AmqpMessage message, string partitionKey)
+        {
+            if (partitionKey != null)
+            {
+                message.MessageAnnotations.Map[PartitionKeyName] = partitionKey;
+            }
+        }
+
         static void UpdateAmqpMessageHeadersAndProperties(
             AmqpMessage message,
             string publisher,
@@ -143,14 +151,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
                         message.ApplicationProperties.Map[pair.Key] = amqpObject;
                     }
                 }
-            }
-        }
-
-        static void UpdateAmqpMessagePartitionKey(AmqpMessage message, string partitionKey)
-        {
-            if (partitionKey != null)
-            {
-                message.MessageAnnotations.Map[PartitionKeyName] = partitionKey;
             }
         }
 
