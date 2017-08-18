@@ -61,7 +61,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             if (this.PumpStatus == PartitionPumpStatus.OpenFailed)
             {
                 this.PumpStatus = PartitionPumpStatus.Closing;
-                await this.CleanUpClientsAsync();
+                await this.CleanUpClientsAsync().ConfigureAwait(false);
                 this.PumpStatus = PartitionPumpStatus.Closed;
             }
         }
