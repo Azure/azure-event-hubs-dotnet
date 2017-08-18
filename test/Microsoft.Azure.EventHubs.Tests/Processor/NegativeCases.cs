@@ -164,18 +164,19 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
                 TestUtility.Log("Waiting for partition ownership to settle...");
                 await Task.Delay(TimeSpan.FromSeconds(5));
 
+                var client = EventHubClient.CreateFromConnectionString(TestUtility.EventHubsConnectionString);
+
                 // Send first set of messages.
                 TestUtility.Log("Sending an event to each partition as the first set of messages.");
                 var sendTasks = new List<Task>();
                 foreach (var partitionId in PartitionIds)
                 {
-                    sendTasks.Add(this.SendToPartitionAsync(partitionId, $"{partitionId} event.", TestUtility.EventHubsConnectionString));
+                    sendTasks.Add(TestUtility.SendToPartitionAsync(client, partitionId, $"{partitionId} event."));
                 }
                 await Task.WhenAll(sendTasks);
 
                 // Now send 1 poisoned message. This will fail one of the partition pumps.
                 TestUtility.Log($"Sending a poison event to partition {PartitionIds.First()}");
-                var client = EventHubClient.CreateFromConnectionString(TestUtility.EventHubsConnectionString);
                 var pSender = client.CreatePartitionSender(PartitionIds.First());
                 var ed = new EventData(Encoding.UTF8.GetBytes("This is poison message"));
                 ed.Properties[poisonMessageProperty] = true;
@@ -189,7 +190,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
                 sendTasks.Clear();
                 foreach (var partitionId in PartitionIds)
                 {
-                    sendTasks.Add(this.SendToPartitionAsync(partitionId, $"{partitionId} event.", TestUtility.EventHubsConnectionString));
+                    sendTasks.Add(TestUtility.SendToPartitionAsync(client, partitionId, $"{partitionId} event."));
                 }
                 await Task.WhenAll(sendTasks);
 
