@@ -130,15 +130,23 @@ namespace Microsoft.Azure.EventHubs.Amqp
         {
             lock (this.receivePumpLock)
             {
-                if (newReceiveHandler != null && this.receiveHandler != null)
+                if (newReceiveHandler != null)
                 {
-                    // Notify existing handler first (but don't wait).
-                    this.receiveHandler.ProcessErrorAsync(new OperationCanceledException("New handler has registered for this receiver."));
-                }
+                    if (this.receiveHandler != null)
+                    {
+                        // Notify existing handler first (but don't wait).
+                        Task.Run(() =>
+                            this.receiveHandler.ProcessErrorAsync(new OperationCanceledException("New handler has registered for this receiver.")))
+                            .ContinueWith(t =>
+                                t.Exception.Handle(ex =>
+                                {
+                                    // We omit any failures from ProcessErrorAsync
+                                    return true;
+                                }), TaskContinuationOptions.OnlyOnFaulted);
+                    }
 
-                this.receiveHandler = newReceiveHandler;
-                if (this.receiveHandler != null)
-                {
+                    this.receiveHandler = newReceiveHandler;
+
                     // We have a new receiveHandler, ensure pump is running.
                     if (this.receivePumpTask == null)
                     {
@@ -148,14 +156,13 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 }
                 else
                 {
-                    // We have no receiveHandler, ensure pump is shut down.
+                    // newReceiveHandler == null, so this is an unregister call, ensure pump is shut down.
                     if (this.receivePumpTask != null)
                     {
-                        this.receivePumpCancellationSource.Cancel();
-                        this.receivePumpCancellationSource.Dispose();
-                        this.receivePumpCancellationSource = null;
-                        this.receivePumpTask = null;
+                        this.ReceiveHandlerClose();
                     }
+
+                    this.receiveHandler = null;
                 }
             }
         }
@@ -164,10 +171,9 @@ namespace Microsoft.Azure.EventHubs.Amqp
         {
             var amqpEventHubClient = ((AmqpEventHubClient)this.EventHubClient);
 
-            // Allow at least AmqpMinimumOpenSessionTimeoutInSeconds seconds to open the session.
-            var openSessionTimeout = AmqpClientConstants.AmqpMinimumOpenSessionTimeoutInSeconds > timeout.TotalSeconds ?
-                TimeSpan.FromSeconds(AmqpClientConstants.AmqpMinimumOpenSessionTimeoutInSeconds) : timeout;
-            var timeoutHelper = new TimeoutHelper(openSessionTimeout);
+            // We won't use remaining timeout during create session call.
+            // For large or small operation timeout values using remaining time won't make any sense.
+            var timeoutHelper = new TimeoutHelper(TimeSpan.FromSeconds(AmqpClientConstants.AmqpSessionTimeoutInSeconds));
 
             AmqpConnection connection = await amqpEventHubClient.ConnectionManager.GetOrCreateAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
 
@@ -329,8 +335,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 EventHubsEventSource.Log.ReceiveHandlerExitingWithError(this.ClientId, this.PartitionId, ex.Message);
                 Environment.FailFast(ex.ToString());
             }
-
-            this.ReceiveHandlerClose();
         }
 
         // Encapsulates taking the receivePumpLock, checking this.receiveHandler for null,
@@ -375,6 +379,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
         Task ReceiveHandlerProcessEventsAsync(IEnumerable<EventData> eventDatas)
         {
             Task processEventsTask = null;
+
             lock (this.receivePumpLock)
             {
                 if (this.receiveHandler != null)
