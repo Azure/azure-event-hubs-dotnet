@@ -219,6 +219,13 @@ namespace Microsoft.Azure.EventHubs
         {
             // eventDatas null check is inside ValidateEvents
             int count = EventDataSender.ValidateEvents(eventDatas, null, partitionKey);
+
+            // If partition key is set in the batch then respect the key.
+            if (eventDatas is EventDataBatch && ((EventDataBatch)eventDatas).PartitionKey != null)
+            {
+                partitionKey = ((EventDataBatch)eventDatas).PartitionKey;
+            }
+
             EventHubsEventSource.Log.EventSendStart(this.ClientId, count, partitionKey);
             try
             {

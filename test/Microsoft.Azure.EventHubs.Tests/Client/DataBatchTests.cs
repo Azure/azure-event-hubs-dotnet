@@ -43,10 +43,50 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             var batcher = this.EventHubClient.CreateBatch("this is the partition key");
 
             // GetRuntimeInformationAsync on a nonexistent entity.
-            await Assert.ThrowsAsync<ArgumentException>(async () =>
+            await Assert.ThrowsAsync<InvalidOperationException>(async () =>
             {
                 TestUtility.Log("Attempting to send a partition-key batch on partition sender. This should fail.");
                 await partitionSender.SendAsync(batcher);
+                throw new InvalidOperationException("SendAsync call should have failed");
+            });
+        }
+
+        /// <summary>
+        /// Client should not allow to send a batch with a different partition key.
+        /// </summary>
+        [Fact]
+        [DisplayTestMethodName]
+        async Task SendingBatchWithDifferentPartitionKeyShouldFail()
+        {
+            // Create a batch w/ partition key.
+            var batcher = this.EventHubClient.CreateBatch("key A");
+            batcher.TryAdd(new EventData(Guid.NewGuid().ToByteArray()));
+
+            // GetRuntimeInformationAsync on a nonexistent entity.
+            await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            {
+                TestUtility.Log("Attempting to send a partition-key batch with a different partition key. This should fail.");
+                await this.EventHubClient.SendAsync(batcher, "key B");
+                throw new InvalidOperationException("SendAsync call should have failed");
+            });
+        }
+
+        /// <summary>
+        /// Client should not allow to send a regular batch with a partition key.
+        /// </summary>
+        [Fact]
+        [DisplayTestMethodName]
+        async Task SendingRegularBatchWithPartitionKeyShouldFail()
+        {
+            // Create a batch w/o partition key.
+            var batcher = this.EventHubClient.CreateBatch();
+            batcher.TryAdd(new EventData(Guid.NewGuid().ToByteArray()));
+
+            // GetRuntimeInformationAsync on a nonexistent entity.
+            await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            {
+                TestUtility.Log("Attempting to send a non-partitionkey batch with a partition key. This should fail.");
+                await this.EventHubClient.SendAsync(batcher, "this is the partition key");
                 throw new InvalidOperationException("SendAsync call should have failed");
             });
         }
@@ -87,15 +127,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
                     var ed = new EventData(new byte[rnd.Next(0, 1024)]);
                     if (!batcher.TryAdd(ed))
                     {
-                        // Time to send the batch.
-                        if (partitionKey != null)
-                        {
-                            await this.EventHubClient.SendAsync(batcher, partitionKey);
-                        }
-                        else
-                        {
-                            await this.EventHubClient.SendAsync(batcher);
-                        }
+                        await this.EventHubClient.SendAsync(batcher);
 
                         totalSent += batcher.Count;
                         TestUtility.Log($"Sent {batcher.Count} messages in the batch.");
@@ -120,19 +152,19 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
                 TestUtility.Log($"{totalReceived} messages received in total.");
 
                 // All messages received?
-                Assert.True(totalReceived == totalSent, $"Failed receive {totalSent}, but received {totalReceived} messages.");
+                Assert.True(totalReceived == totalSent, $"Sent {totalSent}, but received {totalReceived} messages.");
 
-                // If partition key is set then we expect all messages from the same partition.
                 if (partitionKey != null)
                 {
+                    // Partition key is set then we expect all messages from the same partition.
                     Assert.True(pReceived.Count(p => p.Count > 0) == 1, "Received messsages from multiple partitions.");
+
+                    // Find target partition.
+                    var targetPartition = pReceived.Single(p => p.Count > 0);
+
+                    // Validate partition key is delivered on all messages.
+                    Assert.True(!targetPartition.Any(p => p.SystemProperties.PartitionKey != partitionKey), "Identified at least one event with a different partition key value.");
                 }
-
-                // Validate that all messages landed on a single partition.
-                var targetPartition = pReceived.Single(p => p.Count > 0);
-
-                // Validate partition key is delivered on all messages.
-                Assert.True(!targetPartition.Any(p => p.SystemProperties.PartitionKey != partitionKey), "Identified at least one event with a different partition key value.");
             }
             finally
             {

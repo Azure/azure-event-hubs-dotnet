@@ -30,6 +30,7 @@ namespace Microsoft.Azure.EventHubs
         internal static int ValidateEvents(IEnumerable<EventData> eventDatas, string partitionId, string partitionKey)
         {
             int count;
+
             if (eventDatas == null || (count = eventDatas.Count()) == 0)
             {
                 throw Fx.Exception.Argument(nameof(eventDatas), Resources.EventDataListIsNullOrEmpty);
@@ -38,6 +39,11 @@ namespace Microsoft.Azure.EventHubs
             if (partitionId != null && partitionKey != null)
             {
                 throw Fx.Exception.Argument(nameof(partitionKey), Resources.PartitionInvalidPartitionKey.FormatForUser(partitionKey, partitionId));
+            }
+
+            if (eventDatas is EventDataBatch && partitionKey != null)
+            {
+                throw Fx.Exception.InvalidOperation(Resources.InvalidPartitionKeyWithBatch);
             }
 
             return count;

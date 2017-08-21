@@ -188,5 +188,27 @@ namespace Microsoft.Azure.EventHubs {
                 return ResourceManager.GetString("ArgumentInvalidCombination", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///    Looks up a localized string similar to EventData batch with partitionKey cannot be sent on PartitionSender.
+        /// </summary>
+        public static string PartitionSenderInvalidWithPartitionKeyOnBatch
+        {
+            get
+            {
+                return ResourceManager.GetString("PartitionSenderInvalidWithPartitionKeyOnBatch", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///    Looks up a localized string similar to EventDataBatch is already associated with partitionKey...
+        /// </summary>
+        public static string InvalidPartitionKeyWithBatch
+        {
+            get
+            {
+                return ResourceManager.GetString("InvalidPartitionKeyWithBatch", resourceCulture);
+            }
+        }
     }
 }

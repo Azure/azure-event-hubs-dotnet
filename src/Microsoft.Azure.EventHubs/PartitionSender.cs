@@ -118,7 +118,7 @@ namespace Microsoft.Azure.EventHubs
 
             if (eventDatas is EventDataBatch && !string.IsNullOrEmpty(((EventDataBatch)eventDatas).PartitionKey))
             {
-                throw Fx.Exception.Argument("partiitonKey", Resources.PartitionSenderInvalidWithPartitionKeyOnBatch);
+                throw Fx.Exception.InvalidOperation(Resources.PartitionSenderInvalidWithPartitionKeyOnBatch);
             }
 
             int count = EventDataSender.ValidateEvents(eventDatas, this.PartitionId, null);
