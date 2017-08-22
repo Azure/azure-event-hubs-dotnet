@@ -51,46 +51,6 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             });
         }
 
-        /// <summary>
-        /// Client should not allow to send a batch with a different partition key.
-        /// </summary>
-        [Fact]
-        [DisplayTestMethodName]
-        async Task SendingBatchWithDifferentPartitionKeyShouldFail()
-        {
-            // Create a batch w/ partition key.
-            var batcher = this.EventHubClient.CreateBatch("key A");
-            batcher.TryAdd(new EventData(Guid.NewGuid().ToByteArray()));
-
-            // GetRuntimeInformationAsync on a nonexistent entity.
-            await Assert.ThrowsAsync<InvalidOperationException>(async () =>
-            {
-                TestUtility.Log("Attempting to send a partition-key batch with a different partition key. This should fail.");
-                await this.EventHubClient.SendAsync(batcher, "key B");
-                throw new InvalidOperationException("SendAsync call should have failed");
-            });
-        }
-
-        /// <summary>
-        /// Client should not allow to send a regular batch with a partition key.
-        /// </summary>
-        [Fact]
-        [DisplayTestMethodName]
-        async Task SendingRegularBatchWithPartitionKeyShouldFail()
-        {
-            // Create a batch w/o partition key.
-            var batcher = this.EventHubClient.CreateBatch();
-            batcher.TryAdd(new EventData(Guid.NewGuid().ToByteArray()));
-
-            // GetRuntimeInformationAsync on a nonexistent entity.
-            await Assert.ThrowsAsync<InvalidOperationException>(async () =>
-            {
-                TestUtility.Log("Attempting to send a non-partitionkey batch with a partition key. This should fail.");
-                await this.EventHubClient.SendAsync(batcher, "this is the partition key");
-                throw new InvalidOperationException("SendAsync call should have failed");
-            });
-        }
-
         protected async Task SendWithEventDataBatch(string partitionKey = null)
         {
             const int MinimumNumberOfMessagesToSend = 1000;

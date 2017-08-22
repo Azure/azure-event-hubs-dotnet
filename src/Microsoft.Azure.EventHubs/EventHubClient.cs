@@ -220,12 +220,6 @@ namespace Microsoft.Azure.EventHubs
             // eventDatas null check is inside ValidateEvents
             int count = EventDataSender.ValidateEvents(eventDatas, null, partitionKey);
 
-            // If partition key is set in the batch then respect the key.
-            if (eventDatas is EventDataBatch && ((EventDataBatch)eventDatas).PartitionKey != null)
-            {
-                partitionKey = ((EventDataBatch)eventDatas).PartitionKey;
-            }
-
             EventHubsEventSource.Log.EventSendStart(this.ClientId, count, partitionKey);
             try
             {
@@ -240,6 +234,21 @@ namespace Microsoft.Azure.EventHubs
             {
                 EventHubsEventSource.Log.EventSendStop(this.ClientId);
             }
+        }
+
+        /// <summary>
+        /// Send a batch of <see cref="EventData"/> in <see cref="EventDataBatch"/>.
+        /// </summary>
+        /// <param name="eventDataBatch">the batch of events to send to EventHub</param>
+        /// <returns>A Task that completes when the send operation is done.</returns>
+        public async Task SendAsync(EventDataBatch eventDataBatch)
+        {
+            if (eventDataBatch == null)
+            {
+                throw Fx.Exception.Argument(nameof(eventDataBatch), Resources.EventDataListIsNullOrEmpty);
+            }
+
+            await this.SendAsync(eventDataBatch.ToEnumerable(), eventDataBatch.PartitionKey);
         }
 
         /// <summary>

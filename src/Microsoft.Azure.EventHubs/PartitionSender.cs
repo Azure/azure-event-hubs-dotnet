@@ -139,9 +139,29 @@ namespace Microsoft.Azure.EventHubs
         }
 
         /// <summary>
-        /// Closes and releases resources for the <see cref="PartitionSender"/>.
+        /// Send a batch of <see cref="EventData"/> in <see cref="EventDataBatch"/>.
         /// </summary>
-        /// <returns>An asynchronous operation</returns>
+        /// <param name="eventDataBatch">the batch of events to send to EventHub</param>
+        /// <returns>A Task that completes when the send operation is done.</returns>
+        public async Task SendAsync(EventDataBatch eventDataBatch)
+        {
+            if (eventDataBatch == null)
+            {
+                throw Fx.Exception.Argument(nameof(eventDataBatch), Resources.EventDataListIsNullOrEmpty);
+            }
+
+            if (eventDataBatch.PartitionKey != null)
+            {
+                throw Fx.Exception.InvalidOperation(Resources.PartitionSenderInvalidWithPartitionKeyOnBatch);
+            }
+
+            await this.SendAsync(eventDataBatch.ToEnumerable());
+        }
+        
+        /// <summary>
+                 /// Closes and releases resources for the <see cref="PartitionSender"/>.
+                 /// </summary>
+                 /// <returns>An asynchronous operation</returns>
         public override async Task CloseAsync()
         {
             EventHubsEventSource.Log.ClientCloseStart(this.ClientId);

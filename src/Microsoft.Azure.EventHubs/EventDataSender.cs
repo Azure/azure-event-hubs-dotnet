@@ -41,11 +41,6 @@ namespace Microsoft.Azure.EventHubs
                 throw Fx.Exception.Argument(nameof(partitionKey), Resources.PartitionInvalidPartitionKey.FormatForUser(partitionKey, partitionId));
             }
 
-            if (eventDatas is EventDataBatch && partitionKey != null)
-            {
-                throw Fx.Exception.InvalidOperation(Resources.InvalidPartitionKeyWithBatch);
-            }
-
             return count;
         }
 

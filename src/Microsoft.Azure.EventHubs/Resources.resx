@@ -141,12 +141,6 @@
   <data name="InvalidEncoding" xml:space="preserve">
     <value>The string has an invalid encoding format.</value>
   </data>
-  <data name="InvalidPartitionKeyWithBatch" xml:space="preserve">
-    <value>EventDataBatch is already associated with partitionKey; use send API without partitionKey parameter.</value>
-  </data>
-  <data name="PartitionInvalidPartitionKey" xml:space="preserve">
-    <value>The specified partitionKey '{0}' is invalid for partition '{1}'. Do not specify a partitionKey when sending using a PartitionedSender.  Instead use EventHubClient.Send.</value>
-  </data>
   <data name="PartitionSenderInvalidWithPartitionKeyOnBatch" xml:space="preserve">
     <value>EventData batch with partitionKey cannot be sent on PartitionSender.</value>
   </data>
