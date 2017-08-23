@@ -45,7 +45,7 @@ consumers that filter and/or transform event streams and then forward them on to
 
 ### How to build client liblaries on Visual Studio 2017? 
 
-Make sure you have .NET Core Cross-Platform Development SDK installed. If it is missing, you can install the SDK by running Visual Studio Installer.
+Make sure you have .NET Core Cross-Platform Development SDK installed. If it is missing, you can install the SDK by running Visual Studio Installer. See [https://www.microsoft.com/net/core#windowscmd] for VS 2017 and SDK installation.
 
 ### How do I run the unit tests? 
 
