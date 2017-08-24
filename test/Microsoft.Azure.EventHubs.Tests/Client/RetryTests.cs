@@ -121,7 +121,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             var receiver = ehClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", PartitionReceiver.StartOfStream);
             Assert.True(receiver.RetryPolicy is RetryPolicyCustom, "Receiver failed to inherit parent client's RetryPolicy setting.");
             Assert.True((receiver.RetryPolicy as RetryPolicyCustom).maximumRetryCount == testMaxRetryCount,
-                $"Retry policy on the receiver shows testMaxRetryCount as {(sender.RetryPolicy as RetryPolicyCustom).maximumRetryCount}");
+                $"Retry policy on the receiver shows testMaxRetryCount as {(receiver.RetryPolicy as RetryPolicyCustom).maximumRetryCount}");
         }
 
         public sealed class RetryPolicyCustom : RetryPolicy
