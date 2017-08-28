@@ -476,5 +476,17 @@ namespace Microsoft.Azure.EventHubs
         /// <summary></summary>
         /// <returns></returns>
         protected abstract Task OnCloseAsync();
+
+        /// <summary>
+        /// Handle retry policy updates here.
+        /// </summary>
+        protected override void OnRetryPolicyUpdate()
+        {
+            // Propagate retry policy updates to inner sender if there is any.
+            if (this.innerSender != null)
+            {
+                this.innerSender.RetryPolicy = this.RetryPolicy.Clone();
+            }
+        }
     }
 }
