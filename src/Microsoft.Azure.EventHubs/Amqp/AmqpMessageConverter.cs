@@ -65,7 +65,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
                     // Create AMQP message if not created yet.
                     AmqpMessage amqpMessage = data.AmqpMessage;
-                    if (true || amqpMessage == null)
+                    if (amqpMessage == null)
                     {
                         amqpMessage = EventDataToAmqpMessage(data);
                     }
