@@ -458,10 +458,11 @@ namespace Microsoft.Azure.EventHubs
 
         /// <summary>Creates a batch where event data objects can be added for later SendAsync call.</summary>
         /// <param name="partitionKey">Partition key associated with the batch</param>
+        /// <param name="maxMessageSize">Maximum size of the batch</param>
         /// <returns>Returns <see cref="EventDataBatch" />.</returns>
-        public EventDataBatch CreateBatch(string partitionKey = null)
+        public EventDataBatch CreateBatch(string partitionKey = null, long maxMessageSize = 0)
         {
-            return new EventDataBatch(this.InnerSender.MaxMessageSize, partitionKey);
+            return new EventDataBatch(maxMessageSize > 0 ? maxMessageSize : this.InnerSender.MaxMessageSize, partitionKey);
         }
 
         internal EventDataSender CreateEventSender(string partitionId = null)

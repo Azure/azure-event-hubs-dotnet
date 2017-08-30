@@ -129,7 +129,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             TestUtility.Log($"Sending one message with body size {bodySize} bytes.");
             var edReceived = await SendAndReceiveEvent(targetPartition, edToSend);
 
-            // Validate array segment count.
+            // Validate body size.
             Assert.True(edReceived.Body.Count == bodySize, $"Sent {bodySize} bytes and received {edReceived.Body.Count}");
         }
     }

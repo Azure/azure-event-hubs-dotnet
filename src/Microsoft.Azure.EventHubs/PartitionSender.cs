@@ -40,9 +40,9 @@ namespace Microsoft.Azure.EventHubs
 
         /// <summary>Creates a batch where event data objects can be added for later SendAsync call.</summary>
         /// <returns>Returns <see cref="EventDataBatch" />.</returns>
-        public EventDataBatch CreateBatch()
+        public EventDataBatch CreateBatch(long maxMessageSize = 0)
         {
-            return new EventDataBatch(this.InnerSender.MaxMessageSize);
+            return new EventDataBatch(maxMessageSize > 0 ? maxMessageSize : this.InnerSender.MaxMessageSize);
         }
 
         /// <summary>
