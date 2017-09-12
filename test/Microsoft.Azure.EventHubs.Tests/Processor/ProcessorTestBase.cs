@@ -848,6 +848,29 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
             Assert.True(runResult.NumberOfFailures == 0, $"RunResult returned with {runResult.NumberOfFailures} failures!");
         }
 
+        [Fact]
+        [DisplayTestMethodName]
+        async Task ValidateDefaultPartitionManagerOptions()
+        {
+            // Validate default options.
+            var eventProcessorHost = new EventProcessorHost(
+                null,
+                PartitionReceiver.DefaultConsumerGroupName,
+                TestUtility.EventHubsConnectionString,
+                TestUtility.StorageConnectionString,
+                this.LeaseContainerName);
+
+            await eventProcessorHost.RegisterEventProcessorAsync<TestEventProcessor>();
+
+            Assert.True(eventProcessorHost.PartitionManagerOptions.LeaseDuration == PartitionManagerOptions.DefaultOptions.LeaseDuration,
+                $"Default check failed. PartitionManagerOptions.LeaseDuration={eventProcessorHost.PartitionManagerOptions.LeaseDuration}" +
+                    $" where as DefaultOptions.LeaseDuration={PartitionManagerOptions.DefaultOptions.LeaseDuration}");
+            Assert.True(eventProcessorHost.PartitionManagerOptions.RenewInterval == PartitionManagerOptions.DefaultOptions.RenewInterval,
+                $"Default check failed. PartitionManagerOptions.RenewInterval={eventProcessorHost.PartitionManagerOptions.RenewInterval}" +
+                    $" where as DefaultOptions.RenewInterval={PartitionManagerOptions.DefaultOptions.RenewInterval}");
+        }
+
+
         async Task<Dictionary<string, Tuple<string, DateTime>>> DiscoverEndOfStream()
         {
             var ehClient = EventHubClient.CreateFromConnectionString(TestUtility.EventHubsConnectionString);

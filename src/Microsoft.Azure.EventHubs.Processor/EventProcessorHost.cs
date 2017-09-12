@@ -173,6 +173,12 @@ namespace Microsoft.Azure.EventHubs.Processor
         /// </summary>
         public string ConsumerGroupName { get; }
 
+        /// <summary>Gets or sets the 
+        /// <see cref="PartitionManagerOptions" /> instance used by the 
+        /// <see cref="EventProcessorHost" /> object.</summary> 
+        /// <value>The <see cref="PartitionManagerOptions" /> instance.</value>
+        public PartitionManagerOptions PartitionManagerOptions { get; set; }
+        
         // All of these accessors are for internal use only.
         internal string EventHubConnectionString { get; private set; }
 
@@ -241,6 +247,12 @@ namespace Microsoft.Azure.EventHubs.Processor
             if (factory == null || processorOptions == null)
             {
                 throw new ArgumentNullException(factory == null ? nameof(factory) : nameof(processorOptions));
+            }
+
+            // Initialize partition manager options with default values if not already set by the client.
+            if (this.PartitionManagerOptions == null)
+            {
+                this.PartitionManagerOptions = PartitionManagerOptions.DefaultOptions;
             }
 
             ProcessorEventSource.Log.EventProcessorHostOpenStart(this.Id, factory.GetType().ToString());
