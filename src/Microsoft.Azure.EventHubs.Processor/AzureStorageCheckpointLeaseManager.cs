@@ -28,8 +28,6 @@ namespace Microsoft.Azure.EventHubs.Processor
         static readonly TimeSpan storageMaximumExecutionTime = TimeSpan.FromMinutes(2);
         TimeSpan leaseDuration;
         TimeSpan leaseRenewInterval;
-
-        // Lease renew calls shouldn't wait more than leaseRenewInterval
         BlobRequestOptions renewRequestOptions;
 
         internal AzureStorageCheckpointLeaseManager(string storageConnectionString, string leaseContainerName, string storageBlobPrefix)
@@ -67,6 +65,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             this.leaseRenewInterval = host.PartitionManagerOptions.RenewInterval;
 
             // Set storage renew request options.
+            // Lease renew calls shouldn't wait more than leaseRenewInterval
             this.renewRequestOptions = new BlobRequestOptions()
              {
                  ServerTimeout = this.leaseRenewInterval,
