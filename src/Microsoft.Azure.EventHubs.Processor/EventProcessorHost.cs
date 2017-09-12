@@ -11,8 +11,6 @@ namespace Microsoft.Azure.EventHubs.Processor
     /// </summary>
     public sealed class EventProcessorHost
     {
-        readonly bool initializeLeaseManager;
-
         /// <summary>
         /// Create a new host to process events from an Event Hub.
         /// 
@@ -72,7 +70,6 @@ namespace Microsoft.Azure.EventHubs.Processor
                 eventHubConnectionString,
                 new AzureStorageCheckpointLeaseManager(storageConnectionString, leaseContainerName, storageBlobPrefix))
         {
-            this.initializeLeaseManager = true;
         }
 
         /// <summary>
@@ -268,10 +265,8 @@ namespace Microsoft.Azure.EventHubs.Processor
                     this.EventHubConnectionString = cbs.ToString();
                 }
 
-                if (this.initializeLeaseManager)
-                {
-                    ((AzureStorageCheckpointLeaseManager)this.LeaseManager).Initialize(this);
-                }
+                // Initialize lease manager if this is an AzureStorageCheckpointLeaseManager
+                (this.LeaseManager as AzureStorageCheckpointLeaseManager)?.Initialize(this);
 
                 this.ProcessorFactory = factory;
                 this.EventProcessorOptions = processorOptions;
