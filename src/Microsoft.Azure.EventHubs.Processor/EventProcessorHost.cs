@@ -249,7 +249,8 @@ namespace Microsoft.Azure.EventHubs.Processor
             // Initialize partition manager options with default values if not already set by the client.
             if (this.PartitionManagerOptions == null)
             {
-                this.PartitionManagerOptions = PartitionManagerOptions.DefaultOptions;
+                // Assign partition manager with default options.
+                this.PartitionManagerOptions = new PartitionManagerOptions();
             }
 
             ProcessorEventSource.Log.EventProcessorHostOpenStart(this.Id, factory.GetType().ToString());

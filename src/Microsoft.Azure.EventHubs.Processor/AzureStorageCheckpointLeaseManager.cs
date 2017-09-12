@@ -67,17 +67,18 @@ namespace Microsoft.Azure.EventHubs.Processor
             // Set storage renew request options.
             // Lease renew calls shouldn't wait more than leaseRenewInterval
             this.renewRequestOptions = new BlobRequestOptions()
-             {
-                 ServerTimeout = this.leaseRenewInterval,
-                 MaximumExecutionTime = TimeSpan.FromMinutes(1)
-             };
+            {
+                ServerTimeout = this.leaseRenewInterval,
+                MaximumExecutionTime = TimeSpan.FromMinutes(1)
+            };
 
             // Create storage client and configure max execution time.
             // Max execution time will apply to any storage calls except renew.
             this.storageClient = CloudStorageAccount.Parse(this.storageConnectionString).CreateCloudBlobClient();
-            BlobRequestOptions options = new BlobRequestOptions();
-            options.MaximumExecutionTime = AzureStorageCheckpointLeaseManager.storageMaximumExecutionTime;
-            this.storageClient.DefaultRequestOptions = options;
+            this.storageClient.DefaultRequestOptions = new BlobRequestOptions()
+            {
+                MaximumExecutionTime = AzureStorageCheckpointLeaseManager.storageMaximumExecutionTime
+            };
 
             this.eventHubContainer = this.storageClient.GetContainerReference(this.leaseContainerName);
             this.consumerGroupDirectory = this.eventHubContainer.GetDirectoryReference(this.storageBlobPrefix + this.host.ConsumerGroupName);
