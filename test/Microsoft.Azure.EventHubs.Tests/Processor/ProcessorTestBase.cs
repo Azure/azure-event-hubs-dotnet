@@ -944,8 +944,9 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
                 TestUtility.Log($"Verifying at least {totalNumberOfEventsToSend} event(s) was received by each partition");
                 foreach (var partitionId in PartitionIds)
                 {
-                    Assert.True(runResult.ReceivedEvents.ContainsKey(partitionId) 
-                        && runResult.ReceivedEvents[partitionId].Count >=  totalNumberOfEventsToSend,
+                    Assert.True(runResult.ReceivedEvents.ContainsKey(partitionId),
+                        $"Partition {partitionId} didn't receive any messages. Expected {totalNumberOfEventsToSend}, received 0.");
+                    Assert.True(runResult.ReceivedEvents[partitionId].Count >= totalNumberOfEventsToSend,
                         $"Partition {partitionId} didn't receive expected number of messages. Expected {totalNumberOfEventsToSend}, received {runResult.ReceivedEvents[partitionId].Count}.");
                 }
 
