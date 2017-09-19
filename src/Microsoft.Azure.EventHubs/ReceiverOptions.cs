@@ -9,11 +9,10 @@ namespace Microsoft.Azure.EventHubs
     public class ReceiverOptions
     {
         /// <summary> Gets or sets a value indicating whether the runtime metric of a receiver is enabled. </summary>
-        /// <value> true if a client wants to access <see cref="ReceiverRuntimeInfo"/> using <see cref="PartitionReceiver"/>. </value>
+        /// <value> true if a client wants to access <see cref="ReceiverRuntimeInformation"/> using <see cref="PartitionReceiver"/>. </value>
         public bool EnableReceiverRuntimeMetric
         {
-            get;
-            set;
+            get; set;
         }
     }
 }

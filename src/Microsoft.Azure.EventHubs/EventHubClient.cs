@@ -454,7 +454,7 @@ namespace Microsoft.Azure.EventHubs
         }
 
         /// <summary> Gets or sets a value indicating whether the runtime metric of a receiver is enabled. </summary>
-        /// <value> true if a client wants to access <see cref="ReceiverRuntimeInfo"/> using <see cref="PartitionReceiver"/>. </value>
+        /// <value> true if a client wants to access <see cref="ReceiverRuntimeInformation"/> using <see cref="PartitionReceiver"/>. </value>
         public bool EnableReceiverRuntimeMetric
         {
             get;
@@ -491,5 +491,17 @@ namespace Microsoft.Azure.EventHubs
         /// <summary></summary>
         /// <returns></returns>
         protected abstract Task OnCloseAsync();
+
+        /// <summary>
+        /// Handle retry policy updates here.
+        /// </summary>
+        protected override void OnRetryPolicyUpdate()
+        {
+            // Propagate retry policy updates to inner sender if there is any.
+            if (this.innerSender != null)
+            {
+                this.innerSender.RetryPolicy = this.RetryPolicy.Clone();
+            }
+        }
     }
 }

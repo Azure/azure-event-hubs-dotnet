@@ -15,6 +15,30 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
     {
         string targetPartitionId = "1";
 
+        /// <summary>
+        /// Basic runtime metrics validation.
+        /// </summary>
+        [Fact]
+        [DisplayTestMethodName]
+        async Task BasicValidation()
+        {
+            // Send some number of messages to target partition.
+            await TestUtility.SendToPartitionAsync(this.EventHubClient, targetPartitionId, "this is the message body", 10);
+
+            // Get partition runtime info so we can compare with runtime metrics.
+            var pInfo = await this.EventHubClient.GetPartitionRuntimeInformationAsync(targetPartitionId);
+
+            // Create a new receiver with ReceiverOptions setting to enable runtime metrics.
+            var partitionReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName,
+                targetPartitionId,
+                null,
+                new ReceiverOptions()
+                {
+                    EnableReceiverRuntimeMetric = true
+                });
+
+            await ValidateEnabledBehavior(partitionReceiver, pInfo);
+        }
 
         /// <summary>
         /// Validate that receiver runtime metrics are disabled by default.
@@ -61,31 +85,6 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             {
                 this.EventHubClient.EnableReceiverRuntimeMetric = defaultReceiverRuntimeMetricSetting;
             }
-        }
-
-        /// <summary>
-        /// Basic runtime metrics validation.
-        /// </summary>
-        [Fact]
-        [DisplayTestMethodName]
-        async Task BasicValidation()
-        {
-            // Send some number of messages to target partition.
-            await TestUtility.SendToPartitionAsync(this.EventHubClient, targetPartitionId, "this is the message body", 10);
-
-            // Get partition runtime info so we can compare with runtime metrics.
-            var pInfo = await this.EventHubClient.GetPartitionRuntimeInformationAsync(targetPartitionId);
-
-            // Create a new receiver with ReceiverOptions setting to enable runtime metrics.
-            var partitionReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName,
-                targetPartitionId,
-                null,
-                new ReceiverOptions()
-                {
-                    EnableReceiverRuntimeMetric = true
-                });
-
-            await ValidateEnabledBehavior(partitionReceiver, pInfo);
         }
 
         /// <summary>

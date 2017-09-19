@@ -59,12 +59,19 @@ namespace Microsoft.Azure.EventHubs.Tests
             TestUtility.Log($"Starting to send {numberOfMessages} to partition {partitionId}.");
             var partitionSender = ehClient.CreatePartitionSender(partitionId);
 
-            for (int i = 0; i<numberOfMessages; i++)
+            for (int i = 0; i < numberOfMessages; i++)
             {
                 await partitionSender.SendAsync(new EventData(Encoding.UTF8.GetBytes(messageBody)));
             }
 
             TestUtility.Log("Sends done.");
+        }
+
+        internal static async Task<Tuple<string, DateTime, string>> DiscoverEndOfStreamForPartitionAsync(EventHubClient ehClient, string partitionId)
+        {
+            TestUtility.Log($"Getting partition information for {partitionId}.");
+            var pInfo = await ehClient.GetPartitionRuntimeInformationAsync(partitionId);
+            return Tuple.Create(pInfo.LastEnqueuedOffset, pInfo.LastEnqueuedTimeUtc, pInfo.LastEnqueuedOffset);
         }
 
         internal static void Log(string message)

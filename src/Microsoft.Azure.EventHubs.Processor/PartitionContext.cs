@@ -50,6 +50,16 @@ namespace Microsoft.Azure.EventHubs.Processor
             }
         }
 
+        /// <summary>
+        /// Gets the approximate receiver runtime information for a logical partition of an Event Hub.
+        /// To enable the setting, refer to <see cref="EventProcessorOptions.EnableReceiverRuntimeMetric"/>
+        /// </summary>
+        public ReceiverRuntimeInformation RuntimeInformation
+        {
+            get;
+            private set;
+        }
+
         internal string Offset { get; set; }
 
         internal long SequenceNumber { get; set; }

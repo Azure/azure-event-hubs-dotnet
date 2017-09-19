@@ -75,7 +75,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                                 throw new AmqpException(rejected.Error);
                             }
 
-                            this.EventHubClient.RetryPolicy.ResetRetryCount(this.ClientId);
+                            this.RetryPolicy.ResetRetryCount(this.ClientId);
                         }
                         catch (AmqpException amqpException)
                         {
@@ -85,8 +85,8 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     catch (Exception ex)
                     {
                         // Evaluate retry condition?
-                        this.EventHubClient.RetryPolicy.IncrementRetryCount(this.ClientId);
-                        TimeSpan? retryInterval = this.EventHubClient.RetryPolicy.GetNextRetryInterval(this.ClientId, ex, timeoutHelper.RemainingTime());
+                        this.RetryPolicy.IncrementRetryCount(this.ClientId);
+                        TimeSpan? retryInterval = this.RetryPolicy.GetNextRetryInterval(this.ClientId, ex, timeoutHelper.RemainingTime());
                         if (retryInterval != null)
                         {
                             await Task.Delay(retryInterval.Value).ConfigureAwait(false);
@@ -111,10 +111,9 @@ namespace Microsoft.Azure.EventHubs.Amqp
         {
             var amqpEventHubClient = ((AmqpEventHubClient)this.EventHubClient);
 
-            // Allow at least AmqpMinimumOpenSessionTimeoutInSeconds seconds to open the session.
-            var openSessionTimeout = AmqpClientConstants.AmqpMinimumOpenSessionTimeoutInSeconds > timeout.TotalSeconds ?
-                TimeSpan.FromSeconds(AmqpClientConstants.AmqpMinimumOpenSessionTimeoutInSeconds) : timeout;
-            var timeoutHelper = new TimeoutHelper(openSessionTimeout);
+            // We won't use remaining timeout during create session call.
+            // For large or small operation timeout values using remaining time won't make any sense.
+            var timeoutHelper = new TimeoutHelper(TimeSpan.FromSeconds(AmqpClientConstants.AmqpSessionTimeoutInSeconds));
 
             AmqpConnection connection = await amqpEventHubClient.ConnectionManager.GetOrCreateAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
 

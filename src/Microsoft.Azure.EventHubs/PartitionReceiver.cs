@@ -72,9 +72,10 @@ namespace Microsoft.Azure.EventHubs
             this.StartTime = startTime;
             this.PrefetchCount = DefaultPrefetchCount;
             this.Epoch = epoch;
-            this.RuntimeInfo = new ReceiverRuntimeInfo(partitionId);
+            this.RuntimeInfo = new ReceiverRuntimeInformation(partitionId);
             this.ReceiverRuntimeMetricEnabled = receiverOptions == null ? this.EventHubClient.EnableReceiverRuntimeMetric
                 : receiverOptions.EnableReceiverRuntimeMetric;
+            this.RetryPolicy = eventHubClient.RetryPolicy.Clone();
 
             EventHubsEventSource.Log.ClientCreated(this.ClientId, this.FormatTraceDetails());
         }
@@ -238,7 +239,7 @@ namespace Microsoft.Azure.EventHubs
         /// Gets the approximate receiver runtime information for a logical partition of an Event Hub.
         /// To enable the setting, refer to <see cref="ReceiverOptions"/> and <see cref="EventHubClient.EnableReceiverRuntimeMetric"/>
         /// </summary>
-        public ReceiverRuntimeInfo RuntimeInfo
+        public ReceiverRuntimeInformation RuntimeInfo
         {
             get;
             private set;
