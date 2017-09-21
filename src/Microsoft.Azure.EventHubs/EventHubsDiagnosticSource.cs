@@ -25,24 +25,16 @@ namespace Microsoft.Azure.EventHubs
 
         internal static readonly DiagnosticListener DiagnosticListener = new DiagnosticListener(DiagnosticSourceName);
 
-        internal static bool IsEnabled => DiagnosticListener.IsEnabled();
-
         internal static Activity StartSendActivity(string clientId, EventHubsConnectionStringBuilder csb, string partitionKey, IEnumerable<EventData> eventDatas, int count)
         {
             // skip if diagnostic source not enabled
-            if (!IsEnabled)
+            if (!DiagnosticListener.IsEnabled())
             {
                 return null;
             }
 
             // skip if no listeners for this "Send" activity 
-            if (!DiagnosticListener.IsEnabled(SendActivityName,
-                new
-                {
-                    Endpoint = csb.Endpoint,
-                    EntityPath = csb.EntityPath,
-                    PartitionKey = partitionKey
-                }))
+            if (!DiagnosticListener.IsEnabled(SendActivityName, csb.Endpoint, csb.EntityPath))
             {
                 return null;
             }
@@ -86,7 +78,7 @@ namespace Microsoft.Azure.EventHubs
         {
             // TODO consider enriching activity with data from exception
 
-            if (!IsEnabled || !DiagnosticListener.IsEnabled(SendActivityExceptionName))
+            if (!DiagnosticListener.IsEnabled() || !DiagnosticListener.IsEnabled(SendActivityExceptionName))
             {
                 return;
             }
@@ -110,7 +102,11 @@ namespace Microsoft.Azure.EventHubs
             }
 
             // stop activity
-            activity.AddTag("error", (sendTask?.Status == TaskStatus.RanToCompletion).ToString());
+            if (sendTask != null && sendTask.Status != TaskStatus.RanToCompletion)
+            {
+                activity.AddTag("error", "true");
+            }
+
             DiagnosticListener.StopActivity(activity,
                 new
                 {

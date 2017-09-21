@@ -6,8 +6,8 @@ namespace Microsoft.Azure.EventHubs
     using Amqp;
     using System;
     using System.Collections.Generic;
-    using System.Threading.Tasks;
     using System.Diagnostics;
+    using System.Threading.Tasks;
 
     /// <summary>
     /// Anchor class - all EventHub client operations start here.
