@@ -74,5 +74,12 @@ namespace Microsoft.Azure.EventHubs
 
             return (Math.Log(deltaBackoff) / Math.Log(this.maximumRetryCount));
         }
+
+        /// <summary>Creates a new copy of this instance.</summary>
+        /// <returns>The created new copy of this instance.</returns>
+        public override RetryPolicy Clone()
+        {
+            return new RetryExponential(this.minimumBackoff, this.maximumBackoff, this.maximumRetryCount);
+        }
     }
 }

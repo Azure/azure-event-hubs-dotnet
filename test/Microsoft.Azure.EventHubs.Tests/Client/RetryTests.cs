@@ -102,9 +102,31 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             Assert.True(newRetryInterval == null);
         }
 
+        [Fact]
+        [DisplayTestMethodName]
+        void ChildEntityShouldInheritRetryPolicyFromParent()
+        {
+            var testMaxRetryCount = 99;
+
+            var ehClient = EventHubClient.CreateFromConnectionString(TestUtility.EventHubsConnectionString);
+            ehClient.RetryPolicy = new RetryPolicyCustom(testMaxRetryCount);
+
+            // Validate partition sender inherits.
+            var sender = ehClient.CreateEventSender("0");
+            Assert.True(sender.RetryPolicy is RetryPolicyCustom, "Sender failed to inherit parent client's RetryPolicy setting.");
+            Assert.True((sender.RetryPolicy as RetryPolicyCustom).maximumRetryCount == testMaxRetryCount,
+                $"Retry policy on the sender shows testMaxRetryCount as {(sender.RetryPolicy as RetryPolicyCustom).maximumRetryCount}");
+
+            // Validate partition receiver inherits.
+            var receiver = ehClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", PartitionReceiver.StartOfStream);
+            Assert.True(receiver.RetryPolicy is RetryPolicyCustom, "Receiver failed to inherit parent client's RetryPolicy setting.");
+            Assert.True((receiver.RetryPolicy as RetryPolicyCustom).maximumRetryCount == testMaxRetryCount,
+                $"Retry policy on the receiver shows testMaxRetryCount as {(receiver.RetryPolicy as RetryPolicyCustom).maximumRetryCount}");
+        }
+
         public sealed class RetryPolicyCustom : RetryPolicy
         {
-            readonly int maximumRetryCount;
+            public readonly int maximumRetryCount;
 
             public RetryPolicyCustom(int maximumRetryCount)
             {
@@ -127,6 +149,11 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
                 TimeSpan retryAfter = TimeSpan.FromSeconds(1 + currentRetryCount);
 
                 return retryAfter;
+            }
+
+            public override RetryPolicy Clone()
+            {
+                return new RetryPolicyCustom(this.maximumRetryCount);
             }
         }
     }
