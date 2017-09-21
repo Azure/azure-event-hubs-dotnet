@@ -117,5 +117,102 @@ namespace Microsoft.Azure.EventHubs
                     TaskStatus = sendTask?.Status
                 });
         }
+
+        internal static Activity StartReceiveActivity(string clientId, EventHubsConnectionStringBuilder csb, string partitionKey, string consumerGroup, string startOffset)
+        {
+            // skip if diagnostic source not enabled
+            if (!DiagnosticListener.IsEnabled())
+            {
+                return null;
+            }
+
+            // skip if no listeners for this "Receive" activity 
+            if (!DiagnosticListener.IsEnabled(ReceiveActivityName, csb.Endpoint, csb.EntityPath))
+            {
+                return null;
+            }
+
+            Activity activity = new Activity(ReceiveActivityName);
+
+            // extract activity tags from input
+            activity.AddTag("component", "Microsoft.Azure.EventHubs");
+            activity.AddTag("span.kind", "consumer");
+            activity.AddTag("operation.name", $"Receive");
+            activity.AddTag("operation.data", $"{consumerGroup}: {csb.EntityPath}/{partitionKey}");
+            activity.AddTag("peer.service", "Azure Event Hub");
+            activity.AddTag("peer.hostname", csb.Endpoint.OriginalString);
+            activity.AddTag("eh.event_hub_name", csb.EntityPath);
+            activity.AddTag("eh.partition_key", partitionKey);
+            activity.AddTag("eh.consumer_group", consumerGroup);
+            activity.AddTag("eh.start_offset", startOffset);
+            activity.AddTag("eh.client_id", clientId);
+
+            // in many cases activity start event is not interesting, 
+            // in that case start activity without firing event
+            if (DiagnosticListener.IsEnabled(ReceiveActivityStartName))
+            {
+                DiagnosticListener.StartActivity(activity,
+                    new
+                    {
+                        Endpoint = csb.Endpoint,
+                        EntityPath = csb.EntityPath,
+                        PartitionKey = partitionKey,
+                        ConsumerGroup = consumerGroup
+                    });
+            }
+            else
+            {
+                activity.Start();
+            }
+
+            return activity;
+        }
+
+        internal static void FailReceiveActivity(Activity activity, EventHubsConnectionStringBuilder csb, string partitionKey, string consumerGroup, Exception ex)
+        {
+            // TODO consider enriching activity with data from exception
+
+            if (!DiagnosticListener.IsEnabled() || !DiagnosticListener.IsEnabled(ReceiveActivityExceptionName))
+            {
+                return;
+            }
+
+            DiagnosticListener.Write(ReceiveActivityExceptionName,
+                new
+                {
+                    Endpoint = csb.Endpoint,
+                    EntityPath = csb.EntityPath,
+                    PartitionKey = partitionKey,
+                    ConsumerGroup = consumerGroup,
+                    Exception = ex
+                });
+        }
+
+        internal static void StopReceiveActivity(Activity activity, EventHubsConnectionStringBuilder csb, string partitionKey, string consumerGroup, IList<EventData> events, Task receiveTask)
+        {
+            if (activity == null)
+            {
+                return;
+            }
+
+            // stop activity
+            if (receiveTask != null && receiveTask.Status != TaskStatus.RanToCompletion)
+            {
+                activity.AddTag("error", "true");
+            }
+
+            activity.AddTag("eh.event_count", (events?.Count ?? 0).ToString());
+
+            DiagnosticListener.StopActivity(activity,
+                new
+                {
+                    Endpoint = csb.Endpoint,
+                    EntityPath = csb.EntityPath,
+                    PartitionKey = partitionKey,
+                    ConsumerGroup = consumerGroup,
+                    EventDatas = events,
+                    TaskStatus = receiveTask?.Status
+                });
+        }
     }
 }
