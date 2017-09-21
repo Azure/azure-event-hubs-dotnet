@@ -74,14 +74,30 @@ namespace Microsoft.Azure.EventHubs.Processor
             ProcessorEventSource.Log.PartitionPumpCreateClientsStart(this.Host.Id, this.PartitionContext.PartitionId, epoch, startAt?.ToString());
             this.eventHubClient = EventHubClient.CreateFromConnectionString(this.Host.EventHubConnectionString);
 
+            var receiverOptions = new ReceiverOptions()
+            {
+                // Enable receiver metrics?
+                EnableReceiverRuntimeMetric = this.Host.EventProcessorOptions.EnableReceiverRuntimeMetric
+            };
+
             // Create new receiver and set options
             if (startAt is string)
             {
-                this.partitionReceiver = this.eventHubClient.CreateEpochReceiver(this.PartitionContext.ConsumerGroupName, this.PartitionContext.PartitionId, (string)startAt, epoch);
+                this.partitionReceiver = this.eventHubClient.CreateEpochReceiver(
+                    this.PartitionContext.ConsumerGroupName,
+                    this.PartitionContext.PartitionId,
+                    (string)startAt,
+                    epoch,
+                    receiverOptions);
             }
             else if (startAt is DateTime)
             {
-                this.partitionReceiver = this.eventHubClient.CreateEpochReceiver(this.PartitionContext.ConsumerGroupName, this.PartitionContext.PartitionId, (DateTime)startAt, epoch);
+                this.partitionReceiver = this.eventHubClient.CreateEpochReceiver(
+                    this.PartitionContext.ConsumerGroupName, 
+                    this.PartitionContext.PartitionId, 
+                    (DateTime)startAt, 
+                    epoch,
+                    receiverOptions);
             }
 
             this.partitionReceiver.PrefetchCount = this.Host.EventProcessorOptions.PrefetchCount;
