@@ -9,6 +9,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
     using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Azure.Amqp;
+    using Microsoft.Azure.Amqp.Encoding;
     using Microsoft.Azure.Amqp.Framing;
 
     class AmqpPartitionReceiver : PartitionReceiver
@@ -26,8 +27,9 @@ namespace Microsoft.Azure.EventHubs.Amqp
             string startOffset,
             bool offsetInclusive,
             DateTime? startTime,
-            long? epoch)
-            : base(eventHubClient, consumerGroupName, partitionId, startOffset, offsetInclusive, startTime, epoch)
+            long? epoch,
+            ReceiverOptions receiverOptions)
+            : base(eventHubClient, consumerGroupName, partitionId, startOffset, offsetInclusive, startTime, epoch, receiverOptions)
         {
             string entityPath = eventHubClient.ConnectionStringBuilder.EntityPath;
             this.Path = $"{entityPath}/ConsumerGroups/{consumerGroupName}/Partitions/{partitionId}";
@@ -74,7 +76,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                             throw receiveLink.TerminalException;
                         }
 
-                        this.EventHubClient.RetryPolicy.ResetRetryCount(this.ClientId);
+                        this.RetryPolicy.ResetRetryCount(this.ClientId);
 
                         if (hasMessages && amqpMessages != null)
                         {
@@ -101,8 +103,8 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 catch (Exception ex)
                 {
                     // Evaluate retry condition?
-                    this.EventHubClient.RetryPolicy.IncrementRetryCount(this.ClientId);
-                    TimeSpan? retryInterval = this.EventHubClient.RetryPolicy.GetNextRetryInterval(this.ClientId, ex, timeoutHelper.RemainingTime());
+                    this.RetryPolicy.IncrementRetryCount(this.ClientId);
+                    TimeSpan? retryInterval = this.RetryPolicy.GetNextRetryInterval(this.ClientId, ex, timeoutHelper.RemainingTime());
                     if (retryInterval != null)
                     {
                         await Task.Delay(retryInterval.Value).ConfigureAwait(false);
@@ -214,6 +216,15 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 linkSettings.Source = new Source { Address = address.AbsolutePath, FilterSet = filterMap };
                 linkSettings.Target = new Target { Address = this.ClientId };
                 linkSettings.SettleType = SettleMode.SettleOnSend;
+
+                // Receiver metrics enabled?
+                if (this.ReceiverRuntimeMetricEnabled)
+                {
+                    linkSettings.DesiredCapabilities = new Multiple<AmqpSymbol>(new List<AmqpSymbol>
+                        {
+                            AmqpClientConstants.EnableReceiverRuntimeMetricName
+                        });
+                }
 
                 if (this.Epoch.HasValue)
                 {

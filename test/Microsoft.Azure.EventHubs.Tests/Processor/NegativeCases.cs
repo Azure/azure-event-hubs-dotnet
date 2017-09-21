@@ -221,5 +221,37 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
                 await eventProcessorHost.UnregisterEventProcessorAsync();
             }
         }
+
+        [Fact]
+        [DisplayTestMethodName]
+        void InvalidPartitionManagerOptions()
+        {
+            var pmo = new PartitionManagerOptions()
+            {
+                LeaseDuration = TimeSpan.FromSeconds(30),
+                RenewInterval = TimeSpan.FromSeconds(20)
+            };
+
+            Assert.ThrowsAsync<ArgumentException>(() =>
+            {
+                TestUtility.Log("Setting lease duration smaller than the renew interval should fail.");
+                pmo.LeaseDuration = TimeSpan.FromSeconds(15);
+                throw new InvalidOperationException("Setting LeaseDuration should have failed");
+            }).Wait();
+
+            Assert.ThrowsAsync<ArgumentException>(() =>
+            {
+                TestUtility.Log("Setting renew interval greater than the lease duration should fail.");
+                pmo.RenewInterval = TimeSpan.FromSeconds(45);
+                throw new InvalidOperationException("Setting RenewInterval should have failed.");
+            }).Wait();
+
+            Assert.ThrowsAsync<ArgumentException>(() =>
+            {
+                TestUtility.Log("Setting lease duration outside of allowed range should fail.");
+                pmo.LeaseDuration = TimeSpan.FromSeconds(65);
+                throw new InvalidOperationException("Setting LeaseDuration should have failed.");
+            }).Wait();
+        }
     }
 }

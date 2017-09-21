@@ -144,5 +144,9 @@ namespace Microsoft.Azure.EventHubs
 
             return retryAfter;
         }
+
+        /// <summary>Creates a new copy of the current <see cref="RetryPolicy" /> and clones it into a new instance.</summary>
+        /// <returns>A new copy of <see cref="RetryPolicy" />.</returns>
+        public abstract RetryPolicy Clone();
     }
 }
