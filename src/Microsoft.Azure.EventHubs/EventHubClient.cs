@@ -266,11 +266,12 @@ namespace Microsoft.Azure.EventHubs
         /// <param name="consumerGroupName">the consumer group name that this receiver should be grouped under.</param>
         /// <param name="partitionId">the partition Id that the receiver belongs to. All data received will be from this partition only.</param>
         /// <param name="startingOffset">the offset to start receiving the events from. To receive from start of the stream use <see cref="PartitionReceiver.StartOfStream"/></param>
+        /// <param name="receiverOptions">Options for a event hub receiver.</param>
         /// <returns>The created PartitionReceiver</returns>
         /// <seealso cref="PartitionReceiver"/>
-        public PartitionReceiver CreateReceiver(string consumerGroupName, string partitionId, string startingOffset)
+        public PartitionReceiver CreateReceiver(string consumerGroupName, string partitionId, string startingOffset, ReceiverOptions receiverOptions = null)
         {
-            return this.CreateReceiver(consumerGroupName, partitionId, startingOffset, false);
+            return this.CreateReceiver(consumerGroupName, partitionId, startingOffset, false, receiverOptions);
         }
 
         /// <summary>
@@ -281,17 +282,18 @@ namespace Microsoft.Azure.EventHubs
         /// <param name="partitionId">the partition Id that the receiver belongs to. All data received will be from this partition only.</param>
         /// <param name="startOffset">the offset to start receiving the events from. To receive from start of the stream use: <see cref="PartitionReceiver.StartOfStream"/></param>
         /// <param name="offsetInclusive">if set to true, the startingOffset is treated as an inclusive offset - meaning the first event returned is the
+        /// <param name="receiverOptions">Options for a event hub receiver.</param>
         /// one that has the starting offset. Normally first event returned is the event after the starting offset.</param>
         /// <returns>The created PartitionReceiver</returns>
         /// <seealso cref="PartitionReceiver"/>
-        public PartitionReceiver CreateReceiver(string consumerGroupName, string partitionId, string startOffset, bool offsetInclusive)
+        public PartitionReceiver CreateReceiver(string consumerGroupName, string partitionId, string startOffset, bool offsetInclusive, ReceiverOptions receiverOptions = null)
         {
             if (string.IsNullOrWhiteSpace(consumerGroupName) || string.IsNullOrWhiteSpace(partitionId))
             {
                 throw Fx.Exception.ArgumentNullOrWhiteSpace(string.IsNullOrWhiteSpace(consumerGroupName) ? nameof(consumerGroupName) : nameof(partitionId));
             }
 
-            return this.OnCreateReceiver(consumerGroupName, partitionId, startOffset, offsetInclusive, null, null);
+            return this.OnCreateReceiver(consumerGroupName, partitionId, startOffset, offsetInclusive, null, null, receiverOptions);
         }
 
         /// <summary>
@@ -301,16 +303,17 @@ namespace Microsoft.Azure.EventHubs
         /// <param name="consumerGroupName">the consumer group name that this receiver should be grouped under.</param>
         /// <param name="partitionId">the partition Id that the receiver belongs to. All data received will be from this partition only.</param>
         /// <param name="startTime">the DateTime instant that receive operations will start receive events from. Events received will have <see cref="EventData.SystemPropertiesCollection.EnqueuedTimeUtc"/> later than this Instant.</param>
+        /// <param name="receiverOptions">Options for a event hub receiver.</param>
         /// <returns>The created PartitionReceiver</returns>
         /// <seealso cref="PartitionReceiver"/>
-        public PartitionReceiver CreateReceiver(string consumerGroupName, string partitionId, DateTime startTime)
+        public PartitionReceiver CreateReceiver(string consumerGroupName, string partitionId, DateTime startTime, ReceiverOptions receiverOptions = null)
         {
             if (string.IsNullOrWhiteSpace(consumerGroupName) || string.IsNullOrWhiteSpace(partitionId))
             {
                 throw Fx.Exception.ArgumentNullOrWhiteSpace(string.IsNullOrWhiteSpace(consumerGroupName) ? nameof(consumerGroupName) : nameof(partitionId));
             }
 
-            return this.OnCreateReceiver(consumerGroupName, partitionId, null, false, startTime, null);
+            return this.OnCreateReceiver(consumerGroupName, partitionId, null, false, startTime, null, receiverOptions);
         }
 
         /// <summary>
@@ -326,9 +329,10 @@ namespace Microsoft.Azure.EventHubs
         /// <param name="partitionId">the partition Id that the receiver belongs to. All data received will be from this partition only.</param>
         /// <param name="startingOffset">the offset to start receiving the events from. To receive from start of the stream use <see cref="PartitionReceiver.StartOfStream"/></param>
         /// <param name="epoch">an unique identifier (epoch value) that the service uses, to enforce partition/lease ownership.</param>
+        /// <param name="receiverOptions">Options for a event hub receiver.</param>
         /// <returns>The created PartitionReceiver</returns>
         /// <seealso cref="PartitionReceiver"/>
-        public PartitionReceiver CreateEpochReceiver(string consumerGroupName, string partitionId, string startingOffset, long epoch)
+        public PartitionReceiver CreateEpochReceiver(string consumerGroupName, string partitionId, string startingOffset, long epoch, ReceiverOptions receiverOptions = null)
         {
             return this.CreateEpochReceiver(consumerGroupName, partitionId, startingOffset, false, epoch);
         }
@@ -347,9 +351,10 @@ namespace Microsoft.Azure.EventHubs
         /// <param name="startingOffset">the offset to start receiving the events from. To receive from start of the stream use <see cref="PartitionReceiver.StartOfStream"/></param>
         /// <param name="offsetInclusive">if set to true, the startingOffset is treated as an inclusive offset - meaning the first event returned is the one that has the starting offset. Normally first event returned is the event after the starting offset.</param>
         /// <param name="epoch">an unique identifier (epoch value) that the service uses, to enforce partition/lease ownership. </param>
+        /// <param name="receiverOptions">Options for a event hub receiver.</param>
         /// <returns>The created PartitionReceiver</returns>
         /// <seealso cref="PartitionReceiver"/>
-        public PartitionReceiver CreateEpochReceiver(string consumerGroupName, string partitionId, string startingOffset, bool offsetInclusive, long epoch)
+        public PartitionReceiver CreateEpochReceiver(string consumerGroupName, string partitionId, string startingOffset, bool offsetInclusive, long epoch, ReceiverOptions receiverOptions = null)
         {
             if (string.IsNullOrWhiteSpace(consumerGroupName) || string.IsNullOrWhiteSpace(partitionId))
             {
@@ -360,7 +365,7 @@ namespace Microsoft.Azure.EventHubs
                 throw Fx.Exception.ArgumentOutOfRange(nameof(epoch), epoch, "Epoch cannot be negative. Please specify a zero or positive long value.");
             }
 
-            return this.OnCreateReceiver(consumerGroupName, partitionId, startingOffset, offsetInclusive, null, epoch);
+            return this.OnCreateReceiver(consumerGroupName, partitionId, startingOffset, offsetInclusive, null, epoch, receiverOptions);
         }
 
         /// <summary>
@@ -375,9 +380,10 @@ namespace Microsoft.Azure.EventHubs
         /// <param name="partitionId">the partition Id that the receiver belongs to. All data received will be from this partition only.</param>
         /// <param name="startTime">the date time instant that receive operations will start receive events from. Events received will have <see cref="EventData.SystemPropertiesCollection.EnqueuedTimeUtc"/> later than this instant.</param>
         /// <param name="epoch">a unique identifier (epoch value) that the service uses, to enforce partition/lease ownership.</param>
+        /// <param name="receiverOptions">Options for a event hub receiver.</param>
         /// <returns>The created PartitionReceiver</returns>
         /// <seealso cref="PartitionReceiver"/>
-        public PartitionReceiver CreateEpochReceiver(string consumerGroupName, string partitionId, DateTime startTime, long epoch)
+        public PartitionReceiver CreateEpochReceiver(string consumerGroupName, string partitionId, DateTime startTime, long epoch, ReceiverOptions receiverOptions = null)
         {
             if (string.IsNullOrWhiteSpace(consumerGroupName) || string.IsNullOrWhiteSpace(partitionId))
             {
@@ -388,7 +394,7 @@ namespace Microsoft.Azure.EventHubs
                 throw Fx.Exception.ArgumentOutOfRange(nameof(epoch), epoch, "Epoch cannot be negative. Please specify a zero or positive long value.");
             }
 
-            return this.OnCreateReceiver(consumerGroupName, partitionId, null, false, startTime, epoch);
+            return this.OnCreateReceiver(consumerGroupName, partitionId, null, false, startTime, epoch, receiverOptions);
         }
 
         /// <summary>
@@ -447,6 +453,14 @@ namespace Microsoft.Azure.EventHubs
             return new EventDataBatch(this.InnerSender.MaxMessageSize);
         }
 
+        /// <summary> Gets or sets a value indicating whether the runtime metric of a receiver is enabled. </summary>
+        /// <value> true if a client wants to access <see cref="ReceiverRuntimeInformation"/> using <see cref="PartitionReceiver"/>. </value>
+        public bool EnableReceiverRuntimeMetric
+        {
+            get;
+            set;
+        }
+
         internal EventDataSender CreateEventSender(string partitionId = null)
         {
             return this.OnCreateEventSender(partitionId);
@@ -461,8 +475,9 @@ namespace Microsoft.Azure.EventHubs
         /// <param name="offsetInclusive"></param>
         /// <param name="startTime"></param>
         /// <param name="epoch"></param>
+        /// <param name="receiverOptions"></param>
         /// <returns></returns>
-        protected abstract PartitionReceiver OnCreateReceiver(string consumerGroupName, string partitionId, string startOffset, bool offsetInclusive, DateTime? startTime, long? epoch);
+        protected abstract PartitionReceiver OnCreateReceiver(string consumerGroupName, string partitionId, string startOffset, bool offsetInclusive, DateTime? startTime, long? epoch, ReceiverOptions receiverOptions);
 
         /// <summary></summary>
         /// <returns></returns>

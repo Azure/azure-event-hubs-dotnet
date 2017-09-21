@@ -159,6 +159,13 @@ namespace Microsoft.Azure.EventHubs.Processor
                             this.PartitionContext.PartitionId,
                             "Updating offset in partition context with end of batch " + last.SystemProperties.Offset + "/" + last.SystemProperties.SequenceNumber);
                         this.PartitionContext.SetOffsetAndSequenceNumber(last);
+                        if (this.Host.EventProcessorOptions.EnableReceiverRuntimeMetric)
+                        {
+                            this.PartitionContext.RuntimeInformation.LastSequenceNumber = last.LastSequenceNumber;
+                            this.PartitionContext.RuntimeInformation.LastEnqueuedOffset = last.LastEnqueuedOffset;
+                            this.PartitionContext.RuntimeInformation.LastEnqueuedTimeUtc = last.LastEnqueuedTime;
+                            this.PartitionContext.RuntimeInformation.RetrievalTime = last.RetrievalTime;
+                        }
                     }
 
                     await this.Processor.ProcessEventsAsync(this.PartitionContext, events).ConfigureAwait(false);

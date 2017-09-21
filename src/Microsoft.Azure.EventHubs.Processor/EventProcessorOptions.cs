@@ -64,6 +64,14 @@ namespace Microsoft.Azure.EventHubs.Processor
         /// </summary>
         public TimeSpan ReceiveTimeout { get; set; }
 
+        /// <summary> Gets or sets a value indicating whether the runtime metric of a receiver is enabled. </summary>
+        /// <value> true if a client wants to access <see cref="ReceiverRuntimeInformation"/> using <see cref="PartitionContext"/>.</value>
+        public bool EnableReceiverRuntimeMetric
+        {
+            get;
+            set;
+        }
+
         /// <summary>
         /// Gets or sets the current prefetch count for the underlying client.
         /// The default is 300.
