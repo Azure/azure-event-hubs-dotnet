@@ -20,7 +20,7 @@ environment:
       azure-event-hubs-dotnet/CodeCovSecret:
         secure: pmpPpo9faBysYDhkDrKv4zOm1UOmdpga7+sZEcjYOITwzph24z947KugpQMLMGrx
     # Second build
-    - DotNetRunTime: net46
+    - DotNetRunTime: net461
       azure-event-hubs-dotnet/SkipCodeCoverage: true
 skip_commits:
   files:
