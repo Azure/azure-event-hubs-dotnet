@@ -175,23 +175,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     }
                 }
 
-                // Custom override for EventHub scenario. Note that these 
-                // "can" override existing properties, which is intentional as
-                // in the EH these system properties take precedence over Amqp data.
-                //string publisher;
-                //if (amqpMessage.MessageAnnotations.Map.TryGetValue<string>(PublisherName, out publisher))
-                //{
-                //    data.Publisher = publisher;
-                //}
-
-//#if DEBUG
-//                short partitionId;
-//                if (amqpMessage.MessageAnnotations.Map.TryGetValue<short>(PartitionIdName, out partitionId))
-//                {
-//                    data.PartitionId = partitionId;
-//                }
-//#endif
-
                 if (data.SystemProperties == null)
                 {
                     data.SystemProperties = new EventData.SystemPropertiesCollection();
@@ -219,6 +202,33 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 if (amqpMessage.MessageAnnotations.Map.TryGetValue(AmqpMessageConverter.OffsetName, out offset))
                 {
                     data.SystemProperties.Offset = offset;
+                }
+            }
+
+            if ((sections & SectionFlag.DeliveryAnnotations) != 0)
+            {
+                long lastSequenceNumber;
+                if (amqpMessage.DeliveryAnnotations.Map.TryGetValue<long>(AmqpClientConstants.ManagementPartitionLastEnqueuedSequenceNumber, out lastSequenceNumber))
+                {
+                    data.LastSequenceNumber = lastSequenceNumber;
+                }
+
+                string lastEnqueuedOffset;
+                if (amqpMessage.DeliveryAnnotations.Map.TryGetValue<string>(AmqpClientConstants.ManagementPartitionLastEnqueuedOffset, out lastEnqueuedOffset))
+                {
+                    data.LastEnqueuedOffset = lastEnqueuedOffset;
+                }
+
+                DateTime lastEnqueuedTime;
+                if (amqpMessage.DeliveryAnnotations.Map.TryGetValue<DateTime>(AmqpClientConstants.ManagementPartitionLastEnqueuedTimeUtc, out lastEnqueuedTime))
+                {
+                    data.LastEnqueuedTime = lastEnqueuedTime;
+                }
+
+                DateTime retrievalTime;
+                if (amqpMessage.DeliveryAnnotations.Map.TryGetValue<DateTime>(AmqpClientConstants.ManagementPartitionRuntimeInfoRetrievalTimeUtc, out retrievalTime))
+                {
+                    data.RetrievalTime = retrievalTime;
                 }
             }
 
