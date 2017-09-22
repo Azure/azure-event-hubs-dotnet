@@ -5,7 +5,7 @@
     <AssemblyTitle>Microsoft.Azure.EventHubs.Processor</AssemblyTitle>
     <VersionPrefix>1.0.3</VersionPrefix>
     <Authors>Microsoft</Authors>
-    <TargetFrameworks>net451;netstandard1.3;uap10.0;</TargetFrameworks>
+    <TargetFrameworks>net451;netstandard2.0;uap10.0;</TargetFrameworks>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <AssemblyName>Microsoft.Azure.EventHubs.Processor</AssemblyName>
     <AssemblyOriginatorKeyFile>../../build/keyfile.snk</AssemblyOriginatorKeyFile>
