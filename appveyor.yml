@@ -16,7 +16,7 @@ environment:
     secure: NYwBqWBHvwwNfcKZjjLjCDSxPEVq1AH0DvJXQjVjPA/xpDT/e9SxCj4YpIMWwd+t
   matrix:
     # First build
-    - DotNetRunTime: netcoreapp1.0
+    - DotNetRunTime: netcoreapp2.0
       azure-event-hubs-dotnet/CodeCovSecret:
         secure: pmpPpo9faBysYDhkDrKv4zOm1UOmdpga7+sZEcjYOITwzph24z947KugpQMLMGrx
     # Second build
