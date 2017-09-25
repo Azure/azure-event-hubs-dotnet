@@ -52,6 +52,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
                     foreach (var eventData in eventDatas)
                     {
                         object objectValue;
+
                         if (eventData.Properties != null && eventData.Properties.TryGetValue("EventId", out objectValue))
                         {
                             TestUtility.Log($"Received message with EventId {objectValue}");
