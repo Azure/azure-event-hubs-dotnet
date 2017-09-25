@@ -463,12 +463,19 @@ namespace Microsoft.Azure.EventHubs
         }
 
         /// <summary>Creates a batch where event data objects can be added for later SendAsync call.</summary>
-        /// <param name="partitionKey">Partition key associated with the batch</param>
-        /// <param name="maxMessageSize">Maximum size of the batch</param>
         /// <returns>Returns <see cref="EventDataBatch" />.</returns>
-        public EventDataBatch CreateBatch(string partitionKey = null, long maxMessageSize = 0)
+        public EventDataBatch CreateBatch()
         {
-            return new EventDataBatch(maxMessageSize > 0 ? maxMessageSize : this.InnerSender.MaxMessageSize, partitionKey);
+            return this.CreateBatch(new BatchOptions());
+        }
+        
+        /// <summary>Creates a batch where event data objects can be added for later SendAsync call.</summary>
+        /// <param name="options"><see cref="BatchOptions" /> to define partition key and max message size.</param>
+        /// <returns>Returns <see cref="EventDataBatch" />.</returns>
+        public EventDataBatch CreateBatch(BatchOptions options)
+        {
+            return new EventDataBatch(options.MaxMessageSize > 0 ?
+                options.MaxMessageSize : this.InnerSender.MaxMessageSize, options.PartitionKey);
         }
 
         /// <summary> Gets or sets a value indicating whether the runtime metric of a receiver is enabled. </summary>

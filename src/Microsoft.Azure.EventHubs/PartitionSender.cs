@@ -38,11 +38,25 @@ namespace Microsoft.Azure.EventHubs
 
         object ThisLock { get; } = new object();
 
+
         /// <summary>Creates a batch where event data objects can be added for later SendAsync call.</summary>
         /// <returns>Returns <see cref="EventDataBatch" />.</returns>
-        public EventDataBatch CreateBatch(long maxMessageSize = 0)
+        public EventDataBatch CreateBatch()
         {
-            return new EventDataBatch(maxMessageSize > 0 ? maxMessageSize : this.InnerSender.MaxMessageSize);
+            return this.CreateBatch(new BatchOptions());
+        }
+        
+        /// <summary>Creates a batch where event data objects can be added for later SendAsync call.</summary>
+        /// <param name="options"><see cref="BatchOptions" /> to define partition key and max message size.</param>
+        /// <returns>Returns <see cref="EventDataBatch" />.</returns>
+        public EventDataBatch CreateBatch(BatchOptions options)
+        {
+            if (!string.IsNullOrWhiteSpace(options.PartitionKey))
+            {
+                throw Fx.Exception.InvalidOperation(Resources.PartitionSenderInvalidWithPartitionKeyOnBatch);
+            }
+
+            return new EventDataBatch(options.MaxMessageSize > 0 ? options.MaxMessageSize : this.InnerSender.MaxMessageSize);
         }
 
         /// <summary>

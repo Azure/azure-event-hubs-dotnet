@@ -40,14 +40,38 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
         async Task SendingPartitionKeyBatchOnPartitionSenderShouldFail()
         {
             var partitionSender = this.EventHubClient.CreatePartitionSender("0");
-            var batcher = this.EventHubClient.CreateBatch("this is the partition key");
+            var batchOptions = new BatchOptions()
+            {
+                PartitionKey = "this is the partition key"
+            };
+            var batcher = this.EventHubClient.CreateBatch(batchOptions);
 
-            // GetRuntimeInformationAsync on a nonexistent entity.
             await Assert.ThrowsAsync<InvalidOperationException>(async () =>
             {
                 TestUtility.Log("Attempting to send a partition-key batch on partition sender. This should fail.");
                 await partitionSender.SendAsync(batcher);
                 throw new InvalidOperationException("SendAsync call should have failed");
+            });
+        }
+
+
+        /// <summary>
+        /// PartitionSender should not allow to create a batch with partition key defined.
+        /// </summary>
+        [Fact]
+        [DisplayTestMethodName]
+        async Task CreatingPartitionKeyBatchOnPartitionSenderShouldFail()
+        {
+            var partitionSender = this.EventHubClient.CreatePartitionSender("0");
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            {
+                TestUtility.Log("Attempting to create a partition-key batch on partition sender. This should fail.");
+                partitionSender.CreateBatch(new BatchOptions()
+                {
+                    PartitionKey = "this is the key to fail"
+                });
+                throw new InvalidOperationException("CreateBatch call should have failed");
             });
         }
 
@@ -75,7 +99,20 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
                 }
 
                 // Create initial batcher.
-                EventDataBatch batcher = this.EventHubClient.CreateBatch(partitionKey);
+                EventDataBatch batcher = null;
+
+                // Exercise both CreateBatch overloads.
+                if (partitionKey != null)
+                {
+                    batcher = this.EventHubClient.CreateBatch(new BatchOptions()
+                    {
+                        PartitionKey = partitionKey
+                    });
+                }
+                else
+                {
+                    batcher = this.EventHubClient.CreateBatch();
+                }
 
                 // We will send a thousand messages where each message is 1K.
                 var totalSent = 0;
@@ -93,7 +130,11 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
                         TestUtility.Log($"Sent {batcher.Count} messages in the batch.");
 
                         // Create new batcher.
-                        batcher = this.EventHubClient.CreateBatch(partitionKey);
+                        // Exercise CreateBatch with partition key only where PartitionKey might be null.
+                        batcher = this.EventHubClient.CreateBatch(new BatchOptions()
+                        {
+                            PartitionKey = partitionKey
+                        });
                     }
                 } while (totalSent < MinimumNumberOfMessagesToSend);
 
