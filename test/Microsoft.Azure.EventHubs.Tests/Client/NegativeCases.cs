@@ -215,32 +215,5 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
                 throw new Exception("new EventData(null) was supposed to fail");
             });
         }
-
-        [Fact]
-        [DisplayTestMethodName]
-        async Task UsingIotReservedPropertyNamesShouldFail()
-        {
-            // All lowercase
-            await Assert.ThrowsAsync<InvalidOperationException>(async () =>
-            {
-                var pName1 = "iothub-connection-device-id";
-                TestUtility.Log($"Sending event with property '{pName1}'.");
-                var ed = new EventData(new byte[10]);
-                ed.Properties.Add(pName1, "testvalue");
-                await this.EventHubClient.SendAsync(ed);
-                throw new InvalidOperationException("Send call should have failed");
-            });
-
-            // Different case 
-            await Assert.ThrowsAsync<InvalidOperationException>(async () =>
-            {
-                var pName2 = "IOThub-Connection-device-Id";
-                TestUtility.Log($"Sending event with property with different case'{pName2}'.");
-                var ed = new EventData(new byte[10]);
-                ed.Properties.Add(pName2, "testvalue");
-                await this.EventHubClient.SendAsync(ed);
-                throw new InvalidOperationException("Send call should have failed");
-            });
-        }
     }
 }

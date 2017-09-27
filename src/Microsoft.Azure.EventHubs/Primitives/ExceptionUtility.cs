@@ -31,11 +31,6 @@ namespace Microsoft.Azure.EventHubs
             return new ArgumentOutOfRangeException(paramName, actualValue, message);
         }
 
-        public InvalidOperationException InvalidOperation(string message)
-        {
-            return new InvalidOperationException(message);
-        }
-
         public Exception AsError(Exception exception)
         {
             EventHubsEventSource.Log.ThrowingExceptionError(exception.ToString());

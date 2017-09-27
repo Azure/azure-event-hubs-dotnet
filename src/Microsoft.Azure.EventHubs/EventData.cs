@@ -117,7 +117,7 @@ namespace Microsoft.Azure.EventHubs
         /// <summary>
         /// A collection used to store properties which are set by the Event Hubs service.
         /// </summary>
-        public sealed class SystemPropertiesCollection
+        public sealed class SystemPropertiesCollection : Dictionary<string, object>
         {
             internal SystemPropertiesCollection()
             {

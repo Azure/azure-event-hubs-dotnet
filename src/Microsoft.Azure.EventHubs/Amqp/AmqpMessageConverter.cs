@@ -31,17 +31,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
         public const string UriName = AmqpConstants.Vendor + ":uri";
         public const string DateTimeOffsetName = AmqpConstants.Vendor + ":datetime-offset";
 
-        // Below is a list of IOT reserved property names. 
-        // We won't allow sender client to use one of these names in the application properties.
-        static string[] IotReservedPropertyNames =
-        {
-            "iothub-connection-device-id",
-            "iothub-connection-auth-method",
-            "iothub-connection-auth-generation-id",
-            "iothub-enqueuedtime",
-            "iothub-message-source"
-        };
-
         public static EventData AmqpMessageToEventData(AmqpMessage amqpMessage)
         {
             if (amqpMessage == null)
@@ -148,12 +137,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
                 foreach (var pair in eventData.Properties)
                 {
-                    // Check IOT reserved names.
-                    if (IotReservedPropertyNames.Any(n => string.Compare(n, pair.Key, StringComparison.CurrentCultureIgnoreCase) == 0))
-                    {
-                        throw Fx.Exception.InvalidOperation(Resources.IotReservedNameError.FormatForUser(pair.Key));
-                    }
-
                     object amqpObject;
                     if (TryGetAmqpObjectFromNetObject(pair.Value, MappingType.ApplicationProperty, out amqpObject))
                     {
@@ -174,6 +157,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
         static void UpdateEventDataHeaderAndProperties(AmqpMessage amqpMessage, EventData data)
         {
             SectionFlag sections = amqpMessage.Sections;
+
             if ((sections & SectionFlag.MessageAnnotations) != 0)
             {
                 if (data.SystemProperties == null)
@@ -181,28 +165,29 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     data.SystemProperties = new EventData.SystemPropertiesCollection();
                 }
 
-                string partitionKey;
-                if (amqpMessage.MessageAnnotations.Map.TryGetValue(AmqpMessageConverter.PartitionKeyName, out partitionKey))
+                foreach (var keyValuePair in amqpMessage.MessageAnnotations.Map)
                 {
-                    data.SystemProperties.PartitionKey = partitionKey;
-                }
+                    object netObject;
+                    if (TryGetNetObjectFromAmqpObject(keyValuePair.Value, MappingType.ApplicationProperty, out netObject))
+                    {
+                        data.SystemProperties[keyValuePair.Key.ToString()] = netObject;
 
-                DateTime enqueuedTimeUtc;
-                if (amqpMessage.MessageAnnotations.Map.TryGetValue(AmqpMessageConverter.EnqueuedTimeUtcName, out enqueuedTimeUtc))
-                {
-                    data.SystemProperties.EnqueuedTimeUtc = enqueuedTimeUtc;
-                }
-
-                long sequenceNumber;
-                if (amqpMessage.MessageAnnotations.Map.TryGetValue(AmqpMessageConverter.SequenceNumberName, out sequenceNumber))
-                {
-                    data.SystemProperties.SequenceNumber = sequenceNumber;
-                }
-
-                string offset;
-                if (amqpMessage.MessageAnnotations.Map.TryGetValue(AmqpMessageConverter.OffsetName, out offset))
-                {
-                    data.SystemProperties.Offset = offset;
+                        switch (keyValuePair.Key.ToString())
+                        {
+                            case AmqpMessageConverter.PartitionKeyName:
+                                data.SystemProperties.PartitionKey = (string)netObject;
+                                break;
+                            case AmqpMessageConverter.EnqueuedTimeUtcName:
+                                data.SystemProperties.EnqueuedTimeUtc = (DateTime)netObject;
+                                break;
+                            case AmqpMessageConverter.SequenceNumberName:
+                                data.SystemProperties.SequenceNumber = (long)netObject;
+                                break;
+                            case AmqpMessageConverter.OffsetName:
+                                data.SystemProperties.Offset = (string)netObject;
+                                break;
+                        }
+                    }
                 }
             }
 
@@ -247,27 +232,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     {
                         data.Properties[pair.Key.ToString()] = netObject;
                     }
-                }
-            }
-
-            // services (e.g. IoTHub) assumes that all Amqp message annotation will get bubbled up so we will cycle
-            // through the list and add them to system properties as well.
-            // Do this as the last thing, we don't want application properties to override IOT set values.
-            foreach (var keyValuePair in amqpMessage.MessageAnnotations.Map)
-            {
-                // Don't push system properties into application properties bag.
-                if (keyValuePair.Key.ToString() == AmqpMessageConverter.PartitionKeyName ||
-                    keyValuePair.Key.ToString() == AmqpMessageConverter.EnqueuedTimeUtcName ||
-                    keyValuePair.Key.ToString() == AmqpMessageConverter.SequenceNumberName ||
-                    keyValuePair.Key.ToString() == AmqpMessageConverter.OffsetName)
-                {
-                    continue;
-                }
-
-                object netObject;
-                if (TryGetNetObjectFromAmqpObject(keyValuePair.Value, MappingType.ApplicationProperty, out netObject))
-                {
-                    data.Properties[keyValuePair.Key.ToString()] = netObject;
                 }
             }
         }

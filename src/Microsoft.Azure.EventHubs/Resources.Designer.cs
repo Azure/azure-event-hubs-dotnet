@@ -188,16 +188,5 @@ namespace Microsoft.Azure.EventHubs {
                 return ResourceManager.GetString("ArgumentInvalidCombination", resourceCulture);
             }
         }
-
-        /// <summary>
-        ///    Gets localized string like: Property name '{0}' is reserved for IoT Hub. Please select another name.
-        /// </summary>
-        public static string IotReservedNameError
-        {
-            get
-            {
-                return ResourceManager.GetString("IotReservedNameError", resourceCulture);
-            }
-        }
     }
 }

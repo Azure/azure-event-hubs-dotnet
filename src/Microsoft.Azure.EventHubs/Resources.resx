@@ -141,9 +141,6 @@
   <data name="InvalidEncoding" xml:space="preserve">
     <value>The string has an invalid encoding format.</value>
   </data>
-  <data name="IotReservedNameError" xml:space="preserve">
-    <value>Property name '{0}' is reserved for IoT Hub. Please select another name.</value>
-  </data>
   <data name="PartitionInvalidPartitionKey" xml:space="preserve">
     <value>The specified partitionKey '{0}' is invalid for partition '{1}'. Do not specify a partitionKey when sending using a PartitionedSender.  Instead use EventHubClient.Send.</value>
   </data>
