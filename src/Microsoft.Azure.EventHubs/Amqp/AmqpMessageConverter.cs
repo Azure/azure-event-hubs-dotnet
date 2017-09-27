@@ -31,6 +31,17 @@ namespace Microsoft.Azure.EventHubs.Amqp
         public const string UriName = AmqpConstants.Vendor + ":uri";
         public const string DateTimeOffsetName = AmqpConstants.Vendor + ":datetime-offset";
 
+        // Below is a list of IOT reserved property names. 
+        // We won't allow sender client to use one of these names in the application properties.
+        static string[] IotReservedPropertyNames =
+        {
+            "iothub-connection-device-id",
+            "iothub-connection-auth-method",
+            "iothub-connection-auth-generation-id",
+            "iothub-enqueuedtime",
+            "iothub-message-source"
+        };
+
         public static EventData AmqpMessageToEventData(AmqpMessage amqpMessage)
         {
             if (amqpMessage == null)
@@ -137,6 +148,12 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
                 foreach (var pair in eventData.Properties)
                 {
+                    // Check IOT reserved names.
+                    if (IotReservedPropertyNames.Any(n => string.Compare(n, pair.Key, StringComparison.CurrentCultureIgnoreCase) == 0))
+                    {
+                        throw Fx.Exception.InvalidOperation(Resources.IotReservedNameError.FormatForUser(pair.Key));
+                    }
+
                     object amqpObject;
                     if (TryGetAmqpObjectFromNetObject(pair.Value, MappingType.ApplicationProperty, out amqpObject))
                     {
@@ -438,7 +455,5 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
             return netObject != null;
         }
-
-
     }
 }
