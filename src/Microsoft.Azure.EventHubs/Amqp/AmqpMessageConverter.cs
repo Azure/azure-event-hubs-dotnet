@@ -159,22 +159,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
             SectionFlag sections = amqpMessage.Sections;
             if ((sections & SectionFlag.MessageAnnotations) != 0)
             {
-                // services (e.g. IoTHub) assumes that all Amqp message annotation will get bubbled up so we will cycle
-                // through the list and add them to system properties as well.
-                foreach (var keyValuePair in amqpMessage.MessageAnnotations.Map)
-                {
-                    if (data.Properties == null)
-                    {
-                        data.Properties = new Dictionary<string, object>();
-                    }
-
-                    object netObject;
-                    if (TryGetNetObjectFromAmqpObject(keyValuePair.Value, MappingType.ApplicationProperty, out netObject))
-                    {
-                        data.Properties[keyValuePair.Key.ToString()] = netObject;
-                    }
-                }
-
                 if (data.SystemProperties == null)
                 {
                     data.SystemProperties = new EventData.SystemPropertiesCollection();
@@ -246,6 +230,27 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     {
                         data.Properties[pair.Key.ToString()] = netObject;
                     }
+                }
+            }
+
+            // services (e.g. IoTHub) assumes that all Amqp message annotation will get bubbled up so we will cycle
+            // through the list and add them to system properties as well.
+            // Do this as the last thing, we don't want application properties to override IOT set values.
+            foreach (var keyValuePair in amqpMessage.MessageAnnotations.Map)
+            {
+                // Don't push system properties into application properties bag.
+                if (keyValuePair.Key.ToString() == AmqpMessageConverter.PartitionKeyName ||
+                    keyValuePair.Key.ToString() == AmqpMessageConverter.EnqueuedTimeUtcName ||
+                    keyValuePair.Key.ToString() == AmqpMessageConverter.SequenceNumberName ||
+                    keyValuePair.Key.ToString() == AmqpMessageConverter.OffsetName)
+                {
+                    continue;
+                }
+
+                object netObject;
+                if (TryGetNetObjectFromAmqpObject(keyValuePair.Value, MappingType.ApplicationProperty, out netObject))
+                {
+                    data.Properties[keyValuePair.Key.ToString()] = netObject;
                 }
             }
         }
