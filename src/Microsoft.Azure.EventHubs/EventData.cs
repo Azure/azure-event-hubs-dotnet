@@ -126,14 +126,20 @@ namespace Microsoft.Azure.EventHubs
             /// <summary>Gets the logical sequence number of the event within the partition stream of the Event Hub.</summary>
             public long SequenceNumber
             {
-                get; internal set;
+                get
+                {
+                    return (long)this[ClientConstants.SequenceNumberName];
+                }
             }
 
             /// <summary>Gets or sets the date and time of the sent time in UTC.</summary>
             /// <value>The enqueue time in UTC. This value represents the actual time of enqueuing the message.</value>
             public DateTime EnqueuedTimeUtc
             {
-                get; internal set;
+                get
+                {
+                    return (DateTime)this[ClientConstants.EnqueuedTimeUtcName];
+                }
             }
 
             /// <summary>
@@ -141,13 +147,19 @@ namespace Microsoft.Azure.EventHubs
             /// </summary>
             public string Offset
             {
-                get; internal set;
+                get
+                {
+                    return (string)this[ClientConstants.OffsetName];
+                }
             }
 
             /// <summary>Gets the partition key of the corresponding partition that stored the <see cref="EventData"/></summary>
             public string PartitionKey
             {
-                get; internal set;
+                get
+                {
+                    return (string)this[ClientConstants.PartitionKeyName];
+                }
             }
         }
     }

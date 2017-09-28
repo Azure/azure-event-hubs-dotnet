@@ -21,12 +21,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
             SectionFlag.DeliveryAnnotations |
             SectionFlag.Properties;
 
-        public const string EnqueuedTimeUtcName = "x-opt-enqueued-time";
-        public const string SequenceNumberName = "x-opt-sequence-number";
-        public const string OffsetName = "x-opt-offset";
-
-        public const string PublisherName = "x-opt-publisher";
-        public const string PartitionKeyName = "x-opt-partition-key";
         public const string TimeSpanName = AmqpConstants.Vendor + ":timespan";
         public const string UriName = AmqpConstants.Vendor + ":uri";
         public const string DateTimeOffsetName = AmqpConstants.Vendor + ":datetime-offset";
@@ -125,7 +119,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
         {
             if (!string.IsNullOrEmpty(publisher))
             {
-                message.MessageAnnotations.Map[PublisherName] = publisher;
+                message.MessageAnnotations.Map[ClientConstants.PublisherName] = publisher;
             }
 
             if (copyUserProperties && eventData.Properties != null && eventData.Properties.Count > 0)
@@ -150,7 +144,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
         {
             if (partitionKey != null)
             {
-                message.MessageAnnotations.Map[PartitionKeyName] = partitionKey;
+                message.MessageAnnotations.Map[ClientConstants.PartitionKeyName] = partitionKey;
             }
         }
 
@@ -171,22 +165,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     if (TryGetNetObjectFromAmqpObject(keyValuePair.Value, MappingType.ApplicationProperty, out netObject))
                     {
                         data.SystemProperties[keyValuePair.Key.ToString()] = netObject;
-
-                        switch (keyValuePair.Key.ToString())
-                        {
-                            case AmqpMessageConverter.PartitionKeyName:
-                                data.SystemProperties.PartitionKey = (string)netObject;
-                                break;
-                            case AmqpMessageConverter.EnqueuedTimeUtcName:
-                                data.SystemProperties.EnqueuedTimeUtc = (DateTime)netObject;
-                                break;
-                            case AmqpMessageConverter.SequenceNumberName:
-                                data.SystemProperties.SequenceNumber = (long)netObject;
-                                break;
-                            case AmqpMessageConverter.OffsetName:
-                                data.SystemProperties.Offset = (string)netObject;
-                                break;
-                        }
                     }
                 }
             }
