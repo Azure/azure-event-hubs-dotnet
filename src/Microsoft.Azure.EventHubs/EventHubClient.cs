@@ -6,7 +6,6 @@ namespace Microsoft.Azure.EventHubs
     using Amqp;
     using System;
     using System.Collections.Generic;
-    using System.Diagnostics;
     using System.Threading.Tasks;
 
     /// <summary>
@@ -220,26 +219,19 @@ namespace Microsoft.Azure.EventHubs
         {
             // eventDatas null check is inside ValidateEvents
             int count = EventDataSender.ValidateEvents(eventDatas, null, partitionKey);
-
             EventHubsEventSource.Log.EventSendStart(this.ClientId, count, partitionKey);
-            Activity activity = EventHubsDiagnosticSource.StartSendActivity(this.ClientId, this.ConnectionStringBuilder, partitionKey, eventDatas, count);
-
-            Task sendTask = null;
             try
             {
-                sendTask = this.InnerSender.SendAsync(eventDatas, partitionKey);
-                await sendTask.ConfigureAwait(false);
+                await this.InnerSender.SendAsync(eventDatas, partitionKey).ConfigureAwait(false);
             }
             catch (Exception exception)
             {
                 EventHubsEventSource.Log.EventSendException(this.ClientId, exception.ToString());
-                EventHubsDiagnosticSource.FailSendActivity(activity, this.ConnectionStringBuilder, partitionKey, eventDatas, exception);
                 throw;
             }
             finally
             {
                 EventHubsEventSource.Log.EventSendStop(this.ClientId);
-                EventHubsDiagnosticSource.StopSendActivity(activity, this.ConnectionStringBuilder, partitionKey, eventDatas, sendTask);
             }
         }
 
