@@ -112,7 +112,7 @@ namespace Microsoft.Azure.EventHubs.ProcessorActorService
                 ConfigurationSection configSection = configPackage.Settings.Sections[Constants.EventProcessorConfigSectionName];
                 ConfigurationProperty configProp = configSection.Parameters[configurationValueName];
             }
-            catch (KeyNotFoundException e)
+            catch (KeyNotFoundException)
             {
                 // If the user has not specified a value in config, drop through and return the default value.
                 // If the caller cannot continue without a value, it is up to the caller to detect and handle.

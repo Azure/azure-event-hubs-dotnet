@@ -11,17 +11,29 @@ using System.Fabric.Description;
 
 namespace Microsoft.Azure.EventHubs.ProcessorActorService
 {
+    /// <summary>
+    /// Placeholder to avoid compiler error.
+    /// </summary>
     public abstract class EventProcessorActorBase : Actor, IEventProcessorActor
     {
+        /// <summary>
+        /// Placeholder to avoid compiler error.
+        /// </summary>
         public EventProcessorActorBase(ActorService actorService, ActorId actorId) : base(actorService, actorId)
         {
             this.aggregatedLoadMetric = 0;
         }
 
         #region Mapper
-        // Called on: Mapper actor
-        // Called by: service code
-        // If targetPartitionInfo is null, add in any partition.
+        /// <summary>
+        /// Called on: Mapper actor
+        /// Called by: service code
+        /// If targetPartitionInfo is null, add in any partition.
+        /// </summary>
+        /// <param name="stringId"></param>
+        /// <param name="targetPartitionInfo"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public async Task<ActorId> GetOrAddActorInPartition(string stringId, ServicePartitionInformation targetPartitionInfo, CancellationToken cancellationToken)
         {
             ConditionalValue<long> longId = await this.StateManager.TryGetStateAsync<long>(Constants.MapperActorMappingPrefix + stringId, cancellationToken);
@@ -50,8 +62,13 @@ namespace Microsoft.Azure.EventHubs.ProcessorActorService
             return returnId;
         }
 
-        // Called on: Mapper actor
-        // Called by: user actors
+        /// <summary>
+        /// Called on: Mapper actor
+        /// Called by: user actors
+        /// </summary>
+        /// <param name="stringId"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public async Task<ActorId> GetExistingActor(string stringId, CancellationToken cancellationToken)
         {
             ConditionalValue<long> longId = await this.StateManager.TryGetStateAsync<long>(Constants.MapperActorMappingPrefix + stringId, cancellationToken);
@@ -95,26 +112,38 @@ namespace Microsoft.Azure.EventHubs.ProcessorActorService
             return this.cachedReportingActor;
         }
 
-        // Called on: user actor
-        // Called by: user actor implementation
+        /// <summary>
+        /// Called on: user actor
+        /// Called by: user actor implementation
+        /// </summary>
+        /// <param name="load"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public async Task ReportLoadMetric(int load, CancellationToken cancellationToken)
         {
             IUserActor reportingActor = await GetReportingActor(cancellationToken);
             await this.cachedReportingActor.AggregateLoadMetric(load);
         }
 
-        // Called on: MetricsReporter actor
-        // Called by: ReportLoadMetric() on user actor
-        // Not a long-running call so no cancellationToken
+        /// <summary>
+        /// Called on: MetricsReporter actor
+        /// Called by: ReportLoadMetric() on user actor
+        /// Not a long-running call so no cancellationToken
+        /// </summary>
+        /// <param name="load"></param>
+        /// <returns></returns>
         public Task AggregateLoadMetric(int load)
         {
             this.aggregatedLoadMetric += load;
             return Task.CompletedTask;
         }
 
-        // Called on: MetricsReporter actor
-        // Called by: service code
-        // Not a long-running call so no cancellationToken
+        /// <summary>
+        /// Called on: MetricsReporter actor
+        /// Called by: service code
+        /// Not a long-running call so no cancellationToken
+        /// </summary>
+        /// <returns></returns>
         public Task<int> GetAndClearAggregatedLoadMetric()
         {
             Task<int> result = Task.FromResult<int>(this.aggregatedLoadMetric);
@@ -124,22 +153,40 @@ namespace Microsoft.Azure.EventHubs.ProcessorActorService
         #endregion
 
         #region Persistor
-        // Called on: Persistor actor
-        // Called by: service code
+        /// <summary>
+        /// Called on: Persistor actor
+        /// Called by: service code
+        /// </summary>
+        /// <param name="key"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public Task<bool> IsPersisted(string key, CancellationToken cancellationToken)
         {
             return this.StateManager.ContainsStateAsync(key, cancellationToken);
         }
 
-        // Called on: Persistor actor
-        // Called by: service code and Persistor actor
+        /// <summary>
+        /// Called on: Persistor actor
+        /// Called by: service code and Persistor actor
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="key"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public Task<ConditionalValue<T>> TryGetState<T>(string key, CancellationToken cancellationToken)
         {
             return this.StateManager.TryGetStateAsync<T>(key, cancellationToken);
         }
 
-        // Called on: Persistor actor
-        // Called by: service code and Persistor actor
+        /// <summary>
+        /// Called on: Persistor actor
+        /// Called by: service code and Persistor actor
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="key"></param>
+        /// <param name="value"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public Task SetState<T>(string key, T value, CancellationToken cancellationToken)
         {
             return this.StateManager.SetStateAsync<T>(key, value, cancellationToken);
@@ -219,8 +266,13 @@ namespace Microsoft.Azure.EventHubs.ProcessorActorService
             return result;
         }
 
-        // Called on: user actor
-        // Called by: user actor implementation
+        /// <summary>
+        /// Called on: user actor
+        /// Called by: user actor implementation
+        /// </summary>
+        /// <param name="e"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public async Task CheckpointSingleEvent(EventData e, CancellationToken cancellationToken)
         {
             IUserActor persistorActor = await GetPersistorActor(cancellationToken);
@@ -228,8 +280,13 @@ namespace Microsoft.Azure.EventHubs.ProcessorActorService
             await this.cachedPersistorActor.MarkCompleted(e, false, sessionName, cancellationToken);
         }
 
-        // Called on: user actor
-        // Called by: user actor implementation
+        /// <summary>
+        /// Called on: user actor
+        /// Called by: user actor implementation
+        /// </summary>
+        /// <param name="e"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public async Task CheckpointAt(EventData e, CancellationToken cancellationToken)
         {
             IUserActor persistorActor = await GetPersistorActor(cancellationToken);
@@ -237,8 +294,14 @@ namespace Microsoft.Azure.EventHubs.ProcessorActorService
             await this.cachedPersistorActor.MarkCompleted(e, true, sessionName, cancellationToken);
         }
 
-        // Called on: Persistor actor
-        // Called by: service code
+        /// <summary>
+        /// Called on: Persistor actor
+        /// Called by: service code
+        /// </summary>
+        /// <param name="e"></param>
+        /// <param name="sessionName"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public async Task EventDispatched(EventData e, string sessionName, CancellationToken cancellationToken)
         {
             await GetCheckpointMap(cancellationToken);
@@ -247,8 +310,15 @@ namespace Microsoft.Azure.EventHubs.ProcessorActorService
             await SaveCheckpointMap(cancellationToken);
         }
 
-        // Called on: Persistor actor
-        // Called by: Checkpoint* on user actor
+        /// <summary>
+        /// Called on: Persistor actor
+        /// Called by: Checkpoint* on user actor
+        /// </summary>
+        /// <param name="e"></param>
+        /// <param name="andPreceding"></param>
+        /// <param name="sessionName"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public async Task MarkCompleted(EventData e, bool andPreceding, string sessionName, CancellationToken cancellationToken)
         {
             await GetCheckpointMap(cancellationToken);
@@ -264,8 +334,12 @@ namespace Microsoft.Azure.EventHubs.ProcessorActorService
             await SaveCheckpointMap(cancellationToken);
         }
 
-        // Called on: Persistor actor
-        // Called by: service code
+        /// <summary>
+        /// Called on: Persistor actor
+        /// Called by: service code
+        /// </summary>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
         public async Task<Dictionary<string, CompletionTracker>> GetAllCheckpoints(CancellationToken cancellationToken)
         {
             await GetCheckpointMap(cancellationToken);
@@ -308,7 +382,7 @@ namespace Microsoft.Azure.EventHubs.ProcessorActorService
                 ConfigurationSection configSection = configPackage.Settings.Sections[Constants.EventProcessorConfigSectionName];
                 ConfigurationProperty configProp = configSection.Parameters[configurationValueName];
             }
-            catch (KeyNotFoundException e)
+            catch (KeyNotFoundException)
             {
                 // If the user has not specified a value in config, drop through and return the default value.
                 // If the caller cannot continue without a value, it is up to the caller to detect and handle.

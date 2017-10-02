@@ -33,17 +33,17 @@ namespace Microsoft.Azure.EventHubs.ProcessorActorService
             {
                 this.maxConcurrentActorCalls = int.Parse(maxCallsString);
             }
-            catch (ArgumentNullException ane)
+            catch (ArgumentNullException)
             {
                 // TODO trace
                 this.maxConcurrentActorCalls = Constants.MaxConcurrentActorCallsDefault;
             }
-            catch (FormatException fe)
+            catch (FormatException)
             {
                 // TODO trace
                 this.maxConcurrentActorCalls = Constants.MaxConcurrentActorCallsDefault;
             }
-            catch (OverflowException oe)
+            catch (OverflowException)
             {
                 // TODO trace
                 this.maxConcurrentActorCalls = Constants.MaxConcurrentActorCallsDefault;

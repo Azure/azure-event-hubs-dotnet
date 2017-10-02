@@ -8,6 +8,9 @@ using Microsoft.Azure.EventHubs;
 
 namespace Microsoft.Azure.EventHubs.ProcessorActorService
 {
+    /// <summary>
+    /// Placeholder to avoid compiler error.
+    /// </summary>
     [DataContract]
     public class CompletionTracker
     {
