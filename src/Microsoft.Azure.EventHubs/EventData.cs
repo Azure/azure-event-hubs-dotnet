@@ -128,7 +128,15 @@ namespace Microsoft.Azure.EventHubs
             {
                 get
                 {
-                    return (long)this[ClientConstants.SequenceNumberName];
+                    object value;
+                    if (this.TryGetValue(ClientConstants.SequenceNumberName, out value))
+                    {
+                        return (long)value;
+                    }
+                    else
+                    {
+                        throw new ArgumentException(Resources.MissingSystemProperty.FormatForUser(ClientConstants.SequenceNumberName));
+                    }
                 }
             }
 
@@ -138,7 +146,15 @@ namespace Microsoft.Azure.EventHubs
             {
                 get
                 {
-                    return (DateTime)this[ClientConstants.EnqueuedTimeUtcName];
+                    object value;
+                    if (this.TryGetValue(ClientConstants.EnqueuedTimeUtcName, out value))
+                    {
+                        return (DateTime)value;
+                    }
+                    else
+                    {
+                        throw new ArgumentException(Resources.MissingSystemProperty.FormatForUser(ClientConstants.EnqueuedTimeUtcName));
+                    }
                 }
             }
 
@@ -149,7 +165,15 @@ namespace Microsoft.Azure.EventHubs
             {
                 get
                 {
-                    return (string)this[ClientConstants.OffsetName];
+                    object value;
+                    if (this.TryGetValue(ClientConstants.OffsetName, out value))
+                    {
+                        return (string)value;
+                    }
+                    else
+                    {
+                        throw new ArgumentException(Resources.MissingSystemProperty.FormatForUser(ClientConstants.OffsetName));
+                    }
                 }
             }
 
@@ -158,7 +182,15 @@ namespace Microsoft.Azure.EventHubs
             {
                 get
                 {
-                    return (string)this[ClientConstants.PartitionKeyName];
+                    object value;
+                    if (this.TryGetValue(ClientConstants.PartitionKeyName, out value))
+                    {
+                        return (string)value;
+                    }
+                    else
+                    {
+                        throw new ArgumentException(Resources.MissingSystemProperty.FormatForUser(ClientConstants.PartitionKeyName));
+                    }
                 }
             }
         }

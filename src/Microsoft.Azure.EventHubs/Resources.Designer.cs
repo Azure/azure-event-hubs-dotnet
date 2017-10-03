@@ -188,5 +188,16 @@ namespace Microsoft.Azure.EventHubs {
                 return ResourceManager.GetString("ArgumentInvalidCombination", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///    Looks up a localized string similar to System property '{0}' is missing in the event.
+        /// </summary>
+        public static string MissingSystemProperty
+        {
+            get
+            {
+                return ResourceManager.GetString("MissingSystemProperty", resourceCulture);
+            }
+        }
     }
 }
