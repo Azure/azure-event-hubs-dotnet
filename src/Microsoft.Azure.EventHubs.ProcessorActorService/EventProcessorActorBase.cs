@@ -83,6 +83,7 @@ namespace Microsoft.Azure.EventHubs.ProcessorActorService
 
         private async Task EstablishMapping(string stringId, long longId, CancellationToken cancellationToken)
         {
+            EventProcessorActorServiceEventSource.Log.EstablishActorMaping(stringId, longId);
             string stateName = Constants.MapperActorMappingPrefix + stringId;
             if (!await this.StateManager.TryAddStateAsync<long>(stateName, longId, cancellationToken))
             {
@@ -275,6 +276,7 @@ namespace Microsoft.Azure.EventHubs.ProcessorActorService
         /// <returns></returns>
         public async Task CheckpointSingleEvent(EventData e, CancellationToken cancellationToken)
         {
+            EventProcessorActorServiceEventSource.Log.Checkpointing(true, e.SystemProperties.Offset, e.SystemProperties.SequenceNumber);
             IUserActor persistorActor = await GetPersistorActor(cancellationToken);
             string sessionName = GetSessionName(e);
             await this.cachedPersistorActor.MarkCompleted(e, false, sessionName, cancellationToken);
@@ -289,6 +291,7 @@ namespace Microsoft.Azure.EventHubs.ProcessorActorService
         /// <returns></returns>
         public async Task CheckpointAt(EventData e, CancellationToken cancellationToken)
         {
+            EventProcessorActorServiceEventSource.Log.Checkpointing(false, e.SystemProperties.Offset, e.SystemProperties.SequenceNumber);
             IUserActor persistorActor = await GetPersistorActor(cancellationToken);
             string sessionName = GetSessionName(e);
             await this.cachedPersistorActor.MarkCompleted(e, true, sessionName, cancellationToken);
@@ -298,15 +301,18 @@ namespace Microsoft.Azure.EventHubs.ProcessorActorService
         /// Called on: Persistor actor
         /// Called by: service code
         /// </summary>
-        /// <param name="e"></param>
+        /// <param name="events"></param>
         /// <param name="sessionName"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public async Task EventDispatched(EventData e, string sessionName, CancellationToken cancellationToken)
+        public async Task EventDispatched(IEnumerable<EventData> events, string sessionName, CancellationToken cancellationToken)
         {
             await GetCheckpointMap(cancellationToken);
             CompletionTracker tracker = await GetTracker(sessionName, cancellationToken);
-            tracker.AddEvent(e);
+            foreach (EventData e in events)
+            {
+                tracker.AddEvent(e);
+            }
             await SaveCheckpointMap(cancellationToken);
         }
 

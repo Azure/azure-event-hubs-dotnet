@@ -121,11 +121,11 @@ namespace Microsoft.Azure.EventHubs.ProcessorActorService
         /// Called on: Persistor actor
         /// Called by: service code
         /// </summary>
-        /// <param name="e"></param>
+        /// <param name="events"></param>
         /// <param name="sessionName"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        Task EventDispatched(EventData e, string sessionName, CancellationToken cancellationToken);
+        Task EventDispatched(IEnumerable<EventData> events, string sessionName, CancellationToken cancellationToken);
 
         /// <summary>
         /// Called on: Persistor actor

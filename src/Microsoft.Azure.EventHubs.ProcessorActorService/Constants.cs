@@ -17,6 +17,8 @@ namespace Microsoft.Azure.EventHubs.ProcessorActorService
 
         internal static readonly TimeSpan UpdateServiceDescriptionTimeout = TimeSpan.FromSeconds(30.0);
 
+        internal static readonly TimeSpan FinishUserCallsOnCloseTimeout = TimeSpan.FromSeconds(10.0);
+
         internal static readonly string ConfigurationPackageObjectName = "Config";
         internal static readonly string EventProcessorConfigSectionName = "EventProcessorConfig";
         internal static readonly string EventHubConnectionStringName = "EventHubConnectionString";

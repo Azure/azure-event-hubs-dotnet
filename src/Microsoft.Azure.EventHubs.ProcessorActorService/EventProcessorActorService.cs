@@ -17,6 +17,7 @@ namespace Microsoft.Azure.EventHubs.ProcessorActorService
         private string eventHubConnectionString;
         private string eventHubConsumerGroup;
 
+        private ReceiveHandler receiveHandler = null;
         private EventHubClient ehClient = null;
         private PartitionReceiver ehReceiver = null;
 
@@ -34,6 +35,8 @@ namespace Microsoft.Azure.EventHubs.ProcessorActorService
         {
             await base.OnOpenAsync(openMode, cancellationToken);
 
+            EventProcessorActorServiceEventSource.Log.BeginOpenReplica(this.Context);
+
             EventProcessorActorService.ServiceName = this.Context.ServiceName;
             EventProcessorActorService.ServiceContext = this.Context;
 
@@ -49,10 +52,11 @@ namespace Microsoft.Azure.EventHubs.ProcessorActorService
             {
                 throw new Exception("Could not determine partition ordinal for this service partition");
             }
+            int servicePartitionCount = await ServiceUtilities.GetServicePartitionCount(cancellationToken);
+            EventProcessorActorServiceEventSource.Log.ReplicaOrdinals(this.Context, this.PartitionOrdinal, servicePartitionCount);
 
             this.ehClient = EventHubClient.CreateFromConnectionString(this.eventHubConnectionString);
             EventHubRuntimeInformation ehInfo = await ehClient.GetRuntimeInformationAsync(); // TODO exceptions
-            int servicePartitionCount = await ServiceUtilities.GetServicePartitionCount(cancellationToken);
             if (ehInfo.PartitionCount > servicePartitionCount)
             {
                 throw new Exception(String.Format("Event hub has {0} partitions but service only has {1}, service must have at least {0} partitions",
@@ -64,10 +68,14 @@ namespace Microsoft.Azure.EventHubs.ProcessorActorService
             {
                 this.eventHubPartitionId = ehInfo.PartitionIds[this.PartitionOrdinal];
             }
+
+            EventProcessorActorServiceEventSource.Log.EndOpenReplica(this.Context);
         }
 
         protected async override Task OnCloseAsync(CancellationToken cancellationToken)
         {
+            EventProcessorActorServiceEventSource.Log.BeginCloseReplica(this.Context);
+
             await StopReceiving();
 
             if (this.ehClient != null)
@@ -76,12 +84,16 @@ namespace Microsoft.Azure.EventHubs.ProcessorActorService
                 this.ehClient = null;
             }
 
+            EventProcessorActorServiceEventSource.Log.EndCloseReplica(this.Context);
+
             await base.OnCloseAsync(cancellationToken);
         }
 
         protected async override Task OnChangeRoleAsync(ReplicaRole newRole, CancellationToken cancellationToken)
         {
             await base.OnChangeRoleAsync(newRole, cancellationToken);
+
+            EventProcessorActorServiceEventSource.Log.ReplicaChangeRole(this.Context, this.currentRole.ToString(), newRole.ToString());
 
             if ((newRole == ReplicaRole.Primary) && (this.currentRole != ReplicaRole.Primary))
             {
@@ -117,6 +129,8 @@ namespace Microsoft.Azure.EventHubs.ProcessorActorService
 
                     if (addMetrics)
                     {
+                        EventProcessorActorServiceEventSource.Log.SettingMetricsDescription(this.Context);
+
                         StatefulServiceUpdateDescription ssud = new StatefulServiceUpdateDescription();
 
                         StatefulServiceLoadMetricDescription primaryCountMetric = new StatefulServiceLoadMetricDescription();
@@ -163,6 +177,8 @@ namespace Microsoft.Azure.EventHubs.ProcessorActorService
                     }
                 }
 
+                EventProcessorActorServiceEventSource.Log.StartReceiver(this.Context, startingPoint.Item1);
+
                 // Use an epoch receiver to establish exclusivity, but Service Fabric framework means we don't have the problem of
                 // multiple hosts racing to be the owner of the event hub partition at startup time. Epoch receiver is still useful to kick
                 // off the previous receiver if the node crashed (service thinks the receiver is still open) or if the Service Fabric
@@ -170,16 +186,21 @@ namespace Microsoft.Azure.EventHubs.ProcessorActorService
                 // can use a fixed epoch of 0 which is simpler than trying to persist and increment an epoch value.
                 this.ehReceiver = this.ehClient.CreateEpochReceiver(this.eventHubConsumerGroup, this.eventHubPartitionId,
                     startingPoint.Item1, 0); // TODO exceptions?
-                this.ehReceiver.SetReceiveHandler(new ReceiveHandler(this, startingCheckpoints, cancellationToken)); // TODO exceptions?
+                this.receiveHandler = new ReceiveHandler(this, startingCheckpoints, cancellationToken);
+                this.ehReceiver.SetReceiveHandler(this.receiveHandler); // TODO exceptions?
             }
         }
 
         // Safe to call regardless of whether this replica/partition is receiving or not.
         private async Task StopReceiving()
         {
-            if (this.ehReceiver != null)
+            if (this.receiveHandler != null)
             {
+                EventProcessorActorServiceEventSource.Log.StopReceiver(this.Context);
+
+                this.receiveHandler.Flush();
                 this.ehReceiver.SetReceiveHandler(null); // TODO exceptions?
+                this.receiveHandler = null;
                 await this.ehReceiver.CloseAsync();
                 this.ehReceiver = null;
             }
@@ -205,7 +226,7 @@ namespace Microsoft.Azure.EventHubs.ProcessorActorService
                 if (this.currentRole == ReplicaRole.Primary)
                 {
                     int load = await reporterActor.GetAndClearAggregatedLoadMetric();
-
+                    EventProcessorActorServiceEventSource.Log.LoadReport(this.Context, load);
                     this.Partition.ReportLoad(new List<LoadMetric> { new LoadMetric(Constants.UserLoadMetricName, load) });
                 }
             }

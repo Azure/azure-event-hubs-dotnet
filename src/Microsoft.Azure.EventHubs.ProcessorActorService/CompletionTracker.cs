@@ -29,6 +29,7 @@ namespace Microsoft.Azure.EventHubs.ProcessorActorService
         {
             this.trackers.Enqueue(new EventTracker(e.SystemProperties.Offset, e.SystemProperties.SequenceNumber));
             this.highestOffset = e.SystemProperties.Offset;
+            this.highestSequenceNumber = e.SystemProperties.SequenceNumber;
         }
 
         internal void CompleteEvent(EventData e)
@@ -125,9 +126,9 @@ namespace Microsoft.Azure.EventHubs.ProcessorActorService
             else if (this.trackers.Count == 0)
             {
                 // Nothing in this.trackers, so everything before or including this.highestOffset is completed.
-                result = true;
+                result = (e.SystemProperties.SequenceNumber <= this.highestSequenceNumber);
             }
-            else if (e.SystemProperties.SequenceNumber < this.trackers.Peek().SequenceNumber) // Peek is safe because we know tracker is not empty
+            else if (e.SystemProperties.SequenceNumber < this.trackers.Peek().SequenceNumber) // Peek is safe because we know trackers is not empty
             {
                 // Events before the first in this.trackers are completed.
                 result = true;

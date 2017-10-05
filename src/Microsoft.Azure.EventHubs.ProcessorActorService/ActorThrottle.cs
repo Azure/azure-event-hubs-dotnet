@@ -30,13 +30,9 @@ namespace Microsoft.Azure.EventHubs.ProcessorActorService
             this.pendingCalls[slot] = pending;
         }
 
-        internal async Task WaitForFinish(CancellationToken cancellationToken)
+        internal void WaitForFinish()
         {
-            Task.WaitAll(this.pendingCalls, cancellationToken);
-            foreach (Task t in pendingCalls)
-            {
-                await t; // is this necessary?
-            }
+            Task.WaitAll(this.pendingCalls, Constants.FinishUserCallsOnCloseTimeout);
         }
     }
 }

@@ -19,6 +19,7 @@ namespace Microsoft.Azure.EventHubs.ProcessorActorService
         private string sessionNameProperty;
 
         private ActorThrottle throttle;
+        private IUserActor persistor = null;
 
         private Dictionary<string, CompletionTracker> startingCheckpoints;
 
@@ -33,19 +34,14 @@ namespace Microsoft.Azure.EventHubs.ProcessorActorService
             {
                 this.maxConcurrentActorCalls = int.Parse(maxCallsString);
             }
-            catch (ArgumentNullException)
+            catch (FormatException fe)
             {
-                // TODO trace
+                EventProcessorActorServiceEventSource.Log.MaxConcurrentCallsSettingError(EventProcessorActorService.ServiceContext, fe.ToString());
                 this.maxConcurrentActorCalls = Constants.MaxConcurrentActorCallsDefault;
             }
-            catch (FormatException)
+            catch (OverflowException oe)
             {
-                // TODO trace
-                this.maxConcurrentActorCalls = Constants.MaxConcurrentActorCallsDefault;
-            }
-            catch (OverflowException)
-            {
-                // TODO trace
+                EventProcessorActorServiceEventSource.Log.MaxConcurrentCallsSettingError(EventProcessorActorService.ServiceContext, oe.ToString());
                 this.maxConcurrentActorCalls = Constants.MaxConcurrentActorCallsDefault;
             }
 
@@ -55,6 +51,8 @@ namespace Microsoft.Azure.EventHubs.ProcessorActorService
             {
                 GetOrGenerateActorIdSet();
             }
+
+            EventProcessorActorServiceEventSource.Log.StartReceiveHandler(EventProcessorActorService.ServiceContext, this.maxConcurrentActorCalls, this.sessionNameProperty);
 
             this.throttle = new ActorThrottle(this.maxConcurrentActorCalls);
         }
@@ -74,25 +72,43 @@ namespace Microsoft.Azure.EventHubs.ProcessorActorService
 
         public async Task ProcessEventsAsync(IEnumerable<EventData> events)
         {
-            List<Tuple<ActorId, IEnumerable<EventData>>> batches = await FilterAndRebatchWithActorIds(events);
-            foreach (Tuple<ActorId, IEnumerable<EventData>> batch in batches)
+            List<Tuple<ActorId, IEnumerable<EventData>, string>> batches = await FilterAndRebatchWithActorIds(events);
+            foreach (Tuple<ActorId, IEnumerable<EventData>, string> batch in batches)
             {
                 int slot = this.throttle.GetAvailableSlot();
+                await this.Persistor.EventDispatched(batch.Item2, batch.Item3, this.cancellationToken);
+                EventProcessorActorServiceEventSource.Log.DispatchingEvents(EventProcessorActorService.ServiceContext, batch.Item1.ToString());
                 IUserActor dispatchTo = ActorProxy.Create<IUserActor>(batch.Item1, EventProcessorActorService.ServiceName);
                 Task pending = dispatchTo.OnReceive(batch.Item2, this.cancellationToken);
                 this.throttle.AddPendingCall(pending, slot);
             }
-            await this.throttle.WaitForFinish(this.cancellationToken);
          }
+
+        internal void Flush()
+        {
+            this.throttle.WaitForFinish();
+        }
+
+        private IUserActor Persistor
+        {
+            get
+            {
+                if (this.persistor == null)
+                {
+                    this.persistor = ServiceUtilities.GetPersistorForPartition(this.parent.PartitionInfo, this.cancellationToken).Result;
+                }
+                return this.persistor;
+            }
+        }
 
         private void GetOrGenerateActorIdSet()
         {
             this.roundRobinStringIds = new string[this.maxConcurrentActorCalls];
             string stateId = Constants.PartitionRoundRobinActorsPrefix + this.parent.PartitionInfo.Id.ToString();
 
-            IUserActor persistor = ServiceUtilities.GetPersistorForPartition(this.parent.PartitionInfo, this.cancellationToken).Result;
+            //IUserActor persistor = ServiceUtilities.GetPersistorForPartition(this.parent.PartitionInfo, this.cancellationToken).Result;
             // Try to get actor ids from the state store.
-            ConditionalValue<string[]> ids = persistor.TryGetState<string[]>(stateId, this.cancellationToken).Result;
+            ConditionalValue<string[]> ids = this.Persistor.TryGetState<string[]>(stateId, this.cancellationToken).Result;
             if (ids.HasValue)
             {
                 this.roundRobinStringIds = ids.Value;
@@ -104,13 +120,13 @@ namespace Microsoft.Azure.EventHubs.ProcessorActorService
                 {
                     this.roundRobinStringIds[i] = Constants.RoundRobinActorIdPrefix + Guid.NewGuid().ToString();
                 }
-                persistor.SetState<string[]>(stateId, this.roundRobinStringIds, this.cancellationToken).Wait();
+                this.Persistor.SetState<string[]>(stateId, this.roundRobinStringIds, this.cancellationToken).Wait();
             }
         }
 
-        private async Task<List<Tuple<ActorId, IEnumerable<EventData>>>> FilterAndRebatchWithActorIds(IEnumerable<EventData> events)
+        private async Task<List<Tuple<ActorId, IEnumerable<EventData>, string>>> FilterAndRebatchWithActorIds(IEnumerable<EventData> events)
         {
-            List<Tuple<ActorId, IEnumerable<EventData>>> result = new List<Tuple<ActorId, IEnumerable<EventData>>>();
+            List<Tuple<ActorId, IEnumerable<EventData>, string>> result = new List<Tuple<ActorId, IEnumerable<EventData>, string>>();
             ActorId dispatchTo;
 
             if (this.sessionNameProperty != null)
@@ -136,7 +152,7 @@ namespace Microsoft.Azure.EventHubs.ProcessorActorService
                 foreach (KeyValuePair<string, List<EventData>> kvp in perSessionLists)
                 {
                     dispatchTo = await DetermineDispatchTarget(kvp.Key);
-                    result.Add(new Tuple<ActorId, IEnumerable<EventData>>(dispatchTo, kvp.Value));
+                    result.Add(new Tuple<ActorId, IEnumerable<EventData>, string>(dispatchTo, kvp.Value, kvp.Key));
                 }
             }
             else if (this.maxConcurrentActorCalls == 1)
@@ -146,7 +162,7 @@ namespace Microsoft.Azure.EventHubs.ProcessorActorService
                 if (this.startingCheckpoints.Count == 0)
                 {
                     // Fast forward
-                    result.Add(new Tuple<ActorId, IEnumerable<EventData>>(dispatchTo, events));
+                    result.Add(new Tuple<ActorId, IEnumerable<EventData>, string>(dispatchTo, events, Constants.NotUsingSessions));
                 }
                 else
                 {
@@ -159,7 +175,7 @@ namespace Microsoft.Azure.EventHubs.ProcessorActorService
                             filteredEvents.Add(ev);
                         }
                     }
-                    result.Add(new Tuple<ActorId, IEnumerable<EventData>>(dispatchTo, filteredEvents));
+                    result.Add(new Tuple<ActorId, IEnumerable<EventData>, string>(dispatchTo, filteredEvents, Constants.NotUsingSessions));
                 }
             }
             else
@@ -170,7 +186,7 @@ namespace Microsoft.Azure.EventHubs.ProcessorActorService
                 if (this.startingCheckpoints.Count == 0)
                 {
                     // Fast forward
-                    result.Add(new Tuple<ActorId, IEnumerable<EventData>>(dispatchTo, events));
+                    result.Add(new Tuple<ActorId, IEnumerable<EventData>, string>(dispatchTo, events, Constants.NotUsingSessions));
                 }
                 else
                 {
@@ -183,7 +199,7 @@ namespace Microsoft.Azure.EventHubs.ProcessorActorService
                             filteredEvents.Add(ev);
                         }
                     }
-                    result.Add(new Tuple<ActorId, IEnumerable<EventData>>(dispatchTo, filteredEvents));
+                    result.Add(new Tuple<ActorId, IEnumerable<EventData>, string>(dispatchTo, filteredEvents, Constants.NotUsingSessions));
                 }
             }
 
