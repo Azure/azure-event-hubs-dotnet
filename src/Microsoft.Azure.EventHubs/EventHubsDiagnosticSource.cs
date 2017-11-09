@@ -41,7 +41,11 @@ namespace Microsoft.Azure.EventHubs
 
             Activity activity = new Activity(SendActivityName);
 
-            activity.AddTag("ClientId", clientId);
+            activity.AddTag("peer.hostname", csb.Endpoint.Host);
+            activity.AddTag("eh.event_hub_name", csb.EntityPath);
+            activity.AddTag("eh.partition_key", partitionKey);
+            activity.AddTag("eh.event_count", count.ToString());
+            activity.AddTag("eh.client_id", clientId);
 
             // in many cases activity start event is not interesting, 
             // in that case start activity without firing event
@@ -89,7 +93,6 @@ namespace Microsoft.Azure.EventHubs
                 return;
             }
 
-            // stop activity
             DiagnosticListener.StopActivity(activity,
                 new
                 {
@@ -117,7 +120,13 @@ namespace Microsoft.Azure.EventHubs
 
             Activity activity = new Activity(ReceiveActivityName);
 
-            activity.AddTag("ClientId", clientId);
+            // extract activity tags from input
+            activity.AddTag("peer.hostname", csb.Endpoint.Host);
+            activity.AddTag("eh.event_hub_name", csb.EntityPath);
+            activity.AddTag("eh.partition_key", partitionKey);
+            activity.AddTag("eh.consumer_group", consumerGroup);
+            activity.AddTag("eh.start_offset", startOffset);
+            activity.AddTag("eh.client_id", clientId);
 
             // in many cases activity start event is not interesting, 
             // in that case start activity without firing event
@@ -129,8 +138,7 @@ namespace Microsoft.Azure.EventHubs
                         Endpoint = csb.Endpoint,
                         EntityPath = csb.EntityPath,
                         PartitionKey = partitionKey,
-                        ConsumerGroup = consumerGroup,
-                        startOffset = startOffset
+                        ConsumerGroup = consumerGroup
                     });
             }
             else
@@ -168,7 +176,8 @@ namespace Microsoft.Azure.EventHubs
                 return;
             }
 
-            // stop activity
+            activity.AddTag("eh.event_count", (events?.Count ?? 0).ToString());
+
             DiagnosticListener.StopActivity(activity,
                 new
                 {
