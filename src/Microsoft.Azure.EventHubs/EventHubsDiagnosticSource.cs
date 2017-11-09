@@ -41,17 +41,7 @@ namespace Microsoft.Azure.EventHubs
 
             Activity activity = new Activity(SendActivityName);
 
-            // extract activity tags from input
-            activity.AddTag("component", "Microsoft.Azure.EventHubs");
-            activity.AddTag("span.kind", "producer");
-            activity.AddTag("operation.name", $"Send");
-            activity.AddTag("operation.data", $"{csb.EntityPath}/{partitionKey}");
-            activity.AddTag("peer.service", "Azure Event Hub");
-            activity.AddTag("peer.hostname", csb.Endpoint.OriginalString);
-            activity.AddTag("eh.event_hub_name", csb.EntityPath);
-            activity.AddTag("eh.partition_key", partitionKey);
-            activity.AddTag("eh.event_count", count.ToString());
-            activity.AddTag("eh.client_id", clientId);
+            activity.AddTag("ClientId", clientId);
 
             // in many cases activity start event is not interesting, 
             // in that case start activity without firing event
@@ -76,8 +66,6 @@ namespace Microsoft.Azure.EventHubs
 
         internal static void FailSendActivity(Activity activity, EventHubsConnectionStringBuilder csb, string partitionKey, IEnumerable<EventData> eventDatas, Exception ex)
         {
-            // TODO consider enriching activity with data from exception
-
             if (!DiagnosticListener.IsEnabled() || !DiagnosticListener.IsEnabled(SendActivityExceptionName))
             {
                 return;
@@ -102,11 +90,6 @@ namespace Microsoft.Azure.EventHubs
             }
 
             // stop activity
-            if (sendTask != null && sendTask.Status != TaskStatus.RanToCompletion)
-            {
-                activity.AddTag("error", "true");
-            }
-
             DiagnosticListener.StopActivity(activity,
                 new
                 {
@@ -134,18 +117,7 @@ namespace Microsoft.Azure.EventHubs
 
             Activity activity = new Activity(ReceiveActivityName);
 
-            // extract activity tags from input
-            activity.AddTag("component", "Microsoft.Azure.EventHubs");
-            activity.AddTag("span.kind", "consumer");
-            activity.AddTag("operation.name", $"Receive");
-            activity.AddTag("operation.data", $"{consumerGroup}: {csb.EntityPath}/{partitionKey}");
-            activity.AddTag("peer.service", "Azure Event Hub");
-            activity.AddTag("peer.hostname", csb.Endpoint.OriginalString);
-            activity.AddTag("eh.event_hub_name", csb.EntityPath);
-            activity.AddTag("eh.partition_key", partitionKey);
-            activity.AddTag("eh.consumer_group", consumerGroup);
-            activity.AddTag("eh.start_offset", startOffset);
-            activity.AddTag("eh.client_id", clientId);
+            activity.AddTag("ClientId", clientId);
 
             // in many cases activity start event is not interesting, 
             // in that case start activity without firing event
@@ -157,7 +129,8 @@ namespace Microsoft.Azure.EventHubs
                         Endpoint = csb.Endpoint,
                         EntityPath = csb.EntityPath,
                         PartitionKey = partitionKey,
-                        ConsumerGroup = consumerGroup
+                        ConsumerGroup = consumerGroup,
+                        startOffset = startOffset
                     });
             }
             else
@@ -196,13 +169,6 @@ namespace Microsoft.Azure.EventHubs
             }
 
             // stop activity
-            if (receiveTask != null && receiveTask.Status != TaskStatus.RanToCompletion)
-            {
-                activity.AddTag("error", "true");
-            }
-
-            activity.AddTag("eh.event_count", (events?.Count ?? 0).ToString());
-
             DiagnosticListener.StopActivity(activity,
                 new
                 {
