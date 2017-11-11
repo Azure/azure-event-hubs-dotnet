@@ -345,7 +345,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             var endpoint = GetPropertyValueFromAnonymousTypeInstance<Uri>(eventPayload, "Endpoint");
             Assert.Equal(this.EventHubClient.ConnectionStringBuilder.Endpoint, endpoint);
 
-            var entityPath = GetPropertyValueFromAnonymousTypeInstance<string>(eventPayload, "EntityPath");
+            var entityPath = GetPropertyValueFromAnonymousTypeInstance<string>(eventPayload, "Entity");
             Assert.Equal(this.EventHubClient.ConnectionStringBuilder.EntityPath, entityPath);
 
             var pKey = GetPropertyValueFromAnonymousTypeInstance<string>(eventPayload, "PartitionKey");
@@ -355,7 +355,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
         protected void AssertCommonStopPayloadProperties(object eventPayload, string partitionKey, bool isFaulted)
         {
             AssertCommonPayloadProperties(eventPayload, partitionKey);
-            var status = GetPropertyValueFromAnonymousTypeInstance<TaskStatus>(eventPayload, "TaskStatus");
+            var status = GetPropertyValueFromAnonymousTypeInstance<TaskStatus>(eventPayload, "Status");
             Assert.Equal(isFaulted ? TaskStatus.Faulted : TaskStatus.RanToCompletion, status);
         }
 

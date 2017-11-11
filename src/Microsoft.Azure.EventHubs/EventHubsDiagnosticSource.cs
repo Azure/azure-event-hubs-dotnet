@@ -55,7 +55,7 @@ namespace Microsoft.Azure.EventHubs
                     new
                     {
                         Endpoint = csb.Endpoint,
-                        EntityPath = csb.EntityPath,
+                        Entity = csb.EntityPath,
                         PartitionKey = partitionKey,
                         EventDatas = eventDatas
                     });
@@ -79,7 +79,7 @@ namespace Microsoft.Azure.EventHubs
                 new
                 {
                     Endpoint = csb.Endpoint,
-                    EntityPath = csb.EntityPath,
+                    Entity = csb.EntityPath,
                     PartitionKey = partitionKey,
                     EventDatas = eventDatas,
                     Exception = ex
@@ -97,10 +97,10 @@ namespace Microsoft.Azure.EventHubs
                 new
                 {
                     Endpoint = csb.Endpoint,
-                    EntityPath = csb.EntityPath,
+                    Entity = csb.EntityPath,
                     PartitionKey = partitionKey,
                     EventDatas = eventDatas,
-                    TaskStatus = sendTask?.Status
+                    Status = sendTask?.Status
                 });
         }
 
@@ -136,7 +136,7 @@ namespace Microsoft.Azure.EventHubs
                     new
                     {
                         Endpoint = csb.Endpoint,
-                        EntityPath = csb.EntityPath,
+                        Entity = csb.EntityPath,
                         PartitionKey = partitionKey,
                         ConsumerGroup = consumerGroup
                     });
@@ -162,7 +162,7 @@ namespace Microsoft.Azure.EventHubs
                 new
                 {
                     Endpoint = csb.Endpoint,
-                    EntityPath = csb.EntityPath,
+                    Entity = csb.EntityPath,
                     PartitionKey = partitionKey,
                     ConsumerGroup = consumerGroup,
                     Exception = ex
@@ -182,11 +182,11 @@ namespace Microsoft.Azure.EventHubs
                 new
                 {
                     Endpoint = csb.Endpoint,
-                    EntityPath = csb.EntityPath,
+                    Entity = csb.EntityPath,
                     PartitionKey = partitionKey,
                     ConsumerGroup = consumerGroup,
                     EventDatas = events,
-                    TaskStatus = receiveTask?.Status
+                    Status = receiveTask?.Status
                 });
         }
     }
