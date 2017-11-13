@@ -20,6 +20,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
         protected FakeDiagnosticListener listener;
         protected IDisposable subscription;
         protected const int maxWaitSec = 10;
+        private bool disposed = false;
 
         public DiagnosticsTests()
         {
@@ -375,5 +376,44 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
         #endregion Common
 
         #endregion Assertion Helpers
+
+        #region IDisposable
+
+        public override void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (this.disposed)
+                return;
+
+            if (disposing)
+            {
+                this.listener?.Disable();
+
+                while (this.events.TryDequeue(out var evnt))
+                {
+                }
+
+                while (Activity.Current != null)
+                {
+                    Activity.Current.Stop();
+                }
+
+                this.listener?.Dispose();
+                this.subscription?.Dispose();
+
+                this.events = null;
+                this.listener = null;
+                this.subscription = null;
+            }
+
+            this.disposed = true;
+        }
+
+        #endregion IDisposable
     }
 }
