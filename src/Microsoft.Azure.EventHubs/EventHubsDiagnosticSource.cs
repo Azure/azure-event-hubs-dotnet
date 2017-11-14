@@ -41,13 +41,7 @@ namespace Microsoft.Azure.EventHubs
 
             Activity activity = new Activity(SendActivityName);
 
-            // extract activity tags from input
-            activity.AddTag("component", "Microsoft.Azure.EventHubs");
-            activity.AddTag("span.kind", "producer");
-            activity.AddTag("operation.name", $"Send");
-            activity.AddTag("operation.data", $"{csb.EntityPath}/{partitionKey}");
-            activity.AddTag("peer.service", "Azure Event Hub");
-            activity.AddTag("peer.hostname", csb.Endpoint.OriginalString);
+            activity.AddTag("peer.hostname", csb.Endpoint.Host);
             activity.AddTag("eh.event_hub_name", csb.EntityPath);
             activity.AddTag("eh.partition_key", partitionKey);
             activity.AddTag("eh.event_count", count.ToString());
@@ -61,7 +55,7 @@ namespace Microsoft.Azure.EventHubs
                     new
                     {
                         Endpoint = csb.Endpoint,
-                        EntityPath = csb.EntityPath,
+                        Entity = csb.EntityPath,
                         PartitionKey = partitionKey,
                         EventDatas = eventDatas
                     });
@@ -76,8 +70,6 @@ namespace Microsoft.Azure.EventHubs
 
         internal static void FailSendActivity(Activity activity, EventHubsConnectionStringBuilder csb, string partitionKey, IEnumerable<EventData> eventDatas, Exception ex)
         {
-            // TODO consider enriching activity with data from exception
-
             if (!DiagnosticListener.IsEnabled() || !DiagnosticListener.IsEnabled(SendActivityExceptionName))
             {
                 return;
@@ -87,7 +79,7 @@ namespace Microsoft.Azure.EventHubs
                 new
                 {
                     Endpoint = csb.Endpoint,
-                    EntityPath = csb.EntityPath,
+                    Entity = csb.EntityPath,
                     PartitionKey = partitionKey,
                     EventDatas = eventDatas,
                     Exception = ex
@@ -101,20 +93,14 @@ namespace Microsoft.Azure.EventHubs
                 return;
             }
 
-            // stop activity
-            if (sendTask != null && sendTask.Status != TaskStatus.RanToCompletion)
-            {
-                activity.AddTag("error", "true");
-            }
-
             DiagnosticListener.StopActivity(activity,
                 new
                 {
                     Endpoint = csb.Endpoint,
-                    EntityPath = csb.EntityPath,
+                    Entity = csb.EntityPath,
                     PartitionKey = partitionKey,
                     EventDatas = eventDatas,
-                    TaskStatus = sendTask?.Status
+                    Status = sendTask?.Status
                 });
         }
 
@@ -135,12 +121,7 @@ namespace Microsoft.Azure.EventHubs
             Activity activity = new Activity(ReceiveActivityName);
 
             // extract activity tags from input
-            activity.AddTag("component", "Microsoft.Azure.EventHubs");
-            activity.AddTag("span.kind", "consumer");
-            activity.AddTag("operation.name", $"Receive");
-            activity.AddTag("operation.data", $"{consumerGroup}: {csb.EntityPath}/{partitionKey}");
-            activity.AddTag("peer.service", "Azure Event Hub");
-            activity.AddTag("peer.hostname", csb.Endpoint.OriginalString);
+            activity.AddTag("peer.hostname", csb.Endpoint.Host);
             activity.AddTag("eh.event_hub_name", csb.EntityPath);
             activity.AddTag("eh.partition_key", partitionKey);
             activity.AddTag("eh.consumer_group", consumerGroup);
@@ -155,7 +136,7 @@ namespace Microsoft.Azure.EventHubs
                     new
                     {
                         Endpoint = csb.Endpoint,
-                        EntityPath = csb.EntityPath,
+                        Entity = csb.EntityPath,
                         PartitionKey = partitionKey,
                         ConsumerGroup = consumerGroup
                     });
@@ -181,7 +162,7 @@ namespace Microsoft.Azure.EventHubs
                 new
                 {
                     Endpoint = csb.Endpoint,
-                    EntityPath = csb.EntityPath,
+                    Entity = csb.EntityPath,
                     PartitionKey = partitionKey,
                     ConsumerGroup = consumerGroup,
                     Exception = ex
@@ -195,23 +176,17 @@ namespace Microsoft.Azure.EventHubs
                 return;
             }
 
-            // stop activity
-            if (receiveTask != null && receiveTask.Status != TaskStatus.RanToCompletion)
-            {
-                activity.AddTag("error", "true");
-            }
-
             activity.AddTag("eh.event_count", (events?.Count ?? 0).ToString());
 
             DiagnosticListener.StopActivity(activity,
                 new
                 {
                     Endpoint = csb.Endpoint,
-                    EntityPath = csb.EntityPath,
+                    Entity = csb.EntityPath,
                     PartitionKey = partitionKey,
                     ConsumerGroup = consumerGroup,
                     EventDatas = events,
-                    TaskStatus = receiveTask?.Status
+                    Status = receiveTask?.Status
                 });
         }
     }
