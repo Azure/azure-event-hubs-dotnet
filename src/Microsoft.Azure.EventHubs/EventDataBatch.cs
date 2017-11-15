@@ -7,7 +7,7 @@ namespace Microsoft.Azure.EventHubs
     using System.Collections.Generic;
     using Microsoft.Azure.EventHubs.Amqp;
 
-    /// <summary>A helper class for creating a batch of EventData objects to be used for SendBatch or SendBatchAsync call.</summary>
+    /// <summary>A helper class for creating an IEnumerable<EventData> taking into account the max size limit of the IEnumerable<EventData>, so that it can be passed to the Send or SendAsync method of an EventHubClient to send the EventData objects as a batch.</summary>
     public class EventDataBatch : IDisposable
     {
         const int MaxSizeLimit = 4 * 1024 * 1024;
