@@ -96,8 +96,11 @@ namespace Microsoft.Azure.EventHubs
             {
                 using (await this.authContextLock.LockAsync())
                 {
-                    string authority = await TenantIdProvider.GetTenantUri(this.azureSubscriptionId);
-                    this.authContext = new AuthenticationContext(authority);
+                    if (this.authContext == null)
+                    {
+                        string authority = await TenantIdProvider.GetTenantUri(this.azureSubscriptionId);
+                        this.authContext = new AuthenticationContext(authority);
+                    }
                 }
             }
 
