@@ -3,11 +3,12 @@
 
 namespace Microsoft.Azure.EventHubs
 {
-    using Amqp;
     using System;
     using System.Collections.Generic;
     using System.Diagnostics;
     using System.Threading.Tasks;
+    using Microsoft.Azure.EventHubs.Amqp;
+    using Microsoft.IdentityModel.Clients.ActiveDirectory;
 
     /// <summary>
     /// Anchor class - all EventHub client operations start here.
@@ -68,6 +69,171 @@ namespace Microsoft.Azure.EventHubs
 
             var csb = new EventHubsConnectionStringBuilder(connectionString);
             return Create(csb);
+        }
+
+        /// <summary>
+        /// Creates a new instance of the Event Hubs client using the specified endpoint, entity path, and token provider.
+        /// </summary>
+        /// <param name="endpoint">Endpoint for the subject Event Hubs namespace. For example, sb://mynamespace.servicebus.windows.net</param>
+        /// <param name="entityPath">Event Hub path</param>
+        /// <param name="tokenProvider">Token provider which will generate security tokens for authorization.</param>
+        /// <returns></returns>
+        public static EventHubClient Create(Uri endpoint, string entityPath, ITokenProvider tokenProvider)
+        {
+            return Create(endpoint, entityPath, tokenProvider, ClientConstants.DefaultOperationTimeout);
+        }
+
+        /// <summary>
+        /// Creates a new instance of the Event Hubs client using the specified endpoint, entity path, and token provider.
+        /// </summary>
+        /// <param name="endpoint">Endpoint for the subject Event Hubs namespace. For example, sb://mynamespace.servicebus.windows.net</param>
+        /// <param name="entityPath">Event Hub path</param>
+        /// <param name="tokenProvider">Token provider which will generate security tokens for authorization.</param>
+        /// <param name="operationTimeout">Operation timeout for Event Hubs operations.</param>
+        /// <param name="transportType">Transport type on connection.</param>
+        /// <returns></returns>
+        public static EventHubClient Create(
+            Uri endpoint, 
+            string entityPath, 
+            ITokenProvider tokenProvider, 
+            TimeSpan operationTimeout, 
+            TransportType transportType = TransportType.Amqp)
+        {
+            if (endpoint == null)
+            {
+                throw Fx.Exception.ArgumentNull(nameof(endpoint));
+            }
+
+            if (string.IsNullOrWhiteSpace(entityPath))
+            {
+                throw Fx.Exception.ArgumentNullOrWhiteSpace(nameof(entityPath));
+            }
+
+            if (tokenProvider == null)
+            {
+                throw Fx.Exception.ArgumentNull(nameof(tokenProvider));
+            }
+
+            EventHubsEventSource.Log.EventHubClientCreateStart(endpoint.Host, entityPath);
+            EventHubClient eventHubClient = new AmqpEventHubClient(
+                endpoint,
+                entityPath,
+                tokenProvider,
+                operationTimeout,
+                transportType);
+            EventHubsEventSource.Log.EventHubClientCreateStop(eventHubClient.ClientId);
+            return eventHubClient;
+        }
+
+        /// <summary>
+        /// Creates a new instance of the Event Hubs client using the specified endpoint, entity path, subscription-id, and client credential.
+        /// </summary>
+        /// <param name="endpoint">Endpoint for the subject Event Hubs namespace. For example, sb://mynamespace.servicebus.windows.net</param>
+        /// <param name="entityPath">Event Hub path</param>
+        /// <param name="azureSubscriptionId">Azure subsciption identifier.</param>
+        /// <param name="clientCredential">The app credential.</param>
+        /// <param name="operationTimeout">Operation timeout for Event Hubs operations.</param>
+        /// <param name="transportType">Transport type on connection.</param>
+        /// <returns></returns>
+        public static EventHubClient Create(
+            Uri endpoint, 
+            string entityPath, 
+            string azureSubscriptionId, 
+            ClientCredential clientCredential, 
+            TimeSpan operationTimeout,
+            TransportType transportType = TransportType.Amqp)
+        {
+            TokenProvider tokenProvider = TokenProvider.CreateAadTokenProvider(azureSubscriptionId, clientCredential);
+
+            return Create(endpoint, entityPath, tokenProvider, operationTimeout, transportType);
+        }
+
+        /// <summary>
+        /// Creates a new instance of the Event Hubs client using the specified endpoint, entity path, subscription-id, and client credential.
+        /// </summary>
+        /// <param name="endpoint">Endpoint for the subject Event Hubs namespace. For example, sb://mynamespace.servicebus.windows.net</param>
+        /// <param name="entityPath">Event Hub path</param>
+        /// <param name="azureSubscriptionId">Azure subsciption identifier.</param>
+        /// <param name="clientAssertionCertificate">The client assertion certificate credential.</param>
+        /// <param name="operationTimeout">Operation timeout for Event Hubs operations.</param>
+        /// <param name="transportType">Transport type on connection.</param>
+        /// <returns></returns>
+        public static EventHubClient Create(
+            Uri endpoint,
+            string entityPath,
+            string azureSubscriptionId,
+            ClientAssertionCertificate clientAssertionCertificate,
+            TimeSpan operationTimeout,
+            TransportType transportType = TransportType.Amqp)
+        {
+            TokenProvider tokenProvider = TokenProvider.CreateAadTokenProvider(azureSubscriptionId, clientAssertionCertificate);
+
+            return Create(endpoint, entityPath, tokenProvider, operationTimeout, transportType);
+        }
+        
+        /// <summary>
+                 /// Creates a new instance of the Event Hubs client using the specified endpoint, entity path, subscription-id, and client credential.
+                 /// </summary>
+                 /// <param name="endpoint">Endpoint for the subject Event Hubs namespace. For example, sb://mynamespace.servicebus.windows.net</param>
+                 /// <param name="entityPath">Event Hub path</param>
+                 /// <param name="azureSubscriptionId">Azure subsciption identifier.</param>
+                 /// <param name="clientId">ClientId for AAD.</param>
+                 /// <param name="redirectUri">The redrectUri on Client App.</param>
+                 /// <param name="platformParameters">Platform parameters</param>
+                 /// <param name="operationTimeout">Operation timeout for Event Hubs operations.</param>
+                 /// <param name="transportType">Transport type on connection.</param>
+                 /// <returns></returns>
+        public static EventHubClient Create(
+            Uri endpoint,
+            string entityPath,
+            string azureSubscriptionId,
+            string clientId,
+            Uri redirectUri,
+            IPlatformParameters platformParameters,
+            TimeSpan operationTimeout,
+            TransportType transportType = TransportType.Amqp)
+        {
+            TokenProvider tokenProvider = TokenProvider.CreateAadTokenProvider(
+                azureSubscriptionId,
+                clientId,
+                redirectUri,
+                platformParameters);
+
+            return Create(endpoint, entityPath, tokenProvider, operationTimeout, transportType);
+        }
+
+        /// <summary>
+        /// Creates a new instance of the Event Hubs client using the specified endpoint, entity path, subscription-id, and client credential.
+        /// </summary>
+        /// <param name="endpoint">Endpoint for the subject Event Hubs namespace. For example, sb://mynamespace.servicebus.windows.net</param>
+        /// <param name="entityPath">Event Hub path</param>
+        /// <param name="azureSubscriptionId">Azure subsciption identifier.</param>
+        /// <param name="clientId">ClientId for AAD.</param>
+        /// <param name="redirectUri">The redrectUri on Client App.</param>
+        /// <param name="platformParameters">Platform parameters</param>
+        /// <param name="userIdentifier">User Identifier</param>
+        /// <param name="operationTimeout">Operation timeout for Event Hubs operations.</param>
+        /// <param name="transportType">Transport type on connection.</param>
+        /// <returns></returns>
+        public static EventHubClient Create(
+            Uri endpoint,
+            string entityPath,
+            string azureSubscriptionId,
+            string clientId,
+            Uri redirectUri,
+            IPlatformParameters platformParameters,
+            UserIdentifier userIdentifier,
+            TimeSpan operationTimeout,
+            TransportType transportType = TransportType.Amqp)
+        {
+            TokenProvider tokenProvider = TokenProvider.CreateAadTokenProvider(
+                azureSubscriptionId,
+                clientId,
+                redirectUri,
+                platformParameters,
+                userIdentifier);
+
+            return Create(endpoint, entityPath, tokenProvider, operationTimeout, transportType);
         }
 
         static EventHubClient Create(EventHubsConnectionStringBuilder csb)

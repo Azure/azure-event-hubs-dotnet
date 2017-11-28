@@ -17,20 +17,31 @@ namespace Microsoft.Azure.EventHubs
     /// </summary>
     public class SharedAccessSignatureTokenProvider : TokenProvider
     {
+        const TokenScope DefaultTokenScope = TokenScope.Entity;
+
+        internal static readonly TimeSpan DefaultTokenTimeout = TimeSpan.FromMinutes(60);
+
         /// <summary>
         /// Represents 00:00:00 UTC Thursday 1, January 1970.
         /// </summary>
         public static readonly DateTime EpochTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
+
         readonly byte[] encodedSharedAccessKey;
         readonly string keyName;
         readonly TimeSpan tokenTimeToLive;
+        readonly TokenScope tokenScope;
         readonly string sharedAccessSignature;
+        internal static readonly Func<string, byte[]> MessagingTokenProviderKeyEncoder = Encoding.UTF8.GetBytes;
 
         internal SharedAccessSignatureTokenProvider(string sharedAccessSignature)
-            : base(TokenScope.Entity)
         {
             SharedAccessSignatureToken.Validate(sharedAccessSignature);
             this.sharedAccessSignature = sharedAccessSignature;
+        }
+
+        internal SharedAccessSignatureTokenProvider(string keyName, string sharedAccessKey, TokenScope tokenScope = TokenScope.Entity)
+            : this(keyName, sharedAccessKey, MessagingTokenProviderKeyEncoder, DefaultTokenTimeout, tokenScope)
+        {
         }
 
         internal SharedAccessSignatureTokenProvider(string keyName, string sharedAccessKey, TimeSpan tokenTimeToLive, TokenScope tokenScope = TokenScope.Entity)
@@ -45,7 +56,6 @@ namespace Microsoft.Azure.EventHubs
         /// <param name="tokenTimeToLive"></param>
         /// <param name="tokenScope"></param>
         protected SharedAccessSignatureTokenProvider(string keyName, string sharedAccessKey, Func<string, byte[]> customKeyEncoder, TimeSpan tokenTimeToLive, TokenScope tokenScope)
-            : base(tokenScope)
         {
             if (string.IsNullOrEmpty(keyName))
             {
@@ -76,15 +86,20 @@ namespace Microsoft.Azure.EventHubs
             this.encodedSharedAccessKey = customKeyEncoder != null ?
                 customKeyEncoder(sharedAccessKey) :
                 MessagingTokenProviderKeyEncoder(sharedAccessKey);
+            this.tokenScope = tokenScope;
         }
 
-        /// <summary></summary>
-        /// <param name="appliesTo"></param>
-        /// <param name="action"></param>
-        /// <param name="timeout"></param>
-        /// <returns></returns>
-        protected override Task<SecurityToken> OnGetTokenAsync(string appliesTo, string action, TimeSpan timeout)
+        /// <summary>
+        /// Gets a <see cref="SecurityToken"/> for the given audience and duration.
+        /// </summary>
+        /// <param name="appliesTo">The URI which the access token applies to</param>
+        /// <param name="action">The request action</param>
+        /// <param name="timeout">The time span that specifies the timeout value for the message that gets the security token</param>
+        /// <returns><see cref="SecurityToken"/></returns>
+        public override Task<SecurityToken> GetTokenAsync(string appliesTo, string action, TimeSpan timeout)
         {
+            TimeoutHelper.ThrowIfNegativeArgument(timeout);
+            appliesTo = NormalizeAppliesTo(appliesTo);
             string tokenString = this.BuildSignature(appliesTo);
             var securityToken = new SharedAccessSignatureToken(tokenString);
             return Task.FromResult<SecurityToken>(securityToken);
@@ -102,6 +117,11 @@ namespace Microsoft.Azure.EventHubs
                     targetUri,
                     this.tokenTimeToLive)
                 : this.sharedAccessSignature;
+        }
+
+        string NormalizeAppliesTo(string appliesTo)
+        {
+            return EventHubsUriHelper.NormalizeUri(appliesTo, "http", true, stripPath: this.tokenScope == TokenScope.Namespace, ensureTrailingSlash: true);
         }
 
         static class SharedAccessSignatureBuilder
@@ -150,103 +170,6 @@ namespace Microsoft.Azure.EventHubs
                 {
                     return Convert.ToBase64String(hmac.ComputeHash(Encoding.UTF8.GetBytes(requestString)));
                 }
-            }
-        }
-
-        /// <summary>
-        /// A WCF SecurityToken that wraps a Shared Access Signature
-        /// </summary>
-        class SharedAccessSignatureToken : SecurityToken
-        {
-            public const int MaxKeyNameLength = 256;
-            public const int MaxKeyLength = 256;
-            public const string SharedAccessSignature = "SharedAccessSignature";
-            public const string SignedResource = "sr";
-            public const string Signature = "sig";
-            public const string SignedKeyName = "skn";
-            public const string SignedExpiry = "se";
-            public const string SignedResourceFullFieldName = SharedAccessSignature + " " + SignedResource;
-            public const string SasKeyValueSeparator = "=";
-            public const string SasPairSeparator = "&";
-
-            public SharedAccessSignatureToken(string tokenString)
-                : base(tokenString)
-            {
-            }
-
-            protected override string AudienceFieldName => SignedResourceFullFieldName;
-
-            protected override string ExpiresOnFieldName => SignedExpiry;
-
-            protected override string KeyValueSeparator => SasKeyValueSeparator;
-
-            protected override string PairSeparator => SasPairSeparator;
-
-            internal static void Validate(string sharedAccessSignature)
-            {
-                if (string.IsNullOrEmpty(sharedAccessSignature))
-                {
-                    throw new ArgumentNullException(nameof(sharedAccessSignature));
-                }
-
-                IDictionary<string, string> parsedFields = ExtractFieldValues(sharedAccessSignature);
-
-                string signature;
-                if (!parsedFields.TryGetValue(Signature, out signature))
-                {
-                    throw new ArgumentNullException(Signature);
-                }
-
-                string expiry;
-                if (!parsedFields.TryGetValue(SignedExpiry, out expiry))
-                {
-                    throw new ArgumentNullException(SignedExpiry);
-                }
-
-                string keyName;
-                if (!parsedFields.TryGetValue(SignedKeyName, out keyName))
-                {
-                    throw new ArgumentNullException(SignedKeyName);
-                }
-
-                string encodedAudience;
-                if (!parsedFields.TryGetValue(SignedResource, out encodedAudience))
-                {
-                    throw new ArgumentNullException(SignedResource);
-                }
-            }
-
-            static IDictionary<string, string> ExtractFieldValues(string sharedAccessSignature)
-            {
-                string[] tokenLines = sharedAccessSignature.Split();
-
-                if (!string.Equals(tokenLines[0].Trim(), SharedAccessSignature, StringComparison.OrdinalIgnoreCase) || tokenLines.Length != 2)
-                {
-                    throw new ArgumentNullException(nameof(sharedAccessSignature));
-                }
-
-                IDictionary<string, string> parsedFields = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                string[] tokenFields = tokenLines[1].Trim().Split(new[] { SasPairSeparator }, StringSplitOptions.None);
-
-                foreach (string tokenField in tokenFields)
-                {
-                    if (tokenField != string.Empty)
-                    {
-                        string[] fieldParts = tokenField.Split(new[] { SasKeyValueSeparator }, StringSplitOptions.None);
-                        if (string.Equals(fieldParts[0], SignedResource, StringComparison.OrdinalIgnoreCase))
-                        {
-                            // We need to preserve the casing of the escape characters in the audience,
-                            // so defer decoding the URL until later.
-                            parsedFields.Add(fieldParts[0], fieldParts[1]);
-                        }
-                        else
-                        {
-                            parsedFields.Add(fieldParts[0], WebUtility.UrlDecode(fieldParts[1]));
-                        }
-                    }
-                }
-
-                return parsedFields;
             }
         }
     }

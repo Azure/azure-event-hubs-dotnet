@@ -150,7 +150,7 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
                 // when checking for token expiry.
                 if (this.token == null || DateTime.UtcNow > this.token.ExpiresAtUtc.Subtract(TimeSpan.FromMinutes(5)))
                 {
-                    this.token = await this.eventHubClient.TokenProvider.GetTokenAsync(
+                    this.token = await this.eventHubClient.InternalTokenProvider.GetTokenAsync(
                         this.eventHubClient.ConnectionStringBuilder.Endpoint.AbsoluteUri,
                         ClaimConstants.Listen, this.eventHubClient.ConnectionStringBuilder.OperationTimeout).ConfigureAwait(false);
                 }
