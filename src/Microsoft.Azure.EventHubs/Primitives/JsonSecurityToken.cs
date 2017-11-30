@@ -8,16 +8,22 @@ namespace Microsoft.Azure.EventHubs
     using System.IdentityModel.Tokens;
     using System.IdentityModel.Tokens.Jwt;
 
-    class JsonSecurityToken : SecurityToken
+    /// <summary>
+    /// Extends SecurityToken for JWT specific properties
+    /// </summary>
+    public class JsonSecurityToken : SecurityToken
     {
-        JwtSecurityToken internalToken;
-
+        /// <summary>
+        /// Creates a new instance of the <see cref="JsonSecurityToken"/> class.
+        /// </summary>
+        /// <param name="rawToken">Raw JSON Web Token string</param>
+        /// <param name="audience">The audience</param>
         public JsonSecurityToken(string rawToken, string audience)
         {
-            this.internalToken = new JwtSecurityToken(rawToken);
+            var jwtSecurityToken = new JwtSecurityToken(rawToken);
             this.tokenType = ClientConstants.JsonWebTokenType;
             this.token = rawToken;
-            this.expiresAtUtc = this.internalToken.ValidTo;
+            this.expiresAtUtc = jwtSecurityToken.ValidTo;
             this.audience = audience;
         }
     }

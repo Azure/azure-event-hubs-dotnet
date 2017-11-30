@@ -76,25 +76,6 @@ namespace Microsoft.Azure.EventHubs
         }
 
         /// <summary>Creates an Azure Active Directory token provider.</summary>
-        /// <param name="azureSubscriptionId">Azure subsciption identifier.</param>
-        /// <param name="clientCredential">The app credential.</param>
-        /// <returns>The <see cref="TokenProvider" /> for returning Json web token.</returns>
-        public static TokenProvider CreateAadTokenProvider(string azureSubscriptionId, ClientCredential clientCredential)
-        {
-            if (string.IsNullOrEmpty(azureSubscriptionId))
-            {
-                throw new ArgumentNullException(nameof(azureSubscriptionId));
-            }
-
-            if (clientCredential == null)
-            {
-                throw new ArgumentNullException(nameof(clientCredential));
-            }
-
-            return new AzureActiveDirectoryTokenProvider(azureSubscriptionId, clientCredential);
-        }
-
-        /// <summary>Creates an Azure Active Directory token provider.</summary>
         /// <param name="authContext">AuthenticationContext for AAD.</param>
         /// <param name="clientCredential">The app credential.</param>
         /// <returns>The <see cref="TokenProvider" /> for returning Json web token.</returns>
@@ -111,43 +92,6 @@ namespace Microsoft.Azure.EventHubs
             }
 
             return new AzureActiveDirectoryTokenProvider(authContext, clientCredential);
-        }
-
-        /// <summary>Creates an Azure Active Directory token provider.</summary>
-        /// <param name="azureSubscriptionId">Azure subsciption identifier.</param>
-        /// <param name="clientId">ClientId for AAD.</param>
-        /// <param name="redirectUri">The redrectUri on Client App.</param>
-        /// <param name="platformParameters">Platform parameters</param>
-        /// <param name="userIdentifier">User Identifier</param>
-        /// <returns>The <see cref="TokenProvider" /> for returning Json web token.</returns>
-        public static TokenProvider CreateAadTokenProvider(
-            string azureSubscriptionId,
-            string clientId,
-            Uri redirectUri,
-            IPlatformParameters platformParameters,
-            UserIdentifier userIdentifier = null)
-        {
-            if (string.IsNullOrEmpty(azureSubscriptionId))
-            {
-                throw new ArgumentNullException(nameof(azureSubscriptionId));
-            }
-
-            if (string.IsNullOrEmpty(clientId))
-            {
-                throw new ArgumentNullException(nameof(clientId));
-            }
-
-            if (redirectUri == null)
-            {
-                throw new ArgumentNullException(nameof(redirectUri));
-            }
-
-            if (platformParameters == null)
-            {
-                throw new ArgumentNullException(nameof(platformParameters));
-            }
-
-            return new AzureActiveDirectoryTokenProvider(azureSubscriptionId, clientId, redirectUri, platformParameters, userIdentifier);
         }
 
         /// <summary>Creates an Azure Active Directory token provider.</summary>
@@ -189,25 +133,6 @@ namespace Microsoft.Azure.EventHubs
 
 #if !UAP10_0
         /// <summary>Creates an Azure Active Directory token provider.</summary>
-        /// <param name="azureSubscriptionId">Azure subsciption identifier.</param>
-        /// <param name="clientAssertionCertificate">The client assertion certificate credential.</param>
-        /// <returns>The <see cref="TokenProvider" /> for returning Json web token.</returns>
-        public static TokenProvider CreateAadTokenProvider(string azureSubscriptionId, ClientAssertionCertificate clientAssertionCertificate)
-        {
-            if (string.IsNullOrEmpty(azureSubscriptionId))
-            {
-                throw new ArgumentNullException(nameof(azureSubscriptionId));
-            }
-
-            if (clientAssertionCertificate == null)
-            {
-                throw new ArgumentNullException(nameof(clientAssertionCertificate));
-            }
-
-            return new AzureActiveDirectoryTokenProvider(azureSubscriptionId, clientAssertionCertificate);
-        }
-        
-        /// <summary>Creates an Azure Active Directory token provider.</summary>
         /// <param name="authContext">AuthenticationContext for AAD.</param>
         /// <param name="clientAssertionCertificate">The client assertion certificate credential.</param>
         /// <returns>The <see cref="TokenProvider" /> for returning Json web token.</returns>
@@ -226,6 +151,13 @@ namespace Microsoft.Azure.EventHubs
             return new AzureActiveDirectoryTokenProvider(authContext, clientAssertionCertificate);
         }
 #endif
+
+        /// <summary>Creates Azure Managed Service Identity token provider.</summary>
+        /// <returns>The <see cref="TokenProvider" /> for returning Json web token.</returns>
+        public static TokenProvider CreateManagedServiceIdentityTokenProvider()
+        {
+            return new ManagedServiceIdentityTokenProvider();
+        }
 
         /// <summary>
         /// Gets a <see cref="SecurityToken"/> for the given audience and duration.

@@ -126,43 +126,5 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             var msg = await ehReceiver.ReceiveAsync(1);
             Assert.True(msg != null, "Failed to receive message.");
         }
-
-        /// <summary>
-        /// This test is for manual only purpose. Fill in the subscription-id, app-id and app-secret before running.
-        /// </summary>
-        /// <returns></returns>
-        [Fact]
-        [DisplayTestMethodName]
-        async Task CreateClientWithSubscriptionId()
-        {
-            // Generate SAS token provider.
-            var subscriptionId = "";
-            var aadAppId = "";
-            var aadAppSecret = "";
-
-            if (string.IsNullOrEmpty(subscriptionId))
-            {
-                TestUtility.Log($"Skipping test during scheduled runs.");
-                return;
-            }
-
-            var cc = new ClientCredential(aadAppId, aadAppSecret);
-
-            // Create new client with updated connection string.
-            var csb = new EventHubsConnectionStringBuilder(TestUtility.EventHubsConnectionString);
-            var ehClient = EventHubClient.Create(csb.Endpoint, csb.EntityPath, subscriptionId, cc, TimeSpan.FromSeconds(60));
-
-            // Send one event
-            TestUtility.Log($"Sending one message.");
-            var ehSender = ehClient.CreatePartitionSender("0");
-            var eventData = new EventData(Encoding.UTF8.GetBytes("Hello EventHub by partitionKey!"));
-            await ehSender.SendAsync(eventData);
-
-            // Receive event.
-            TestUtility.Log($"Receiving one message.");
-            var ehReceiver = ehClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", PartitionReceiver.StartOfStream);
-            var msg = await ehReceiver.ReceiveAsync(1);
-            Assert.True(msg != null, "Failed to receive message.");
-        }
     }
 }

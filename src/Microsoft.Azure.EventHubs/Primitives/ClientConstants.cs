@@ -12,6 +12,7 @@ namespace Microsoft.Azure.EventHubs
 
         public const string SasTokenType = "servicebus.windows.net:sastoken";
         public const string JsonWebTokenType = "jwt";
+        public const string AadEventHubsAudience = "https://eventhubs.azure.net/";
 
         public static TimeSpan DefaultOperationTimeout = TimeSpan.FromMinutes(1);
         public static TransportType DefaultTransportType = TransportType.Amqp;
