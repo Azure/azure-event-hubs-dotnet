@@ -310,7 +310,18 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
 
             parentActivity.Start();
 
-            var receivedEvent = await SendAndReceiveEvent(partitionKey, sendEvent);
+            // Mark end of stream before sending.
+            var pInfo = await this.EventHubClient.GetPartitionRuntimeInformationAsync(partitionKey);
+
+            await TestUtility.SendToPartitionAsync(this.EventHubClient, partitionKey, sendEvent, 1);
+
+            // Create receiver from marked offset.
+            var receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionKey, pInfo.LastEnqueuedOffset);
+            var messages = await receiver.ReceiveAsync(10);
+
+            Assert.True(messages.Count() == 1, $"Received {messages.Count()} messages whereas 1 expected.");
+            var receivedEvent = messages.First();
+
             Assert.True(Encoding.UTF8.GetString(receivedEvent.Body.Array) == payloadString, "Received payload string isn't the same as sent payload string.");
 
             parentActivity.Stop();
