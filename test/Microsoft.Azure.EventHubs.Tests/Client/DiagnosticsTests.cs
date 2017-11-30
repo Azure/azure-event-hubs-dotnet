@@ -10,7 +10,6 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
     using System.Linq;
     using System.Reflection;
     using System.Text;
-    using System.Threading;
     using System.Threading.Tasks;
     using Xunit;
 
@@ -54,12 +53,22 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             // enable Send .Start & .Stop events
             this.listener.Enable((name, queueName, arg) => name.Contains("Send") && !name.EndsWith(".Exception"));
 
+            var eventData = new EventData(Encoding.UTF8.GetBytes("Hello EventHub by partitionKey!"));
+            Assert.False(eventData.Properties.ContainsKey(EventHubsDiagnosticSource.ActivityIdPropertyName));
+            Assert.False(eventData.Properties.ContainsKey(EventHubsDiagnosticSource.CorrelationContextPropertyName));
+
             parentActivity.Start();
 
-            var eventData = new EventData(Encoding.UTF8.GetBytes("Hello EventHub by partitionKey!"));
             await this.EventHubClient.SendAsync(eventData, partitionKey);
 
             parentActivity.Stop();
+
+            // check Diagnostic-Id injection
+            Assert.True(eventData.Properties.ContainsKey(EventHubsDiagnosticSource.ActivityIdPropertyName));
+
+            // check Correlation-Context injection
+            Assert.True(eventData.Properties.ContainsKey(EventHubsDiagnosticSource.CorrelationContextPropertyName));
+            Assert.Equal(EventHubsDiagnosticSource.SerializeCorrelationContext(parentActivity.Baggage.ToList()), eventData.Properties[EventHubsDiagnosticSource.CorrelationContextPropertyName]);
 
             Assert.True(this.events.TryDequeue(out var sendStart));
             AssertSendStart(sendStart.eventName, sendStart.payload, sendStart.activity, parentActivity, partitionKey: partitionKey);
@@ -68,6 +77,38 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             AssertSendStop(sendStop.eventName, sendStop.payload, sendStop.activity, sendStart.activity, partitionKey: partitionKey);
 
             // no more events
+            Assert.False(this.events.TryDequeue(out var evnt));
+        }
+
+        [Fact]
+        [DisplayTestMethodName]
+        async Task SendDoesNotInjectContextWhenNoListeners()
+        {
+            string partitionKey = "SomePartitionKeyHere";
+
+            TestUtility.Log("Sending single Event via EventHubClient produces diagnostic events");
+            Activity parentActivity = new Activity("test").AddBaggage("k1", "v1").AddBaggage("k2", "v2");
+
+            // disable all events
+            this.listener.Enable((name, queueName, arg) => false);
+
+            var eventData = new EventData(Encoding.UTF8.GetBytes("Hello EventHub by partitionKey!"));
+            Assert.False(eventData.Properties.ContainsKey(EventHubsDiagnosticSource.ActivityIdPropertyName));
+            Assert.False(eventData.Properties.ContainsKey(EventHubsDiagnosticSource.CorrelationContextPropertyName));
+
+            parentActivity.Start();
+
+            await this.EventHubClient.SendAsync(eventData, partitionKey);
+
+            parentActivity.Stop();
+
+            // check Diagnostic-Id not injected
+            Assert.False(eventData.Properties.ContainsKey(EventHubsDiagnosticSource.ActivityIdPropertyName));
+
+            // check Correlation-Context not injected
+            Assert.False(eventData.Properties.ContainsKey(EventHubsDiagnosticSource.CorrelationContextPropertyName));
+
+            // no events
             Assert.False(this.events.TryDequeue(out var evnt));
         }
 
@@ -127,11 +168,14 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             // enable Send .Start & .Stop events
             this.listener.Enable((name, queueName, arg) => name.Contains("Send") && !name.EndsWith(".Exception"));
 
+            var eventData = new EventData(Encoding.UTF8.GetBytes("Hello again EventHub Partition 1!"));
+            Assert.False(eventData.Properties.ContainsKey(EventHubsDiagnosticSource.ActivityIdPropertyName));
+            Assert.False(eventData.Properties.ContainsKey(EventHubsDiagnosticSource.CorrelationContextPropertyName));
+
             parentActivity.Start();
 
             try
             {
-                var eventData = new EventData(Encoding.UTF8.GetBytes("Hello again EventHub Partition 1!"));
                 await partitionSender1.SendAsync(eventData);
             }
             finally
@@ -141,6 +185,13 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
 
             parentActivity.Stop();
 
+            // check Diagnostic-Id injection
+            Assert.True(eventData.Properties.ContainsKey(EventHubsDiagnosticSource.ActivityIdPropertyName));
+
+            // check Correlation-Context injection
+            Assert.True(eventData.Properties.ContainsKey(EventHubsDiagnosticSource.CorrelationContextPropertyName));
+            Assert.Equal(EventHubsDiagnosticSource.SerializeCorrelationContext(parentActivity.Baggage.ToList()), eventData.Properties[EventHubsDiagnosticSource.CorrelationContextPropertyName]);
+
             Assert.True(this.events.TryDequeue(out var sendStart));
             AssertSendStart(sendStart.eventName, sendStart.payload, sendStart.activity, parentActivity, partitionKey);
 
@@ -148,6 +199,46 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             AssertSendStop(sendStop.eventName, sendStop.payload, sendStop.activity, sendStart.activity, partitionKey);
 
             // no more events
+            Assert.False(this.events.TryDequeue(out var evnt));
+        }
+
+        [Fact]
+        [DisplayTestMethodName]
+        async Task PartitionSenderSendDoesNotInjectContextWhenNoListeners()
+        {
+            string partitionKey = "1";
+            TestUtility.Log("Sending single Event via PartitionSender produces diagnostic events");
+
+            PartitionSender partitionSender1 = this.EventHubClient.CreatePartitionSender(partitionKey);
+            Activity parentActivity = new Activity("test").AddBaggage("k1", "v1").AddBaggage("k2", "v2");
+
+            // disable all events
+            this.listener.Enable((name, queueName, arg) => false);
+
+            var eventData = new EventData(Encoding.UTF8.GetBytes("Hello again EventHub Partition 1!"));
+            Assert.False(eventData.Properties.ContainsKey(EventHubsDiagnosticSource.ActivityIdPropertyName));
+            Assert.False(eventData.Properties.ContainsKey(EventHubsDiagnosticSource.CorrelationContextPropertyName));
+
+            parentActivity.Start();
+
+            try
+            {
+                await partitionSender1.SendAsync(eventData);
+            }
+            finally
+            {
+                await partitionSender1.CloseAsync();
+            }
+
+            parentActivity.Stop();
+
+            // check Diagnostic-Id not injected
+            Assert.False(eventData.Properties.ContainsKey(EventHubsDiagnosticSource.ActivityIdPropertyName));
+
+            // check Correlation-Context not injected
+            Assert.False(eventData.Properties.ContainsKey(EventHubsDiagnosticSource.CorrelationContextPropertyName));
+
+            // no events
             Assert.False(this.events.TryDequeue(out var evnt));
         }
 
@@ -207,31 +298,184 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
 
             TestUtility.Log("Receiving Events via PartitionReceiver produces diagnostic events");
 
+            Activity parentActivity = new Activity("test").AddBaggage("k1", "v1").AddBaggage("k2", "v2");
+
             // enable Send & Receive .Start & .Stop events
             this.listener.Enable((name, queueName, arg) => !name.EndsWith(".Exception"));
 
             // send to have some data to receive
             var sendEvent = new EventData(Encoding.UTF8.GetBytes(payloadString));
-            var receivedEvent = await SendAndReceiveEvent(partitionKey, sendEvent);
+            Assert.False(sendEvent.Properties.ContainsKey(EventHubsDiagnosticSource.ActivityIdPropertyName));
+            Assert.False(sendEvent.Properties.ContainsKey(EventHubsDiagnosticSource.CorrelationContextPropertyName));
+
+            parentActivity.Start();
+
+            // Mark end of stream before sending.
+            var pInfo = await this.EventHubClient.GetPartitionRuntimeInformationAsync(partitionKey);
+
+            await TestUtility.SendToPartitionAsync(this.EventHubClient, partitionKey, sendEvent, 1);
+
+            // Create receiver from marked offset.
+            var receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionKey, pInfo.LastEnqueuedOffset);
+            var messages = await receiver.ReceiveAsync(10);
+
+            Assert.True(messages.Count() == 1, $"Received {messages.Count()} messages whereas 1 expected.");
+            var receivedEvent = messages.First();
+
             Assert.True(Encoding.UTF8.GetString(receivedEvent.Body.Array) == payloadString, "Received payload string isn't the same as sent payload string.");
 
+            parentActivity.Stop();
+
+            // check Diagnostic-Id injection
+            Assert.True(sendEvent.Properties.ContainsKey(EventHubsDiagnosticSource.ActivityIdPropertyName));
+            Assert.True(receivedEvent.Properties.ContainsKey(EventHubsDiagnosticSource.ActivityIdPropertyName));
+            Assert.Equal(sendEvent.Properties[EventHubsDiagnosticSource.ActivityIdPropertyName], receivedEvent.Properties[EventHubsDiagnosticSource.ActivityIdPropertyName]);
+
+            // check Correlation-Context injection
+            Assert.True(sendEvent.Properties.ContainsKey(EventHubsDiagnosticSource.CorrelationContextPropertyName));
+            Assert.True(receivedEvent.Properties.ContainsKey(EventHubsDiagnosticSource.CorrelationContextPropertyName));
+            Assert.Equal(sendEvent.Properties[EventHubsDiagnosticSource.CorrelationContextPropertyName], receivedEvent.Properties[EventHubsDiagnosticSource.CorrelationContextPropertyName]);
+            Assert.Equal(EventHubsDiagnosticSource.SerializeCorrelationContext(parentActivity.Baggage.ToList()), sendEvent.Properties[EventHubsDiagnosticSource.CorrelationContextPropertyName]);
+
             Assert.True(this.events.TryDequeue(out var sendStart));
-            AssertSendStart(sendStart.eventName, sendStart.payload, sendStart.activity, null, partitionKey);
+            AssertSendStart(sendStart.eventName, sendStart.payload, sendStart.activity, parentActivity, partitionKey);
 
             Assert.True(this.events.TryDequeue(out var sendStop));
-            AssertSendStop(sendStop.eventName, sendStop.payload, sendStop.activity, null, partitionKey);
+            AssertSendStop(sendStop.eventName, sendStop.payload, sendStop.activity, sendStart.activity, partitionKey);
 
             Assert.True(this.events.TryDequeue(out var receiveStart));
             AssertReceiveStart(receiveStart.eventName, receiveStart.payload, receiveStart.activity, partitionKey);
 
             Assert.True(this.events.TryDequeue(out var receiveStop));
-            AssertReceiveStop(receiveStop.eventName, receiveStop.payload, receiveStop.activity, receiveStart.activity, partitionKey);
+            AssertReceiveStop(receiveStop.eventName, receiveStop.payload, receiveStop.activity, receiveStart.activity, partitionKey, relatedId: sendStop.activity.Id);
 
             // no more events
             Assert.False(this.events.TryDequeue(out var evnt));
         }
 
         #endregion Partition Receiver
+
+        #region Extract Activity
+
+        [Fact]
+        [DisplayTestMethodName]
+        void ExtractsActivityWithIdAndNoContext()
+        {
+            var eventData = new EventData(Encoding.UTF8.GetBytes("test"));
+            eventData.Properties["Diagnostic-Id"] = "diagnostic-id";
+
+            var activity = eventData.ExtractActivity();
+
+            Assert.Equal("diagnostic-id", activity.ParentId);
+            Assert.Equal("diagnostic-id", activity.RootId);
+            Assert.Null(activity.Id);
+
+            var baggage = activity.Baggage.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+            Assert.Equal(0, baggage.Count);
+        }
+
+        [Fact]
+        [DisplayTestMethodName]
+        void ExtractsActivityWithIdAndSingleContext()
+        {
+            var eventData = new EventData(Encoding.UTF8.GetBytes("test"));
+            eventData.Properties["Diagnostic-Id"] = "diagnostic-id";
+            eventData.Properties["Correlation-Context"] = "k1=v1";
+
+            var activity = eventData.ExtractActivity();
+
+            Assert.Equal("diagnostic-id", activity.ParentId);
+            Assert.Equal("diagnostic-id", activity.RootId);
+
+            Assert.Null(activity.Id);
+
+            var baggage = activity.Baggage.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+            Assert.Equal(1, baggage.Count);
+            Assert.Contains("k1", baggage.Keys);
+            Assert.Equal("v1", baggage["k1"]);
+        }
+
+        [Fact]
+        [DisplayTestMethodName]
+        void ExtractsActivityWithIdAndMultiContext()
+        {
+            var eventData = new EventData(Encoding.UTF8.GetBytes("test"));
+            eventData.Properties["Diagnostic-Id"] = "diagnostic-id";
+            eventData.Properties["Correlation-Context"] = "k1=v1,k2=v2,k3=v3";
+
+            var activity = eventData.ExtractActivity();
+
+            Assert.Equal("diagnostic-id", activity.ParentId);
+            Assert.Equal("diagnostic-id", activity.RootId);
+
+            Assert.Null(activity.Id);
+
+            var baggage = activity.Baggage.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+            Assert.Equal(3, baggage.Count);
+            Assert.Contains("k1", baggage.Keys);
+            Assert.Contains("k2", baggage.Keys);
+            Assert.Contains("k3", baggage.Keys);
+            Assert.Equal("v1", baggage["k1"]);
+            Assert.Equal("v2", baggage["k2"]);
+            Assert.Equal("v3", baggage["k3"]);
+        }
+
+        [Fact]
+        [DisplayTestMethodName]
+        void ExtractActivityWithAlternateName()
+        {
+            var eventData = new EventData(Encoding.UTF8.GetBytes("test"));
+            eventData.Properties["Diagnostic-Id"] = "diagnostic-id";
+
+            var activity = eventData.ExtractActivity("My activity");
+
+            Assert.Equal("My activity", activity.OperationName);
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [InlineData("not valid context")]
+        [InlineData("not,valid,context")]
+        [DisplayTestMethodName]
+        void ExtractsActivityWithIdAndInvalidContext(string context)
+        {
+            var eventData = new EventData(Encoding.UTF8.GetBytes("test"));
+            eventData.Properties["Diagnostic-Id"] = "diagnostic-id";
+            eventData.Properties["Correlation-Context"] = context;
+
+            var activity = eventData.ExtractActivity();
+
+            Assert.Equal("diagnostic-id", activity.ParentId);
+            Assert.Equal("diagnostic-id", activity.RootId);
+            Assert.Null(activity.Id);
+
+            var baggage = activity.Baggage.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+            Assert.Equal(0, baggage.Count);
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        [DisplayTestMethodName]
+        void ExtractsActivityWithoutIdAsRoot(string id)
+        {
+            var eventData = new EventData(Encoding.UTF8.GetBytes("test"));
+            eventData.Properties["Diagnostic-Id"] = id;
+            eventData.Properties["Correlation-Context"] = "k1=v1,k2=v2";
+
+            var activity = eventData.ExtractActivity();
+
+            Assert.Null(activity.ParentId);
+            Assert.Null(activity.RootId);
+            Assert.Null(activity.Id);
+
+            var baggage = activity.Baggage.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+            // baggage is ignored in absence of Id
+            Assert.Equal(0, baggage.Count);
+        }
+
+        #endregion Extract Activity
 
         #endregion Tests
 
@@ -300,7 +544,6 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             AssertCommonPayloadProperties(payload, partitionKey);
 
             Assert.NotNull(activity);
-            Assert.Null(activity.Parent);
 
             AssertTagMatches(activity, "peer.hostname", this.EventHubClient.ConnectionStringBuilder.Endpoint.Host);
             AssertTagMatches(activity, "eh.event_hub_name", this.EventHubClient.ConnectionStringBuilder.EntityPath);
@@ -315,7 +558,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             AssertTagExists(activity, "eh.start_offset");
         }
 
-        protected void AssertReceiveStop(string name, object payload, Activity activity, Activity receiveActivity, string partitionKey, bool isFaulted = false)
+        protected void AssertReceiveStop(string name, object payload, Activity activity, Activity receiveActivity, string partitionKey, bool isFaulted = false, string relatedId = null)
         {
             Assert.Equal("Microsoft.Azure.EventHubs.Receive.Stop", name);
             AssertCommonStopPayloadProperties(payload, partitionKey, isFaulted);
@@ -323,6 +566,14 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             if (receiveActivity != null)
             {
                 Assert.Equal(receiveActivity, activity);
+            }
+
+            if (!string.IsNullOrEmpty(relatedId))
+            {
+                var relatedToTag = activity.Tags.FirstOrDefault(tag => tag.Key == EventHubsDiagnosticSource.RelatedToTagName);
+                Assert.NotNull(relatedToTag);
+                Assert.NotNull(relatedToTag.Value);
+                Assert.True(relatedToTag.Value.Contains(relatedId));
             }
         }
 
