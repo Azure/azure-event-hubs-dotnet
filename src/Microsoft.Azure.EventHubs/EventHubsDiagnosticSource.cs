@@ -6,6 +6,7 @@ namespace Microsoft.Azure.EventHubs
     using System;
     using System.Collections.Generic;
     using System.Diagnostics;
+    using System.Linq;
     using System.Threading.Tasks;
 
     /// <summary>
@@ -14,6 +15,12 @@ namespace Microsoft.Azure.EventHubs
     internal static class EventHubsDiagnosticSource
     {
         public const string DiagnosticSourceName = "Microsoft.Azure.EventHubs";
+
+        public const string ActivityIdPropertyName = "Diagnostic-Id";
+        public const string CorrelationContextPropertyName = "Correlation-Context";
+        public const string RelatedToTagName = "RelatedTo";
+
+        public const string ProcessActivityName = DiagnosticSourceName + ".Process";
 
         public const string SendActivityName = DiagnosticSourceName + ".Send";
         public const string SendActivityStartName = SendActivityName + ".Start";
@@ -64,6 +71,8 @@ namespace Microsoft.Azure.EventHubs
             {
                 activity.Start();
             }
+
+            Inject(eventDatas);
 
             return activity;
         }
@@ -176,6 +185,7 @@ namespace Microsoft.Azure.EventHubs
                 return;
             }
 
+            SetRelatedOperations(activity, events);
             activity.AddTag("eh.event_count", (events?.Count ?? 0).ToString());
 
             DiagnosticListener.StopActivity(activity,
@@ -189,5 +199,64 @@ namespace Microsoft.Azure.EventHubs
                     Status = receiveTask?.Status
                 });
         }
+
+        #region Diagnostic Context Injection
+
+        private static void Inject(IEnumerable<EventData> eventDatas)
+        {
+            var currentActivity = Activity.Current;
+            if (currentActivity != null)
+            {
+                var correlationContext = SerializeCorrelationContext(currentActivity.Baggage.ToList());
+
+                foreach (var eventData in eventDatas)
+                {
+                    Inject(eventData, currentActivity.Id, correlationContext);
+                }
+            }
+        }
+
+        private static void Inject(EventData eventData, string id, string correlationContext)
+        {
+            if (!eventData.Properties.ContainsKey(ActivityIdPropertyName))
+            {
+                eventData.Properties[ActivityIdPropertyName] = id;
+                if (correlationContext != null)
+                {
+                    eventData.Properties[CorrelationContextPropertyName] = correlationContext;
+                }
+            }
+        }
+
+        internal static string SerializeCorrelationContext(IList<KeyValuePair<string, string>> baggage)
+        {
+            if (baggage.Any())
+            {
+                return string.Join(",", baggage.Select(kvp => kvp.Key + "=" + kvp.Value));
+            }
+            return null;
+        }
+
+        private static void SetRelatedOperations(Activity activity, IEnumerable<EventData> eventDatas)
+        {
+            if (eventDatas != null && eventDatas.Any())
+            {
+                var relatedTo = new List<string>();
+                foreach (var eventData in eventDatas)
+                {
+                    if (eventData.TryExtractId(out string id))
+                    {
+                        relatedTo.Add(id);
+                    }
+                }
+
+                if (relatedTo.Count > 0)
+                {
+                    activity.AddTag(RelatedToTagName, string.Join(",", relatedTo.Distinct()));
+                }
+            }
+        }
+
+        #endregion Diagnostic Context Injection
     }
 }
