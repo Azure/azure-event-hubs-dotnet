@@ -55,10 +55,10 @@ namespace Microsoft.Azure.EventHubs.Amqp
         }
 
         protected override PartitionReceiver OnCreateReceiver(
-            string consumerGroupName, string partitionId, string startOffset, bool offsetInclusive, DateTime? startTime, long? epoch)
+            string consumerGroupName, string partitionId, string startOffset, bool offsetInclusive, DateTime? startTime, long? epoch, ReceiverOptions receiverOptions)
         {
             return new AmqpPartitionReceiver(
-                this, consumerGroupName, partitionId, startOffset, offsetInclusive, startTime, epoch);
+                this, consumerGroupName, partitionId, startOffset, offsetInclusive, startTime, epoch, receiverOptions);
         }
 
         protected override Task OnCloseAsync()

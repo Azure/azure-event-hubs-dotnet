@@ -3,6 +3,7 @@
 
 namespace Microsoft.Azure.EventHubs
 {
+    using System;
     using System.Threading;
     using System.Threading.Tasks;
 
@@ -13,6 +14,8 @@ namespace Microsoft.Azure.EventHubs
     public abstract class ClientEntity
     {
         static int nextId;
+
+        RetryPolicy retryPolicy;
 
         /// <summary></summary>
         /// <param name="clientId"></param>
@@ -32,7 +35,19 @@ namespace Microsoft.Azure.EventHubs
         /// <summary>
         /// Gets the <see cref="RetryPolicy.RetryPolicy"/> for the ClientEntity.
         /// </summary>
-        public RetryPolicy RetryPolicy { get; set; }
+        public RetryPolicy RetryPolicy
+        {
+            get
+            {
+                return this.retryPolicy;
+            }
+
+            set
+            {
+                this.retryPolicy = value;
+                this.OnRetryPolicyUpdate();
+            }
+        }
 
         /// <summary>
         /// Closes the ClientEntity.
@@ -53,6 +68,14 @@ namespace Microsoft.Azure.EventHubs
         protected static long GetNextId()
         {
             return Interlocked.Increment(ref nextId);
+        }
+
+        /// <summary>
+        /// Derived entity to override for retry policy updates.
+        /// </summary>
+        protected virtual void OnRetryPolicyUpdate()
+        {
+            // NOOP
         }
     }
 }

@@ -22,6 +22,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             this.ThisLock = new object();
             this.Offset = PartitionReceiver.StartOfStream;
             this.SequenceNumber = 0;
+            this.RuntimeInformation = new ReceiverRuntimeInformation(partitionId);
         }
 
         /// <summary>
@@ -48,6 +49,16 @@ namespace Microsoft.Azure.EventHubs.Processor
             {
                 return this.Lease.Owner;
             }
+        }
+
+        /// <summary>
+        /// Gets the approximate receiver runtime information for a logical partition of an Event Hub.
+        /// To enable the setting, refer to <see cref="EventProcessorOptions.EnableReceiverRuntimeMetric"/>
+        /// </summary>
+        public ReceiverRuntimeInformation RuntimeInformation
+        {
+            get;
+            private set;
         }
 
         internal string Offset { get; set; }

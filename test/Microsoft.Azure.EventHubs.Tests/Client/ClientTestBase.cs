@@ -183,7 +183,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             }
         }
 
-        public void Dispose()
+        public virtual void Dispose()
         {
             this.EventHubClient.CloseAsync().GetAwaiter().GetResult();
         }

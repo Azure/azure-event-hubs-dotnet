@@ -14,7 +14,7 @@ namespace Microsoft.Azure.EventHubs.Processor
     using WindowsAzure.Storage.Blob;
     using WindowsAzure.Storage.Blob.Protocol;
 
-    sealed class AzureStorageCheckpointLeaseManager : ICheckpointManager, ILeaseManager
+    class AzureStorageCheckpointLeaseManager : ICheckpointManager, ILeaseManager
     {
         EventProcessorHost host;
         readonly string storageConnectionString;
@@ -26,15 +26,9 @@ namespace Microsoft.Azure.EventHubs.Processor
         CloudBlobDirectory consumerGroupDirectory;
 
         static readonly TimeSpan storageMaximumExecutionTime = TimeSpan.FromMinutes(2);
-        static readonly TimeSpan leaseDuration = TimeSpan.FromSeconds(30);
-        static readonly TimeSpan leaseRenewInterval = TimeSpan.FromSeconds(10);
-
-        // Lease renew calls shouldn't wait more than leaseRenewInterval
-        readonly BlobRequestOptions renewRequestOptions = new BlobRequestOptions()
-        {
-            ServerTimeout = leaseRenewInterval,
-            MaximumExecutionTime = TimeSpan.FromMinutes(1)
-        };
+        TimeSpan leaseDuration;
+        TimeSpan leaseRenewInterval;
+        BlobRequestOptions renewRequestOptions;
 
         internal AzureStorageCheckpointLeaseManager(string storageConnectionString, string leaseContainerName, string storageBlobPrefix)
         {
@@ -62,13 +56,30 @@ namespace Microsoft.Azure.EventHubs.Processor
         // The EventProcessorHost can't pass itself to the AzureStorageCheckpointLeaseManager constructor
         // because it is still being constructed. Do other initialization here also because it might throw and
         // hence we don't want it in the constructor.
-        internal void Initialize(EventProcessorHost host) // throws InvalidKeyException, URISyntaxException, StorageException
+        internal void Initialize(EventProcessorHost host)
         {
             this.host = host;
+
+            // Assign partition manager options.
+            this.leaseDuration = host.PartitionManagerOptions.LeaseDuration;
+            this.leaseRenewInterval = host.PartitionManagerOptions.RenewInterval;
+
+            // Set storage renew request options.
+            // Lease renew calls shouldn't wait more than leaseRenewInterval
+            this.renewRequestOptions = new BlobRequestOptions()
+            {
+                ServerTimeout = this.leaseRenewInterval,
+                MaximumExecutionTime = TimeSpan.FromMinutes(1)
+            };
+
+            // Create storage client and configure max execution time.
+            // Max execution time will apply to any storage calls except renew.
             this.storageClient = CloudStorageAccount.Parse(this.storageConnectionString).CreateCloudBlobClient();
-            BlobRequestOptions options = new BlobRequestOptions();
-            options.MaximumExecutionTime = AzureStorageCheckpointLeaseManager.storageMaximumExecutionTime;
-            this.storageClient.DefaultRequestOptions = options;
+            this.storageClient.DefaultRequestOptions = new BlobRequestOptions()
+            {
+                MaximumExecutionTime = AzureStorageCheckpointLeaseManager.storageMaximumExecutionTime
+            };
+
             this.eventHubContainer = this.storageClient.GetContainerReference(this.leaseContainerName);
             this.consumerGroupDirectory = this.eventHubContainer.GetDirectoryReference(this.storageBlobPrefix + this.host.ConsumerGroupName);
         }
@@ -139,7 +150,7 @@ namespace Microsoft.Azure.EventHubs.Processor
         {
             get
             {
-                return AzureStorageCheckpointLeaseManager.leaseRenewInterval;
+                return this.leaseRenewInterval;
             }
         }
 
@@ -147,7 +158,7 @@ namespace Microsoft.Azure.EventHubs.Processor
         {
             get
             {
-                return AzureStorageCheckpointLeaseManager.leaseDuration;
+                return this.leaseDuration;
             }
         }
 

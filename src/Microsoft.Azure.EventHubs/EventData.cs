@@ -82,6 +82,14 @@ namespace Microsoft.Azure.EventHubs
 
         internal AmqpMessage AmqpMessage { get; set; }
 
+        internal long LastSequenceNumber { get; set; }
+
+        internal string LastEnqueuedOffset { get; set; }
+
+        internal DateTime LastEnqueuedTime { get; set; }
+
+        internal DateTime RetrievalTime { get; set; }
+
         /// <summary>
         /// Disposes resources attached to an Event Data
         /// </summary>
