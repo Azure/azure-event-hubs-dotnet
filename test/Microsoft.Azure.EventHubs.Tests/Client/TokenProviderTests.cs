@@ -33,7 +33,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             // Send one event
             TestUtility.Log($"Sending one message.");
             var ehSender = ehClient.CreatePartitionSender("0");
-            var eventData = new EventData(Encoding.UTF8.GetBytes("Hello EventHub by partitionKey!"));
+            var eventData = new EventData(Encoding.UTF8.GetBytes("Hello EventHub!"));
             await ehSender.SendAsync(eventData);
 
             // Receive event.
@@ -67,7 +67,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             // Send one event
             TestUtility.Log($"Sending one message.");
             var ehSender = ehClient.CreatePartitionSender("0");
-            var eventData = new EventData(Encoding.UTF8.GetBytes("Hello EventHub by partitionKey!"));
+            var eventData = new EventData(Encoding.UTF8.GetBytes("Hello EventHub!"));
             await ehSender.SendAsync(eventData);
 
             // Receive event.
@@ -95,10 +95,9 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
         [DisplayTestMethodName]
         async Task UseITokenProviderWithAad()
         {
-            // Generate SAS token provider.
-            var tenantId = "";
-            var aadAppId = "";
-            var aadAppSecret = "";
+            var tenantId = "72f988bf-86f1-41af-91ab-2d7cd011db47";
+            var aadAppId = "6d464024-d6ff-4cc3-9e6c-b47c7a1a283b";
+            var aadAppSecret = "BWYFFJJ7H8i0yA7i2zgdeJTi3R6A0ty8fb9ph8Qz14s=";
 
             if (string.IsNullOrEmpty(tenantId))
             {
@@ -117,7 +116,46 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             // Send one event
             TestUtility.Log($"Sending one message.");
             var ehSender = ehClient.CreatePartitionSender("0");
-            var eventData = new EventData(Encoding.UTF8.GetBytes("Hello EventHub by partitionKey!"));
+            var eventData = new EventData(Encoding.UTF8.GetBytes("Hello EventHub!"));
+            await ehSender.SendAsync(eventData);
+
+            // Receive event.
+            TestUtility.Log($"Receiving one message.");
+            var ehReceiver = ehClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", PartitionReceiver.StartOfStream);
+            var msg = await ehReceiver.ReceiveAsync(1);
+            Assert.True(msg != null, "Failed to receive message.");
+        }
+
+
+        /// <summary>
+        /// This test is for manual only purpose. Fill in the tenant-id, app-id and app-secret before running.
+        /// </summary>
+        /// <returns></returns>
+        [Fact]
+        [DisplayTestMethodName]
+        async Task UseCreateApiWithAad()
+        {
+            var tenantId = "72f988bf-86f1-41af-91ab-2d7cd011db47";
+            var aadAppId = "6d464024-d6ff-4cc3-9e6c-b47c7a1a283b";
+            var aadAppSecret = "BWYFFJJ7H8i0yA7i2zgdeJTi3R6A0ty8fb9ph8Qz14s=";
+
+            if (string.IsNullOrEmpty(tenantId))
+            {
+                TestUtility.Log($"Skipping test during scheduled runs.");
+                return;
+            }
+
+            var authContext = new AuthenticationContext($"https://login.windows.net/{tenantId}");
+            var cc = new ClientCredential(aadAppId, aadAppSecret);
+
+            // Create new client with updated connection string.
+            var csb = new EventHubsConnectionStringBuilder(TestUtility.EventHubsConnectionString);
+            var ehClient = EventHubClient.Create(csb.Endpoint, csb.EntityPath, authContext, cc);
+
+            // Send one event
+            TestUtility.Log($"Sending one message.");
+            var ehSender = ehClient.CreatePartitionSender("0");
+            var eventData = new EventData(Encoding.UTF8.GetBytes("Hello EventHub!"));
             await ehSender.SendAsync(eventData);
 
             // Receive event.

@@ -29,6 +29,10 @@
     <FileVersion>2.0.0.0</FileVersion>
   </PropertyGroup>
 
+  <PropertyGroup Condition=" '$(TargetFramework)' == 'net461' ">
+    <DefineConstants>$(DefineConstants);NET461</DefineConstants>
+  </PropertyGroup>
+
   <PropertyGroup Condition="'$(TargetFramework)' == 'uap10.0'">
     <DefineConstants>$(DefineConstants);UAP10_0</DefineConstants>
     <NugetTargetMoniker>UAP,Version=v10.0</NugetTargetMoniker>
@@ -39,6 +43,10 @@
     <TargetFrameworkVersion>v5.0</TargetFrameworkVersion>
   </PropertyGroup>
 
+  <PropertyGroup Condition=" '$(TargetFramework)' == 'netstandard2.0' ">
+    <DefineConstants>$(DefineConstants);NETSTANDARD2_0</DefineConstants>
+  </PropertyGroup>
+	
   <ItemGroup Condition=" '$(TargetFramework)' == 'net461' ">
     <Reference Include="System" />
     <Reference Include="Microsoft.CSharp" />
@@ -50,7 +58,7 @@
   </ItemGroup>
 
   <ItemGroup Condition=" '$(TargetFramework)' == 'uap10.0' ">
-    <PackageReference Include="Microsoft.NETCore.UniversalWindowsPlatform " Version="5.2.3" />
+   <PackageReference Include="Microsoft.NETCore.UniversalWindowsPlatform " Version="5.2.3" />
   </ItemGroup>
 
   <ItemGroup>
