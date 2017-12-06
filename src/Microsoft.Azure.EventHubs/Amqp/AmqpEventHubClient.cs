@@ -37,12 +37,12 @@ namespace Microsoft.Azure.EventHubs.Amqp
         }
 
         public AmqpEventHubClient(
-            Uri endpoint, 
+            Uri endpointAddress, 
             string entityPath, 
             ITokenProvider tokenProvider, 
             TimeSpan operationTimeout, 
             TransportType transportType)
-            : base(new EventHubsConnectionStringBuilder(endpoint, entityPath, operationTimeout, transportType))
+            : base(new EventHubsConnectionStringBuilder(endpointAddress, entityPath, operationTimeout, transportType))
         {
             this.ContainerId = Guid.NewGuid().ToString("N");
             this.AmqpVersion = new Version(1, 0, 0, 0);
