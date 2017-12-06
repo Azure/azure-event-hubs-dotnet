@@ -95,9 +95,9 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
         [DisplayTestMethodName]
         async Task UseITokenProviderWithAad()
         {
-            var tenantId = "72f988bf-86f1-41af-91ab-2d7cd011db47";
-            var aadAppId = "6d464024-d6ff-4cc3-9e6c-b47c7a1a283b";
-            var aadAppSecret = "BWYFFJJ7H8i0yA7i2zgdeJTi3R6A0ty8fb9ph8Qz14s=";
+            var tenantId = "";
+            var aadAppId = "";
+            var aadAppSecret = "";
 
             if (string.IsNullOrEmpty(tenantId))
             {
@@ -135,9 +135,9 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
         [DisplayTestMethodName]
         async Task UseCreateApiWithAad()
         {
-            var tenantId = "72f988bf-86f1-41af-91ab-2d7cd011db47";
-            var aadAppId = "6d464024-d6ff-4cc3-9e6c-b47c7a1a283b";
-            var aadAppSecret = "BWYFFJJ7H8i0yA7i2zgdeJTi3R6A0ty8fb9ph8Qz14s=";
+            var tenantId = "";
+            var aadAppId = "";
+            var aadAppSecret = "";
 
             if (string.IsNullOrEmpty(tenantId))
             {
