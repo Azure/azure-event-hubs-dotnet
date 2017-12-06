@@ -102,9 +102,9 @@ namespace Microsoft.Azure.EventHubs
                 throw Fx.Exception.ArgumentNull(nameof(tokenProvider));
             }
 
-            EventHubsEventSource.Log.EventHubClientCreateStart(endpoint.Host, entityPath);
+            EventHubsEventSource.Log.EventHubClientCreateStart(endpointAddress.Host, entityPath);
             EventHubClient eventHubClient = new AmqpEventHubClient(
-                endpoint,
+                endpointAddress,
                 entityPath,
                 tokenProvider,
                 operationTimeout?? ClientConstants.DefaultOperationTimeout,
