@@ -19,7 +19,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             // Generate shared access token.
             var csb = new EventHubsConnectionStringBuilder(TestUtility.EventHubsConnectionString);
             var tokenProvider = TokenProvider.CreateSharedAccessSignatureTokenProvider(csb.SasKeyName, csb.SasKey);
-            var token = await tokenProvider.GetTokenAsync(csb.Endpoint.ToString(), "Send,Receive", TimeSpan.FromSeconds(120));
+            var token = await tokenProvider.GetTokenAsync(csb.Endpoint.ToString(), TimeSpan.FromSeconds(120));
             var sas = token.TokenValue.ToString();
 
             // Update connection string builder to use shared access signature instead.

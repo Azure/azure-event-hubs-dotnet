@@ -65,10 +65,9 @@ namespace Microsoft.Azure.EventHubs
         /// Gets a <see cref="SecurityToken"/> for the given audience and duration.
         /// </summary>
         /// <param name="appliesTo">The URI which the access token applies to</param>
-        /// <param name="action">The request action</param>
         /// <param name="timeout">The time span that specifies the timeout value for the message that gets the security token</param>
         /// <returns><see cref="SecurityToken"/></returns>
-        public override async Task<SecurityToken> GetTokenAsync(string appliesTo, string action, TimeSpan timeout)
+        public override async Task<SecurityToken> GetTokenAsync(string appliesTo, TimeSpan timeout)
         {
             AuthenticationResult authResult;
 

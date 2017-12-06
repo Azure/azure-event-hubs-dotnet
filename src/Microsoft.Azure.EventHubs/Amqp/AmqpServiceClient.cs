@@ -152,7 +152,7 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
                 {
                     this.token = await this.eventHubClient.InternalTokenProvider.GetTokenAsync(
                         this.eventHubClient.ConnectionStringBuilder.Endpoint.AbsoluteUri,
-                        ClaimConstants.Listen, this.eventHubClient.ConnectionStringBuilder.OperationTimeout).ConfigureAwait(false);
+                        this.eventHubClient.ConnectionStringBuilder.OperationTimeout).ConfigureAwait(false);
                 }
 
                 return this.token.TokenValue.ToString();

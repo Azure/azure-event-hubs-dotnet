@@ -281,9 +281,8 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
             public async Task<CbsToken> GetTokenAsync(Uri namespaceAddress, string appliesTo, string[] requiredClaims)
             {
-                string claim = requiredClaims?.FirstOrDefault();
                 var timeout = this.eventHubClient.ConnectionStringBuilder.OperationTimeout;
-                var token = await this.eventHubClient.InternalTokenProvider.GetTokenAsync(appliesTo, claim, timeout).ConfigureAwait(false);
+                var token = await this.eventHubClient.InternalTokenProvider.GetTokenAsync(appliesTo, timeout).ConfigureAwait(false);
                 return new CbsToken(token.TokenValue, token.TokenType, token.ExpiresAtUtc);
             }
         }
