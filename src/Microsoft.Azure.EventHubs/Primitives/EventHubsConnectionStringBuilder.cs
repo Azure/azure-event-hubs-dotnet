@@ -49,8 +49,6 @@ namespace Microsoft.Azure.EventHubs
         const char KeyValueSeparator = '=';
         const char KeyValuePairDelimiter = ';';
 
-        static readonly TimeSpan DefaultOperationTimeout = TimeSpan.FromMinutes(1);
-        static readonly TransportType DefaultTransportType = TransportType.Amqp;
         static readonly string EndpointScheme = "amqps";
         static readonly string EndpointConfigName = "Endpoint";
         static readonly string SharedAccessKeyNameConfigName = "SharedAccessKeyName";
@@ -73,7 +71,7 @@ namespace Microsoft.Azure.EventHubs
             string entityPath,
             string sharedAccessKeyName,
             string sharedAccessKey)
-            : this (endpointAddress, entityPath, sharedAccessKeyName, sharedAccessKey, DefaultOperationTimeout)
+            : this (endpointAddress, entityPath, sharedAccessKeyName, sharedAccessKey, ClientConstants.DefaultOperationTimeout)
         {
         }
 
@@ -124,10 +122,31 @@ namespace Microsoft.Azure.EventHubs
             this.SharedAccessSignature = sharedAccessSignature;
         }
 
-        EventHubsConnectionStringBuilder(
+        /// <summary>
+        /// ConnectionString format:
+        /// Endpoint=sb://namespace_DNS_Name;EntityPath=EVENT_HUB_NAME;SharedAccessKeyName=SHARED_ACCESS_KEY_NAME;SharedAccessKey=SHARED_ACCESS_KEY
+        /// </summary>
+        /// <param name="connectionString">Event Hubs ConnectionString</param>
+        public EventHubsConnectionStringBuilder(string connectionString)
+        {
+            if (string.IsNullOrWhiteSpace(connectionString))
+            {
+                throw Fx.Exception.ArgumentNullOrWhiteSpace(nameof(connectionString));
+            }
+
+            // Assign default values.
+            this.OperationTimeout = ClientConstants.DefaultOperationTimeout;
+            this.TransportType = TransportType.Amqp;
+
+            // Parse the connection string now and override default values if any provided.
+            this.ParseConnectionString(connectionString);
+        }
+
+        internal EventHubsConnectionStringBuilder(
             Uri endpointAddress,
             string entityPath,
-            TimeSpan operationTimeout)
+            TimeSpan operationTimeout,
+            TransportType transportType = TransportType.Amqp)
         {
             if (endpointAddress == null)
             {
@@ -147,27 +166,7 @@ namespace Microsoft.Azure.EventHubs
 
             this.EntityPath = entityPath;
             this.OperationTimeout = operationTimeout;
-            this.TransportType = DefaultTransportType;
-        }
-
-        /// <summary>
-        /// ConnectionString format:
-        /// Endpoint=sb://namespace_DNS_Name;EntityPath=EVENT_HUB_NAME;SharedAccessKeyName=SHARED_ACCESS_KEY_NAME;SharedAccessKey=SHARED_ACCESS_KEY
-        /// </summary>
-        /// <param name="connectionString">Event Hubs ConnectionString</param>
-        public EventHubsConnectionStringBuilder(string connectionString)
-        {
-            if (string.IsNullOrWhiteSpace(connectionString))
-            {
-                throw Fx.Exception.ArgumentNullOrWhiteSpace(nameof(connectionString));
-            }
-
-            // Assign default values.
-            this.OperationTimeout = DefaultOperationTimeout;
-            this.TransportType = TransportType.Amqp;
-
-            // Parse the connection string now and override default values if any provided.
-            this.ParseConnectionString(connectionString);
+            this.TransportType = transportType;
         }
 
         /// <summary>
@@ -253,12 +252,12 @@ namespace Microsoft.Azure.EventHubs
                 connectionStringBuilder.Append($"{SharedAccessSignatureConfigName}{KeyValueSeparator}{this.SharedAccessSignature}{KeyValuePairDelimiter}");
             }
 
-            if (this.OperationTimeout != DefaultOperationTimeout)
+            if (this.OperationTimeout != ClientConstants.DefaultOperationTimeout)
             {
                 connectionStringBuilder.Append($"{OperationTimeoutConfigName}{KeyValueSeparator}{this.OperationTimeout}{KeyValuePairDelimiter}");
             }
 
-            if (this.TransportType != DefaultTransportType)
+            if (this.TransportType != ClientConstants.DefaultTransportType)
             {
                 connectionStringBuilder.Append($"{TransportTypeConfigName}{KeyValueSeparator}{TransportType}{KeyValuePairDelimiter}");
             }
