@@ -188,16 +188,5 @@ namespace Microsoft.Azure.EventHubs {
                 return ResourceManager.GetString("ArgumentInvalidCombination", resourceCulture);
             }
         }
-
-        /// <summary>
-        ///    Gets localized string like: Tenant-Id lookup failed with error '{0}'
-        /// </summary>
-        public static string TenantIdLookupFailed
-        {
-            get
-            {
-                return ResourceManager.GetString("TenantIdLookupFailed", resourceCulture);
-            }
-        }
     }
 }
