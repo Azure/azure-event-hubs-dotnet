@@ -12,7 +12,6 @@ namespace Microsoft.Azure.EventHubs
     /// </summary>
     public class AzureActiveDirectoryTokenProvider : TokenProvider
     {
-        AsyncLock authContextLock = new AsyncLock();
         readonly AuthenticationContext authContext;
         readonly ClientCredential clientCredential;
 #if !UAP10_0
