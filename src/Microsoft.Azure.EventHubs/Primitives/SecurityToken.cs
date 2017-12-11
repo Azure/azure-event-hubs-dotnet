@@ -4,10 +4,6 @@
 namespace Microsoft.Azure.EventHubs
 {
     using System;
-    using System.Collections.Generic;
-    using System.Diagnostics.CodeAnalysis;
-    using System.Globalization;
-    using System.Net;
 
     /// <summary>
     /// Provides information about a security token such as audience, expiry time, and the string token value.
