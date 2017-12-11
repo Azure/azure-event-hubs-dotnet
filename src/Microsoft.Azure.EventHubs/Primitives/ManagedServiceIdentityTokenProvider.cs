@@ -4,7 +4,6 @@
 namespace Microsoft.Azure.EventHubs
 {
     using System;
-    using System.IdentityModel.Tokens;
     using System.Threading.Tasks;
     using Azure.Services.AppAuthentication;
 
