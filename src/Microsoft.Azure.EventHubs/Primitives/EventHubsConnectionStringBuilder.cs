@@ -56,7 +56,6 @@ namespace Microsoft.Azure.EventHubs
         static readonly string EntityPathConfigName = "EntityPath";
         static readonly string OperationTimeoutConfigName = "OperationTimeout";
         static readonly string TransportTypeConfigName = "TransportType";
-        static readonly string OperationTimeoutName = "OperationTimeout";
         static readonly string SharedAccessSignatureConfigName = "SharedAccessSignature";
 
         /// <summary>
@@ -338,7 +337,7 @@ namespace Microsoft.Azure.EventHubs
                 {
                     this.SharedAccessSignature = value;
                 }
-                else if (key.Equals(OperationTimeoutName, StringComparison.OrdinalIgnoreCase))
+                else if (key.Equals(OperationTimeoutConfigName, StringComparison.OrdinalIgnoreCase))
                 {
                     this.OperationTimeout = TimeSpan.Parse(value);
                 }
