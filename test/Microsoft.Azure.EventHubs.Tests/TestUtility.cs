@@ -54,14 +54,19 @@ namespace Microsoft.Azure.EventHubs.Tests
             return connectionStringBuilder.ToString();
         }
 
-        internal static async Task SendToPartitionAsync(EventHubClient ehClient, string partitionId, string messageBody, int numberOfMessages = 1)
+        internal static Task SendToPartitionAsync(EventHubClient ehClient, string partitionId, string messageBody, int numberOfMessages = 1)
+        {
+            return SendToPartitionAsync(ehClient, partitionId, new EventData(Encoding.UTF8.GetBytes(messageBody)), numberOfMessages);
+        }
+
+        internal static async Task SendToPartitionAsync(EventHubClient ehClient, string partitionId, EventData eventData, int numberOfMessages = 1)
         {
             TestUtility.Log($"Starting to send {numberOfMessages} to partition {partitionId}.");
             var partitionSender = ehClient.CreatePartitionSender(partitionId);
 
             for (int i = 0; i < numberOfMessages; i++)
             {
-                await partitionSender.SendAsync(new EventData(Encoding.UTF8.GetBytes(messageBody)));
+                await partitionSender.SendAsync(eventData);
             }
 
             TestUtility.Log("Sends done.");
