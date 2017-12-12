@@ -113,7 +113,7 @@ namespace Microsoft.Azure.EventHubs
             TimeSpan operationTimeout)
             : this(endpointAddress, entityPath, operationTimeout)
         {
-            if (string.IsNullOrWhiteSpace(SharedAccessSignature))
+            if (string.IsNullOrWhiteSpace(sharedAccessSignature))
             {
                 throw Fx.Exception.ArgumentNullOrWhiteSpace(nameof(sharedAccessSignature));
             }
