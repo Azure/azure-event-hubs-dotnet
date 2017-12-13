@@ -19,7 +19,7 @@ namespace Microsoft.Azure.EventHubs
         /// <param name="rawToken">Raw JSON Web Token string</param>
         /// <param name="audience">The audience</param>
         public JsonSecurityToken(string rawToken, string audience)
-            : base(rawToken, DateTime.MinValue, audience, Constants.JsonWebTokenType)
+            : base(rawToken, DateTime.MinValue, audience, ClientConstants.JsonWebTokenType)
         {
             var jwtSecurityToken = new JwtSecurityToken(rawToken);
             this.tokenType = ClientConstants.JsonWebTokenType;
