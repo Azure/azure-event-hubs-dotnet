@@ -32,7 +32,7 @@ namespace Microsoft.Azure.EventHubs
         /// </summary>
         /// <param name="tokenString">The token</param>
         public SharedAccessSignatureToken(string tokenString)
-            : base(tokenString, DateTime.MinValue, "tmp")
+            : base(tokenString, DateTime.MinValue, "tmp", ClientConstants.SasTokenType)
         {
             if (tokenString == null)
             {
