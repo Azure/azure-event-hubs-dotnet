@@ -19,11 +19,14 @@ namespace Microsoft.Azure.EventHubs
         /// <param name="rawToken">Raw JSON Web Token string</param>
         /// <param name="audience">The audience</param>
         public JsonSecurityToken(string rawToken, string audience)
-            : base(rawToken, DateTime.MinValue, audience, ClientConstants.JsonWebTokenType)
+            : base(rawToken, GetExpirationDateTimeUtcFromToken(rawToken), audience, ClientConstants.JsonWebTokenType)
         {
-            // Extract expiresAtUtc from token and override it here.
-            var jwtSecurityToken = new JwtSecurityToken(rawToken);
-            this.expiresAtUtc = jwtSecurityToken.ValidTo;
+        }
+
+        static DateTime GetExpirationDateTimeUtcFromToken(string token)
+        {
+            var jwtSecurityToken = new JwtSecurityToken(token);
+            return jwtSecurityToken.ValidTo;
         }
     }
 }
