@@ -21,11 +21,9 @@ namespace Microsoft.Azure.EventHubs
         public JsonSecurityToken(string rawToken, string audience)
             : base(rawToken, DateTime.MinValue, audience, ClientConstants.JsonWebTokenType)
         {
+            // Extract expiresAtUtc from token and override it here.
             var jwtSecurityToken = new JwtSecurityToken(rawToken);
-            this.tokenType = ClientConstants.JsonWebTokenType;
-            this.token = rawToken;
             this.expiresAtUtc = jwtSecurityToken.ValidTo;
-            this.audience = audience;
         }
     }
 }
