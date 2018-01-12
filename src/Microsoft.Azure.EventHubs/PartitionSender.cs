@@ -5,6 +5,7 @@ namespace Microsoft.Azure.EventHubs
 {
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.Threading.Tasks;
 
     /// <summary>
@@ -137,18 +138,24 @@ namespace Microsoft.Azure.EventHubs
 
             int count = EventDataSender.ValidateEvents(eventDatas, this.PartitionId, null);
             EventHubsEventSource.Log.EventSendStart(this.ClientId, count, null);
+            Activity activity = EventHubsDiagnosticSource.StartSendActivity(this.ClientId, this.EventHubClient.ConnectionStringBuilder, this.PartitionId, eventDatas, count);
+
+            Task sendTask = null;
             try
             {
-                await this.InnerSender.SendAsync(eventDatas, null).ConfigureAwait(false);
+                sendTask = this.InnerSender.SendAsync(eventDatas, null);
+                await sendTask.ConfigureAwait(false);
             }
             catch (Exception exception)
             {
                 EventHubsEventSource.Log.EventSendException(this.ClientId, exception.ToString());
+                EventHubsDiagnosticSource.FailSendActivity(activity, this.EventHubClient.ConnectionStringBuilder, this.PartitionId, eventDatas, exception);
                 throw;
             }
             finally
             {
                 EventHubsEventSource.Log.EventSendStop(this.ClientId);
+                EventHubsDiagnosticSource.StopSendActivity(activity, this.EventHubClient.ConnectionStringBuilder, this.PartitionId, eventDatas, sendTask);
             }
         }
 

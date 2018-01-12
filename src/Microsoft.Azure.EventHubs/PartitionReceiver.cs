@@ -5,6 +5,7 @@ namespace Microsoft.Azure.EventHubs
 {
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.Globalization;
     using System.Text;
     using System.Threading.Tasks;
@@ -75,6 +76,7 @@ namespace Microsoft.Azure.EventHubs
             this.RuntimeInfo = new ReceiverRuntimeInformation(partitionId);
             this.ReceiverRuntimeMetricEnabled = receiverOptions == null ? this.EventHubClient.EnableReceiverRuntimeMetric
                 : receiverOptions.EnableReceiverRuntimeMetric;
+            this.Identifier = receiverOptions != null ? receiverOptions.Identifier : null;
             this.RetryPolicy = eventHubClient.RetryPolicy.Clone();
 
             EventHubsEventSource.Log.ClientCreated(this.ClientId, this.FormatTraceDetails());
@@ -117,6 +119,14 @@ namespace Microsoft.Azure.EventHubs
 
         /// <summary></summary>
         protected string StartOffset { get; private set; }
+
+        /// <summary>Gets the identifier of a receiver which was set during the creation of the receiver.</summary> 
+        /// <value>A string representing the identifier of a receiver. It will return null if the identifier is not set.</value>
+        public string Identifier
+        {
+            get;
+            private set;
+        }
 
         /// <summary>
         /// Receive a batch of <see cref="EventData"/>'s from an EventHub partition
@@ -162,10 +172,16 @@ namespace Microsoft.Azure.EventHubs
         public async Task<IEnumerable<EventData>> ReceiveAsync(int maxMessageCount, TimeSpan waitTime)
         {
             EventHubsEventSource.Log.EventReceiveStart(this.ClientId);
+            Activity activity = EventHubsDiagnosticSource.StartReceiveActivity(this.ClientId, this.EventHubClient.ConnectionStringBuilder, this.PartitionId, this.ConsumerGroupName, this.StartOffset);
+
+            Task<IList<EventData>> receiveTask = null;
+            IList<EventData> events = null;
             int count = 0;
+
             try
             {
-                IList<EventData> events = await this.OnReceiveAsync(maxMessageCount, waitTime).ConfigureAwait(false);
+                receiveTask = this.OnReceiveAsync(maxMessageCount, waitTime);
+                events = await receiveTask.ConfigureAwait(false);
                 count = events?.Count ?? 0;
                 EventData lastEvent = events?[count - 1];
                 if (lastEvent != null)
@@ -189,11 +205,13 @@ namespace Microsoft.Azure.EventHubs
             catch (Exception e)
             {
                 EventHubsEventSource.Log.EventReceiveException(this.ClientId, e.ToString());
+                EventHubsDiagnosticSource.FailReceiveActivity(activity, this.EventHubClient.ConnectionStringBuilder, this.PartitionId, this.ConsumerGroupName, e);
                 throw;
             }
             finally
             {
                 EventHubsEventSource.Log.EventReceiveStop(this.ClientId, count);
+                EventHubsDiagnosticSource.StopReceiveActivity(activity, this.EventHubClient.ConnectionStringBuilder, this.PartitionId, this.ConsumerGroupName, events, receiveTask);
             }
         }
 

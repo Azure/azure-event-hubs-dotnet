@@ -4,31 +4,31 @@
 namespace Microsoft.Azure.EventHubs
 {
     using System;
-    using System.Collections.Generic;
-    using System.Diagnostics.CodeAnalysis;
-    using System.Globalization;
-    using System.Net;
 
     /// <summary>
     /// Provides information about a security token such as audience, expiry time, and the string token value.
     /// </summary>
     public class SecurityToken
     {
-        // per Simple Web Token draft specification
-        private const string TokenAudience = "Audience";
-        private const string TokenExpiresOn = "ExpiresOn";
-        private const string TokenIssuer = "Issuer";
-        private const string TokenDigest256 = "HMACSHA256";
+        /// <summary>
+        /// Token literal
+        /// </summary>
+        string token;
 
-        const string InternalExpiresOnFieldName = "ExpiresOn";
-        const string InternalAudienceFieldName = TokenAudience;
-        const string InternalKeyValueSeparator = "=";
-        const string InternalPairSeparator = "&";
-        static readonly Func<string, string> Decoder = WebUtility.UrlDecode;
-        static readonly DateTime EpochTime = new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc);
-        readonly string token;
-        readonly DateTime expiresAtUtc;
-        readonly string audience;
+        /// <summary>
+        /// Expiry date-time
+        /// </summary>
+        DateTime expiresAtUtc;
+        
+        /// <summary>
+        /// Token audience
+        /// </summary>
+        string audience;
+
+        /// <summary>
+        /// Token type
+        /// </summary>
+        string tokenType;
 
         /// <summary>
         /// Creates a new instance of the <see cref="SecurityToken"/> class.
@@ -36,48 +36,23 @@ namespace Microsoft.Azure.EventHubs
         /// <param name="tokenString">The token</param>
         /// <param name="expiresAtUtc">The expiration time</param>
         /// <param name="audience">The audience</param>
-        public SecurityToken(string tokenString, DateTime expiresAtUtc, string audience)
+        /// <param name="tokenType">The type of the token</param>
+        public SecurityToken(string tokenString, DateTime expiresAtUtc, string audience, string tokenType)
         {
-            if (tokenString == null || audience == null)
+            if (string.IsNullOrEmpty(tokenString))
             {
-                throw Fx.Exception.ArgumentNull(tokenString == null ? nameof(tokenString) : nameof(audience));
+                throw Fx.Exception.ArgumentNullOrWhiteSpace(nameof(tokenString));
+            }
+
+            if (string.IsNullOrEmpty(audience))
+            {
+                throw Fx.Exception.ArgumentNullOrWhiteSpace(nameof(audience));
             }
 
             this.token = tokenString;
             this.expiresAtUtc = expiresAtUtc;
             this.audience = audience;
-        }
-
-        /// <summary>
-        /// Creates a new instance of the <see cref="SecurityToken"/> class.
-        /// </summary>
-        /// <param name="tokenString">The token</param>
-        /// <param name="expiresAtUtc">The expiration time</param>
-        public SecurityToken(string tokenString, DateTime expiresAtUtc)
-        {
-            if (tokenString == null)
-            {
-                throw Fx.Exception.ArgumentNull(nameof(tokenString));
-            }
-
-            this.token = tokenString;
-            this.expiresAtUtc = expiresAtUtc;
-            this.audience = GetAudienceFromToken(tokenString);
-        }
-
-        /// <summary>
-        /// Creates a new instance of the <see cref="SecurityToken"/> class.
-        /// </summary>
-        /// <param name="tokenString">The token</param>
-        public SecurityToken(string tokenString)
-        {
-            if (tokenString == null)
-            {
-                throw Fx.Exception.ArgumentNull(nameof(tokenString));
-            }
-
-            this.token = tokenString;
-            GetExpirationDateAndAudienceFromToken(tokenString, out this.expiresAtUtc, out this.audience);
+            this.tokenType = tokenType;
         }
 
         /// <summary>
@@ -90,69 +65,14 @@ namespace Microsoft.Azure.EventHubs
         /// </summary>
         public DateTime ExpiresAtUtc => this.expiresAtUtc;
 
-        /// <summary></summary>
-        protected virtual string ExpiresOnFieldName => InternalExpiresOnFieldName;
-
-        /// <summary></summary>
-        protected virtual string AudienceFieldName => InternalAudienceFieldName;
-
-        /// <summary></summary>
-        protected virtual string KeyValueSeparator => InternalKeyValueSeparator;
-
-        /// <summary></summary>
-        protected virtual string PairSeparator => InternalPairSeparator;
-
         /// <summary>
         /// Gets the actual token.
         /// </summary>
-        public object TokenValue => this.token;
+        public virtual string TokenValue => this.token;
 
-        string GetAudienceFromToken(string token)
-        {
-            string audience;
-            IDictionary<string, string> decodedToken = Decode(token, Decoder, Decoder, this.KeyValueSeparator, this.PairSeparator);
-            if (!decodedToken.TryGetValue(AudienceFieldName, out audience))
-            {
-                throw new FormatException(Resources.TokenMissingAudience);
-            }
-
-            return audience;
-        }
-
-        void GetExpirationDateAndAudienceFromToken(string token, out DateTime expiresOn, out string audience)
-        {
-            string expiresIn;
-            IDictionary<string, string> decodedToken = Decode(token, Decoder, Decoder, this.KeyValueSeparator, this.PairSeparator);
-            if (!decodedToken.TryGetValue(ExpiresOnFieldName, out expiresIn))
-            {
-                throw new FormatException(Resources.TokenMissingExpiresOn);
-            }
-
-            if (!decodedToken.TryGetValue(AudienceFieldName, out audience))
-            {
-                throw new FormatException(Resources.TokenMissingAudience);
-            }
-
-            expiresOn = (EpochTime + TimeSpan.FromSeconds(double.Parse(expiresIn, CultureInfo.InvariantCulture)));
-        }
-
-        static IDictionary<string, string> Decode(string encodedString, Func<string, string> keyDecoder, Func<string, string> valueDecoder, string keyValueSeparator, string pairSeparator)
-        {
-            IDictionary<string, string> dictionary = new Dictionary<string, string>();
-            IEnumerable<string> valueEncodedPairs = encodedString.Split(new[] { pairSeparator }, StringSplitOptions.None);
-            foreach (string valueEncodedPair in valueEncodedPairs)
-            {
-                string[] pair = valueEncodedPair.Split(new[] { keyValueSeparator }, StringSplitOptions.None);
-                if (pair.Length != 2)
-                {
-                    throw new FormatException(Resources.InvalidEncoding);
-                }
-
-                dictionary.Add(keyDecoder(pair[0]), valueDecoder(pair[1]));
-            }
-
-            return dictionary;
-        }
+        /// <summary>
+        /// Gets the token type.
+        /// </summary>
+        public virtual string TokenType => this.tokenType;
     }
-
 }
