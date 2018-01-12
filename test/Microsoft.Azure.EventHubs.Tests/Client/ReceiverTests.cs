@@ -370,5 +370,53 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
                 throw new InvalidOperationException("Receive should have failed");
             });
         }
+
+        [Fact]
+        [DisplayTestMethodName]
+        async Task ReceiverIdentifier()
+        {
+            List<PartitionReceiver> receivers = new List<PartitionReceiver>();
+
+            try
+            {
+                for (int i=0; i < 5; i++)
+                {
+                    TestUtility.Log($"Creating receiver {i}");
+                    var newReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "1", PartitionReceiver.StartOfStream,
+                        new ReceiverOptions()
+                        {
+                            Identifier = $"receiver{i}"
+                        });
+
+                    // Issue a receive call so link will become active.
+                    await newReceiver.ReceiveAsync(10);
+                    receivers.Add(newReceiver);
+                }
+
+                try
+                {
+                    // Attempt to create 6th receiver. This should fail.
+                    var failReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "1", PartitionReceiver.StartOfStream);
+                    await failReceiver.ReceiveAsync(10);
+                    throw new InvalidOperationException("6th receiver should have encountered QuotaExceededException.");
+                }
+                catch (QuotaExceededException ex)
+                {
+                    TestUtility.Log($"Received expected exception {ex.GetType()}: {ex.Message}");
+                    foreach (var receiver in receivers)
+                    {
+                        Assert.True(ex.Message.Contains(receiver.Identifier), $"QuotaExceededException message is missing receiver identifier '{receiver.Identifier}'");
+                    }
+                }
+            }
+            finally
+            {
+                // Close all receivers.
+                foreach (var receiver in receivers)
+                {
+                    await receiver.CloseAsync();
+                }
+            }
+        }
     }
 }

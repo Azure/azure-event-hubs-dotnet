@@ -15,6 +15,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
         public static readonly AmqpSymbol EntityTypeName = AmqpConstants.Vendor + ":entity-type";
         public static readonly AmqpSymbol TimeoutName = AmqpConstants.Vendor + ":timeout";
         public static readonly AmqpSymbol EnableReceiverRuntimeMetricName = AmqpConstants.Vendor + ":enable-receiver-runtime-metric";
+        public static readonly AmqpSymbol ReceiverIdentifierName = AmqpConstants.Vendor + ":receiver-name";
 
         // Error codes
         public static readonly AmqpSymbol DeadLetterName = AmqpConstants.Vendor + ":dead-letter";

@@ -147,6 +147,9 @@
   <data name="PartitionInvalidPartitionKey" xml:space="preserve">
     <value>The specified partitionKey '{0}' is invalid for partition '{1}'. Do not specify a partitionKey when sending using a PartitionedSender.  Instead use EventHubClient.Send.</value>
   </data>
+  <data name="ReceiverIdentifierOverMaxValue" xml:space="preserve">
+    <value>The 'identifier' parameter exceeds the maximum allowed size of {0} characters.</value>
+  </data>
   <data name="SasTokenShouldBeAlone" xml:space="preserve">
     <value>{0} cannot be specified along with {1}. {0} alone should be sufficient to Authenticate the request.</value>
   </data>

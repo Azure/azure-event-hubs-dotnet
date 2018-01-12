@@ -3,6 +3,8 @@
 
 namespace Microsoft.Azure.EventHubs
 {
+    using System;
+
     static class ClientConstants
     {
         public const int TimerToleranceInSeconds = 5;
@@ -14,5 +16,13 @@ namespace Microsoft.Azure.EventHubs
         public const string OffsetName = "x-opt-offset";
         public const string PublisherName = "x-opt-publisher";
         public const string PartitionKeyName = "x-opt-partition-key";
+        public const int MaxReceiverIdentifierLength = 64;
+
+        public const string SasTokenType = "servicebus.windows.net:sastoken";
+        public const string JsonWebTokenType = "jwt";
+        public const string AadEventHubsAudience = "https://eventhubs.azure.net/";
+
+        public static TimeSpan DefaultOperationTimeout = TimeSpan.FromMinutes(1);
+        public static TransportType DefaultTransportType = TransportType.Amqp;
     }
 }
