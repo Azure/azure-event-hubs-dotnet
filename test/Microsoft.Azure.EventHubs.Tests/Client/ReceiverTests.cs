@@ -174,6 +174,50 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
 
         [Fact]
         [DisplayTestMethodName]
+        async Task CreateReceiverWithSequenceNumber()
+        {
+            // Randomly pick one of the available partitons.
+            var partitionId = this.PartitionIds[new Random().Next(this.PartitionIds.Count())];
+            TestUtility.Log($"Randomly picked partition {partitionId}");
+
+            // Send and receive a message to identify the end of stream.
+            var pInfo = await this.EventHubClient.GetPartitionRuntimeInformationAsync(partitionId);
+
+            // Send a new message which is expected to go to the end of stream.
+            // We are expecting to receive only this message.
+            var eventSent = new EventData(new byte[1]);
+            eventSent.Properties["stamp"] = Guid.NewGuid().ToString();
+            await this.EventHubClient.CreatePartitionSender(partitionId).SendAsync(eventSent);
+
+            // Create a new receiver which will start reading from the last message on the stream.
+            TestUtility.Log($"Creating a new receiver with sequence number {pInfo.LastEnqueuedSequenceNumber}");
+            var receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, EventPosition.FromSequenceNumber(pInfo.LastEnqueuedSequenceNumber));
+
+            try
+            {
+                var receivedMessages = await receiver.ReceiveAsync(100);
+
+                // We should have received only 1 message from this call.
+                Assert.True(receivedMessages.Count() == 1, $"Didn't receive 1 message. Received {receivedMessages.Count()} messages(s).");
+
+                // Check stamp.
+                Assert.True(receivedMessages.Single().Properties["stamp"].ToString() == eventSent.Properties["stamp"].ToString()
+                    , "Stamps didn't match on the message sent and received!");
+
+                TestUtility.Log("Received correct message as expected.");
+
+                // Next receive on this partition shouldn't return any more messages.
+                receivedMessages = await receiver.ReceiveAsync(100, TimeSpan.FromSeconds(15));
+                Assert.True(receivedMessages == null, $"Received messages at the end.");
+            }
+            finally
+            {
+                await receiver.CloseAsync();
+            }
+        }
+
+        [Fact]
+        [DisplayTestMethodName]
         async Task PartitionReceiverReceiveBatch()
         {
             const int MaxBatchSize = 5;

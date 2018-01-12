@@ -452,7 +452,7 @@ namespace Microsoft.Azure.EventHubs
                 throw Fx.Exception.ArgumentNullOrWhiteSpace(string.IsNullOrWhiteSpace(consumerGroupName) ? nameof(consumerGroupName) : nameof(partitionId));
             }
 
-            return this.OnCreateReceiver(consumerGroupName, partitionId, startOffset, offsetInclusive, null, null, receiverOptions);
+            return this.OnCreateReceiver(consumerGroupName, partitionId, EventPosition.FromOffset(startOffset, offsetInclusive), null, receiverOptions);
         }
 
         /// <summary>
@@ -472,7 +472,27 @@ namespace Microsoft.Azure.EventHubs
                 throw Fx.Exception.ArgumentNullOrWhiteSpace(string.IsNullOrWhiteSpace(consumerGroupName) ? nameof(consumerGroupName) : nameof(partitionId));
             }
 
-            return this.OnCreateReceiver(consumerGroupName, partitionId, null, false, startTime, null, receiverOptions);
+            return this.OnCreateReceiver(consumerGroupName, partitionId, EventPosition.FromEnqueuedTime(startTime), null, receiverOptions);
+        }
+
+        /// <summary>
+        /// Create the EventHub receiver with given <see cref="EventPosition"/>.
+        /// The receiver is created for a specific EventHub Partition from the specific consumer group.
+        /// </summary>
+        /// <param name="consumerGroupName">the consumer group name that this receiver should be grouped under.</param>
+        /// <param name="partitionId">the partition Id that the receiver belongs to. All data received will be from this partition only.</param>
+        /// <param name="eventPosition">The starting <see cref="EventPosition"/> at which to start receiving messages.</param>
+        /// <param name="receiverOptions">Options for a event hub receiver.</param>
+        /// <returns>The created PartitionReceiver</returns>
+        /// <seealso cref="PartitionReceiver"/>
+        public PartitionReceiver CreateReceiver(string consumerGroupName, string partitionId, EventPosition eventPosition, ReceiverOptions receiverOptions = null)
+        {
+            if (eventPosition == null)
+            {
+                throw Fx.Exception.ArgumentNull(nameof(eventPosition));
+            }
+
+            return this.OnCreateReceiver(consumerGroupName, partitionId, eventPosition, null, receiverOptions);
         }
 
         /// <summary>
@@ -524,7 +544,7 @@ namespace Microsoft.Azure.EventHubs
                 throw Fx.Exception.ArgumentOutOfRange(nameof(epoch), epoch, "Epoch cannot be negative. Please specify a zero or positive long value.");
             }
 
-            return this.OnCreateReceiver(consumerGroupName, partitionId, startingOffset, offsetInclusive, null, epoch, receiverOptions);
+            return this.OnCreateReceiver(consumerGroupName, partitionId, EventPosition.FromOffset(startingOffset, offsetInclusive), epoch, receiverOptions);
         }
 
         /// <summary>
@@ -553,7 +573,32 @@ namespace Microsoft.Azure.EventHubs
                 throw Fx.Exception.ArgumentOutOfRange(nameof(epoch), epoch, "Epoch cannot be negative. Please specify a zero or positive long value.");
             }
 
-            return this.OnCreateReceiver(consumerGroupName, partitionId, null, false, startTime, epoch, receiverOptions);
+            return this.OnCreateReceiver(consumerGroupName, partitionId, EventPosition.FromEnqueuedTime(startTime), epoch, receiverOptions);
+        }
+
+        /// <summary>
+        /// Create a Epoch based EventHub receiver with given <see cref="EventPosition"/>.
+        /// The receiver is created for a specific EventHub Partition from the specific consumer group.
+        /// <para/>It is important to pay attention to the following when creating epoch based receiver:
+        /// <para/>- Ownership enforcement: Once you created an epoch based receiver, you cannot create a non-epoch receiver to the same consumerGroup-Partition combo until all receivers to the combo are closed.
+        /// <para/>- Ownership stealing: If a receiver with higher epoch value is created for a consumerGroup-Partition combo, any older epoch receiver to that combo will be force closed.
+        /// <para/>- Any receiver closed due to lost of ownership to a consumerGroup-Partition combo will get ReceiverDisconnectedException for all operations from that receiver.
+        /// </summary>
+        /// <param name="consumerGroupName">the consumer group name that this receiver should be grouped under.</param>
+        /// <param name="partitionId">the partition Id that the receiver belongs to. All data received will be from this partition only.</param>
+        /// <param name="eventPosition">The starting <see cref="EventPosition"/> at which to start receiving messages.</param>
+        /// <param name="epoch">a unique identifier (epoch value) that the service uses, to enforce partition/lease ownership.</param>
+        /// <param name="receiverOptions">Options for a event hub receiver.</param>
+        /// <returns>The created PartitionReceiver</returns>
+        /// <seealso cref="PartitionReceiver"/>
+        public PartitionReceiver CreateEpochReceiver(string consumerGroupName, string partitionId, EventPosition eventPosition, long epoch, ReceiverOptions receiverOptions = null)
+        {
+            if (eventPosition == null)
+            {
+                throw Fx.Exception.ArgumentNull(nameof(eventPosition));
+            }
+
+            return this.OnCreateReceiver(consumerGroupName, partitionId, eventPosition, epoch, receiverOptions);
         }
 
         /// <summary>
@@ -630,13 +675,11 @@ namespace Microsoft.Azure.EventHubs
         /// <summary></summary>
         /// <param name="consumerGroupName"></param>
         /// <param name="partitionId"></param>
-        /// <param name="startOffset"></param>
-        /// <param name="offsetInclusive"></param>
-        /// <param name="startTime"></param>
+        /// <param name="eventPosition"></param>
         /// <param name="epoch"></param>
         /// <param name="receiverOptions"></param>
         /// <returns></returns>
-        protected abstract PartitionReceiver OnCreateReceiver(string consumerGroupName, string partitionId, string startOffset, bool offsetInclusive, DateTime? startTime, long? epoch, ReceiverOptions receiverOptions);
+        protected abstract PartitionReceiver OnCreateReceiver(string consumerGroupName, string partitionId, EventPosition eventPosition, long? epoch, ReceiverOptions receiverOptions);
 
         /// <summary></summary>
         /// <returns></returns>
