@@ -231,6 +231,11 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     linkSettings.AddProperty(AmqpClientConstants.AttachEpoch, this.Epoch.Value);
                 }
 
+                if (!string.IsNullOrWhiteSpace(this.Identifier))
+                {
+                    linkSettings.AddProperty(AmqpClientConstants.ReceiverIdentifierName, this.Identifier);
+                }
+
                 var link = new ReceivingAmqpLink(linkSettings);
                 linkSettings.LinkName = $"{amqpEventHubClient.ContainerId};{connection.Identifier}:{session.Identifier}:{link.Identifier}";
                 link.AttachTo(session);
