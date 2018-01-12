@@ -188,5 +188,16 @@ namespace Microsoft.Azure.EventHubs {
                 return ResourceManager.GetString("ArgumentInvalidCombination", resourceCulture);
             }
         }
+
+        /// <summary>
+        /// Gets localized string like: The identifier parameter exceeds the maximum allowed size of {0} characters.
+        /// </summary>
+        internal static string ReceiverIdentifierOverMaxValue
+        {
+            get
+            {
+                return ResourceManager.GetString("ReceiverIdentifierOverMaxValue", resourceCulture);
+            }
+        }
     }
 }

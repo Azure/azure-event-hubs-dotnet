@@ -493,7 +493,7 @@ namespace Microsoft.Azure.EventHubs
         /// <seealso cref="PartitionReceiver"/>
         public PartitionReceiver CreateEpochReceiver(string consumerGroupName, string partitionId, string startingOffset, long epoch, ReceiverOptions receiverOptions = null)
         {
-            return this.CreateEpochReceiver(consumerGroupName, partitionId, startingOffset, false, epoch);
+            return this.CreateEpochReceiver(consumerGroupName, partitionId, startingOffset, false, epoch, receiverOptions);
         }
 
         /// <summary>

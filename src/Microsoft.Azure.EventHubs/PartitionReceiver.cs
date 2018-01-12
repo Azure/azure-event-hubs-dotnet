@@ -76,6 +76,7 @@ namespace Microsoft.Azure.EventHubs
             this.RuntimeInfo = new ReceiverRuntimeInformation(partitionId);
             this.ReceiverRuntimeMetricEnabled = receiverOptions == null ? this.EventHubClient.EnableReceiverRuntimeMetric
                 : receiverOptions.EnableReceiverRuntimeMetric;
+            this.Identifier = receiverOptions != null ? receiverOptions.Identifier : null;
             this.RetryPolicy = eventHubClient.RetryPolicy.Clone();
 
             EventHubsEventSource.Log.ClientCreated(this.ClientId, this.FormatTraceDetails());
@@ -118,6 +119,14 @@ namespace Microsoft.Azure.EventHubs
 
         /// <summary></summary>
         protected string StartOffset { get; private set; }
+
+        /// <summary>Gets the identifier of a receiver which was set during the creation of the receiver.</summary> 
+        /// <value>A string representing the identifier of a receiver. It will return null if the identifier is not set.</value>
+        public string Identifier
+        {
+            get;
+            private set;
+        }
 
         /// <summary>
         /// Receive a batch of <see cref="EventData"/>'s from an EventHub partition
