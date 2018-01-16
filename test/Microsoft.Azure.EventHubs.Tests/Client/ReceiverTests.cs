@@ -172,7 +172,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             }
         }
 
-        [Fact]
+        [Fact(Skip = "reason")]
         [DisplayTestMethodName]
         async Task CreateReceiverWithSequenceNumber()
         {
