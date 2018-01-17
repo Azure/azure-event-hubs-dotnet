@@ -31,6 +31,7 @@ namespace Microsoft.Azure.EventHubs
         internal static int ValidateEvents(IEnumerable<EventData> eventDatas, string partitionId, string partitionKey)
         {
             int count;
+
             if (eventDatas == null || (count = eventDatas.Count()) == 0)
             {
                 throw Fx.Exception.Argument(nameof(eventDatas), Resources.EventDataListIsNullOrEmpty);
