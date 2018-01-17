@@ -81,27 +81,6 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             }
         }
 
-        /// <summary>
-        /// Utilizes EventDataBatch to send messages as the messages are batched up to max batch size.
-        /// </summary>
-        [Fact]
-        [DisplayTestMethodName]
-        async Task BatchSender()
-        {
-            await SendWithEventDataBatch();
-        }
-
-        /// <summary>
-        /// Utilizes EventDataBatch to send messages as the messages are batched up to max batch size.
-        /// This unit test sends with partition key.
-        /// </summary>
-        [Fact]
-        [DisplayTestMethodName]
-        async Task BatchSenderWithPartitionKey()
-        {
-            await SendWithEventDataBatch(Guid.NewGuid().ToString());
-        }
-
         [Fact]
         [DisplayTestMethodName]
         async Task SendAndReceiveArraySegmentEventData()
@@ -174,6 +153,49 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             {
                 await pReceiver.CloseAsync();
             }
+        }
+
+        [Fact]
+        [DisplayTestMethodName]
+        async Task SendBatchWithPartitionKey()
+        {
+            string targetPartitionKey = "this is the partition key";
+
+            // Mark end of each partition so that we can start reading from there.
+            var partitions = await TestUtility.DiscoverEndOfStreamForPartitionsAsync(this.EventHubClient, this.PartitionIds);
+
+            // Send a batch of 2 messages.
+            var eventData1 = new EventData(Guid.NewGuid().ToByteArray());
+            var eventData2 = new EventData(Guid.NewGuid().ToByteArray());
+            await this.EventHubClient.SendAsync(new[] { eventData1, eventData2 }, targetPartitionKey);
+
+            // Now find out the partition where our messages landed.
+            var targetPartition = "";
+            foreach (var pId in this.PartitionIds)
+            {
+                var pInfo = await this.EventHubClient.GetPartitionRuntimeInformationAsync(pId);
+                if (pInfo.LastEnqueuedOffset != partitions[pId])
+                {
+                    targetPartition = pId;
+                    TestUtility.Log($"Batch landed on partition {targetPartition}");
+                }
+            }
+
+            // Confirm that we identified the partition with our messages.
+            Assert.True(targetPartition != "", "None of the partition offsets moved.");
+
+            // Receive all messages from target partition.
+            var receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, targetPartition, partitions[targetPartition]);
+            var messages = await ReceiveAllMessages(receiver);
+
+            // Validate 2 messages received.
+            Assert.True(messages.Count == 2, $"Received {messages.Count} messages instead of 2.");
+
+            // Validate both messages carry correct partition id.
+            Assert.True(messages[0].SystemProperties.PartitionKey == targetPartitionKey,
+                $"First message returned partition key value '{messages[0].SystemProperties.PartitionKey}'");
+            Assert.True(messages[1].SystemProperties.PartitionKey == targetPartitionKey,
+                $"Second message returned partition key value '{messages[1].SystemProperties.PartitionKey}'");
         }
     }
 }

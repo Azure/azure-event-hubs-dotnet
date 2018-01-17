@@ -75,5 +75,21 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             Assert.True(totalReceived == NumberOfMessagesToSend,
                 $"Didn't receive the same number of messages that we sent. Sent: {NumberOfMessagesToSend}, Received: {totalReceived}");
         }
+
+        [Fact]
+        [DisplayTestMethodName]
+        async Task SendAndReceiveLargeMessage()
+        {
+            var bodySize = 250 * 1024;
+            var targetPartition = "0";
+
+            var edToSend = new EventData(new byte[bodySize]);
+
+            TestUtility.Log($"Sending one message with body size {bodySize} bytes.");
+            var edReceived = await SendAndReceiveEvent(targetPartition, edToSend);
+
+            // Validate body size.
+            Assert.True(edReceived.Body.Count == bodySize, $"Sent {bodySize} bytes and received {edReceived.Body.Count}");
+        }
     }
 }
