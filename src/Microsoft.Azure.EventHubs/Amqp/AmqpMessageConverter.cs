@@ -111,6 +111,14 @@ namespace Microsoft.Azure.EventHubs.Amqp
             return amqpMessage;
         }
 
+        public static void UpdateAmqpMessagePartitionKey(AmqpMessage message, string partitionKey)
+        {
+            if (partitionKey != null)
+            {
+                message.MessageAnnotations.Map[PartitionKeyName] = partitionKey;
+            }
+        }
+
         static void UpdateAmqpMessageHeadersAndProperties(
             AmqpMessage message,
             string publisher,

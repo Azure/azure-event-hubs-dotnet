@@ -395,6 +395,21 @@ namespace Microsoft.Azure.EventHubs
         }
 
         /// <summary>
+        /// Send a batch of <see cref="EventData"/> in <see cref="EventDataBatch"/>.
+        /// </summary>
+        /// <param name="eventDataBatch">the batch of events to send to EventHub</param>
+        /// <returns>A Task that completes when the send operation is done.</returns>
+        public async Task SendAsync(EventDataBatch eventDataBatch)
+        {
+            if (eventDataBatch == null)
+            {
+                throw Fx.Exception.Argument(nameof(eventDataBatch), Resources.EventDataListIsNullOrEmpty);
+            }
+
+            await this.SendAsync(eventDataBatch.ToEnumerable(), eventDataBatch.PartitionKey);
+        }
+
+        /// <summary>
         /// Create a <see cref="PartitionSender"/> which can publish <see cref="EventData"/>'s directly to a specific EventHub partition (sender type iii. in the below list).
         /// <para/>
         /// There are 3 patterns/ways to send to EventHubs:
@@ -609,7 +624,16 @@ namespace Microsoft.Azure.EventHubs
         /// <returns>Returns <see cref="EventDataBatch" />.</returns>
         public EventDataBatch CreateBatch()
         {
-            return new EventDataBatch(this.InnerSender.MaxMessageSize);
+            return this.CreateBatch(new BatchOptions());
+        }
+        
+        /// <summary>Creates a batch where event data objects can be added for later SendAsync call.</summary>
+        /// <param name="options"><see cref="BatchOptions" /> to define partition key and max message size.</param>
+        /// <returns>Returns <see cref="EventDataBatch" />.</returns>
+        public EventDataBatch CreateBatch(BatchOptions options)
+        {
+            return new EventDataBatch(options.MaxMessageSize > 0 ?
+                options.MaxMessageSize : this.InnerSender.MaxMessageSize, options.PartitionKey);
         }
 
         /// <summary> Gets or sets a value indicating whether the runtime metric of a receiver is enabled. </summary>

@@ -199,6 +199,17 @@ namespace Microsoft.Azure.EventHubs {
                 return ResourceManager.GetString("MissingSystemProperty", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///    Looks up a localized string similar to EventData batch with partitionKey cannot be sent on PartitionSender.
+        /// </summary>
+        public static string PartitionSenderInvalidWithPartitionKeyOnBatch
+        {
+            get
+            {
+                return ResourceManager.GetString("PartitionSenderInvalidWithPartitionKeyOnBatch", resourceCulture);
+            }
+        }
 
         /// <summary>
         /// Gets localized string like: The identifier parameter exceeds the maximum allowed size of {0} characters.
