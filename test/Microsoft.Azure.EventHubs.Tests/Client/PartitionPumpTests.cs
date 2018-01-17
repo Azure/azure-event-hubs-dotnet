@@ -156,11 +156,6 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             public event EventHandler<IEnumerable<EventData>> EventsReceived;
             public event EventHandler<Exception> ErrorReceived;
 
-            public TestPartitionReceiveHandler()
-            {
-                this.MaxBatchSize = 10;
-            }
-
             public int MaxBatchSize { get; set; }
 
             Task IPartitionReceiveHandler.ProcessErrorAsync(Exception error)
