@@ -10,6 +10,7 @@ namespace Microsoft.Azure.EventHubs
         public const int TimerToleranceInSeconds = 5;
         public const int ServerBusyBaseSleepTimeInSecs = 4;
         public const int MaxReceiverIdentifierLength = 64;
+        public const int ReceiveHandlerDefaultBatchSize = 10;
 
         public const string SasTokenType = "servicebus.windows.net:sastoken";
         public const string JsonWebTokenType = "jwt";

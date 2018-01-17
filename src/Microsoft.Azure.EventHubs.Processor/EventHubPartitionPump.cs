@@ -146,7 +146,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                 this.MaxBatchSize = eventHubPartitionPump.Host.EventProcessorOptions.MaxBatchSize;
             }
 
-            public int MaxBatchSize { get; }
+            public int MaxBatchSize { get; set; }
 
             public Task ProcessEventsAsync(IEnumerable<EventData> events)
             {

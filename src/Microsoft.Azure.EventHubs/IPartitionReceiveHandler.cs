@@ -16,7 +16,7 @@ namespace Microsoft.Azure.EventHubs
         /// <summary>
         /// Gets the maximum batch size.
         /// </summary>
-        int MaxBatchSize { get; }
+        int MaxBatchSize { get; set; }
 
         /// <summary>
         /// Users should implement this method to specify the action to be performed on the received events.
