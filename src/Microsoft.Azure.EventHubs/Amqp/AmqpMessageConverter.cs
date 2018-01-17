@@ -115,7 +115,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
         {
             if (partitionKey != null)
             {
-                message.MessageAnnotations.Map[PartitionKeyName] = partitionKey;
+                message.MessageAnnotations.Map[ClientConstants.PartitionKeyName] = partitionKey;
             }
         }
 
@@ -145,14 +145,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
                         message.ApplicationProperties.Map[pair.Key] = amqpObject;
                     }
                 }
-            }
-        }
-
-        static void UpdateAmqpMessagePartitionKey(AmqpMessage message, string partitionKey)
-        {
-            if (partitionKey != null)
-            {
-                message.MessageAnnotations.Map[ClientConstants.PartitionKeyName] = partitionKey;
             }
         }
 
