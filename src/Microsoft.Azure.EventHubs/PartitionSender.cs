@@ -39,6 +39,27 @@ namespace Microsoft.Azure.EventHubs
 
         object ThisLock { get; } = new object();
 
+
+        /// <summary>Creates a batch where event data objects can be added for later SendAsync call.</summary>
+        /// <returns>Returns <see cref="EventDataBatch" />.</returns>
+        public EventDataBatch CreateBatch()
+        {
+            return this.CreateBatch(new BatchOptions());
+        }
+        
+        /// <summary>Creates a batch where event data objects can be added for later SendAsync call.</summary>
+        /// <param name="options"><see cref="BatchOptions" /> to define partition key and max message size.</param>
+        /// <returns>Returns <see cref="EventDataBatch" />.</returns>
+        public EventDataBatch CreateBatch(BatchOptions options)
+        {
+            if (!string.IsNullOrWhiteSpace(options.PartitionKey))
+            {
+                throw Fx.Exception.InvalidOperation(Resources.PartitionSenderInvalidWithPartitionKeyOnBatch);
+            }
+
+            return new EventDataBatch(options.MaxMessageSize > 0 ? options.MaxMessageSize : this.InnerSender.MaxMessageSize);
+        }
+
         /// <summary>
         /// Send <see cref="EventData"/> to a specific EventHub partition. The target partition is pre-determined when this PartitionSender was created.
         /// This send pattern emphasizes data correlation over general availability and latency.
@@ -110,6 +131,11 @@ namespace Microsoft.Azure.EventHubs
                 throw Fx.Exception.ArgumentNull(nameof(eventDatas));
             }
 
+            if (eventDatas is EventDataBatch && !string.IsNullOrEmpty(((EventDataBatch)eventDatas).PartitionKey))
+            {
+                throw Fx.Exception.InvalidOperation(Resources.PartitionSenderInvalidWithPartitionKeyOnBatch);
+            }
+
             int count = EventDataSender.ValidateEvents(eventDatas, this.PartitionId, null);
             EventHubsEventSource.Log.EventSendStart(this.ClientId, count, null);
             Activity activity = EventHubsDiagnosticSource.StartSendActivity(this.ClientId, this.EventHubClient.ConnectionStringBuilder, this.PartitionId, eventDatas, count);
@@ -134,9 +160,29 @@ namespace Microsoft.Azure.EventHubs
         }
 
         /// <summary>
-        /// Closes and releases resources for the <see cref="PartitionSender"/>.
+        /// Send a batch of <see cref="EventData"/> in <see cref="EventDataBatch"/>.
         /// </summary>
-        /// <returns>An asynchronous operation</returns>
+        /// <param name="eventDataBatch">the batch of events to send to EventHub</param>
+        /// <returns>A Task that completes when the send operation is done.</returns>
+        public async Task SendAsync(EventDataBatch eventDataBatch)
+        {
+            if (eventDataBatch == null)
+            {
+                throw Fx.Exception.Argument(nameof(eventDataBatch), Resources.EventDataListIsNullOrEmpty);
+            }
+
+            if (eventDataBatch.PartitionKey != null)
+            {
+                throw Fx.Exception.InvalidOperation(Resources.PartitionSenderInvalidWithPartitionKeyOnBatch);
+            }
+
+            await this.SendAsync(eventDataBatch.ToEnumerable());
+        }
+        
+        /// <summary>
+                 /// Closes and releases resources for the <see cref="PartitionSender"/>.
+                 /// </summary>
+                 /// <returns>An asynchronous operation</returns>
         public override async Task CloseAsync()
         {
             EventHubsEventSource.Log.ClientCloseStart(this.ClientId);
