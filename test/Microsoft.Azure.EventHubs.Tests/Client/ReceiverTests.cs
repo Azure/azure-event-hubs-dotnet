@@ -130,6 +130,44 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
 
         [Fact]
         [DisplayTestMethodName]
+        async Task CreateReceiverWithInclusiveOffset()
+        {
+            // Randomly pick one of the available partitons.
+            var partitionId = this.PartitionIds[new Random().Next(this.PartitionIds.Count())];
+            TestUtility.Log($"Randomly picked partition {partitionId}");
+
+            await TestUtility.SendToPartitionAsync(this.EventHubClient, partitionId, $"{partitionId} event.");
+
+            // Find out where to start reading on the partition.
+            var pInfo = await this.EventHubClient.GetPartitionRuntimeInformationAsync(partitionId);
+
+            // Send a message which is expected to go to the end of stream.
+            // We are expecting to receive this message as well.
+            await TestUtility.SendToPartitionAsync(this.EventHubClient, partitionId, $"{partitionId} event.");
+
+            // Create a new receiver which will start reading from the last message on the stream.
+            TestUtility.Log($"Creating a new receiver with offset {pInfo.LastEnqueuedOffset}");
+            var receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, EventPosition.FromOffset(pInfo.LastEnqueuedOffset, true));
+
+            try
+            {
+                var receivedMessages = await receiver.ReceiveAsync(100);
+
+                // We should have received only 1 message from this call.
+                Assert.True(receivedMessages.Count() == 2, $"Didn't receive 2 messages. Received {receivedMessages.Count()} messages(s).");
+
+                // Next receive on this partition shouldn't return any more messages.
+                receivedMessages = await receiver.ReceiveAsync(100, TimeSpan.FromSeconds(15));
+                Assert.True(receivedMessages == null, $"Received messages at the end.");
+            }
+            finally
+            {
+                await receiver.CloseAsync();
+            }
+        }
+
+        [Fact]
+        [DisplayTestMethodName]
         async Task CreateReceiverWithDateTime()
         {
             // Randomly pick one of the available partitons.
@@ -205,6 +243,44 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
                     , "Stamps didn't match on the message sent and received!");
 
                 TestUtility.Log("Received correct message as expected.");
+
+                // Next receive on this partition shouldn't return any more messages.
+                receivedMessages = await receiver.ReceiveAsync(100, TimeSpan.FromSeconds(15));
+                Assert.True(receivedMessages == null, $"Received messages at the end.");
+            }
+            finally
+            {
+                await receiver.CloseAsync();
+            }
+        }
+
+        [Fact(Skip = "reason")]
+        [DisplayTestMethodName]
+        async Task CreateReceiverWithInclusiveSequenceNumber()
+        {
+            // Randomly pick one of the available partitons.
+            var partitionId = this.PartitionIds[new Random().Next(this.PartitionIds.Count())];
+            TestUtility.Log($"Randomly picked partition {partitionId}");
+
+            await TestUtility.SendToPartitionAsync(this.EventHubClient, partitionId, $"{partitionId} event.");
+
+            // Find out where to start reading on the partition.
+            var pInfo = await this.EventHubClient.GetPartitionRuntimeInformationAsync(partitionId);
+
+            // Send a message which is expected to go to the end of stream.
+            // We are expecting to receive this message as well.
+            await TestUtility.SendToPartitionAsync(this.EventHubClient, partitionId, $"{partitionId} event.");
+
+            // Create a new receiver which will start reading from the last message on the stream.
+            TestUtility.Log($"Creating a new receiver with sequence number {pInfo.LastEnqueuedSequenceNumber}");
+            var receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, EventPosition.FromSequenceNumber(pInfo .LastEnqueuedSequenceNumber, true));
+
+            try
+            {
+                var receivedMessages = await receiver.ReceiveAsync(100);
+
+                // We should have received only 1 message from this call.
+                Assert.True(receivedMessages.Count() == 2, $"Didn't receive 2 messages. Received {receivedMessages.Count()} messages(s).");
 
                 // Next receive on this partition shouldn't return any more messages.
                 receivedMessages = await receiver.ReceiveAsync(100, TimeSpan.FromSeconds(15));
