@@ -52,7 +52,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             await Assert.ThrowsAsync<MessagingEntityNotFoundException>(async () =>
             {
                 TestUtility.Log("Receiving from nonexistent entity.");
-                receiver = ehClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", PartitionReceiver.StartOfStream);
+                receiver = ehClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", EventPosition.FromStart());
                 await receiver.ReceiveAsync(1);
                 throw new InvalidOperationException("Receive call should have failed");
             });
@@ -63,7 +63,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             await Assert.ThrowsAsync<MessagingEntityNotFoundException>(async () =>
             {
                 TestUtility.Log("Receiving from nonexistent consumer group.");
-                receiver = ehClient.CreateReceiver(Guid.NewGuid().ToString(), "0", PartitionReceiver.StartOfStream);
+                receiver = ehClient.CreateReceiver(Guid.NewGuid().ToString(), "0", EventPosition.FromStart());
                 await receiver.ReceiveAsync(1);
                 throw new InvalidOperationException("Receive call should have failed");
             });
@@ -84,7 +84,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
                 await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () =>
                 {
                     TestUtility.Log($"Receiving from invalid partition {invalidPartitionId}");
-                    receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, invalidPartitionId, PartitionReceiver.StartOfStream);
+                    receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, invalidPartitionId, EventPosition.FromStart());
                     await receiver.ReceiveAsync(1);
                     throw new InvalidOperationException("Receive call should have failed");
                 });
@@ -98,7 +98,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
                 await Assert.ThrowsAsync<ArgumentException>(async () =>
                 {
                     TestUtility.Log($"Receiving from invalid partition {invalidPartitionId}");
-                    receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, invalidPartitionId, PartitionReceiver.StartOfStream);
+                    receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, invalidPartitionId, EventPosition.FromStart());
                     await receiver.ReceiveAsync(1);
                     throw new InvalidOperationException("Receive call should have failed");
                 });

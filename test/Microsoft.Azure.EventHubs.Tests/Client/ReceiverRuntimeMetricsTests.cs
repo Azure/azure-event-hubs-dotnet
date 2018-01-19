@@ -31,7 +31,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             // Create a new receiver with ReceiverOptions setting to enable runtime metrics.
             var partitionReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName,
                 targetPartitionId,
-                PartitionReceiver.StartOfStream,
+                EventPosition.FromStart(),
                 new ReceiverOptions()
                 {
                     EnableReceiverRuntimeMetric = true
@@ -51,7 +51,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             await TestUtility.SendToPartitionAsync(this.EventHubClient, targetPartitionId, "this is the message body");
 
             // Create a new receiver and validate ReceiverRuntimeMetricEnabled.
-            var partitionReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, targetPartitionId, PartitionReceiver.StartOfStream);
+            var partitionReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, targetPartitionId, EventPosition.FromStart());
             await ValidateDisabledBehavior(partitionReceiver);
         }
 
@@ -73,7 +73,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             {
                 // Create a new receiver and disable runtime metrics via ReceiverOptions.
                 var partitionReceiver = 
-                    this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, targetPartitionId, PartitionReceiver.StartOfStream,
+                    this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, targetPartitionId, EventPosition.FromStart(),
                     new ReceiverOptions()
                     {
                         EnableReceiverRuntimeMetric = false
@@ -108,9 +108,9 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             {
                 // Create 2 new receivers. These receivers are expected to show runtime metrics since their parent client is enabled.
                 var partitionReceiver1 =
-                    this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, targetPartitionId, PartitionReceiver.StartOfStream);
+                    this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, targetPartitionId, EventPosition.FromStart());
                 var partitionReceiver2 =
-                    this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, targetPartitionId, PartitionReceiver.StartOfStream);
+                    this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, targetPartitionId, EventPosition.FromStart());
 
                 await ValidateEnabledBehavior(partitionReceiver1, pInfo);
                 await ValidateEnabledBehavior(partitionReceiver2, pInfo);

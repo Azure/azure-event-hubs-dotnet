@@ -46,7 +46,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
 
             // Create a new receiver which will start reading from the end of the stream.
             TestUtility.Log($"Creating a new receiver with offset EndOFStream");
-            var receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, PartitionReceiver.EndOfStream);
+            var receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, EventPosition.FromEnd());
 
             try
             {
@@ -103,7 +103,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
 
             // Create a new receiver which will start reading from the last message on the stream.
             TestUtility.Log($"Creating a new receiver with offset {pInfo.LastEnqueuedOffset}");
-            var receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, pInfo.LastEnqueuedOffset);
+            var receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, EventPosition.FromOffset(pInfo.LastEnqueuedOffset));
 
             try
             {
@@ -147,7 +147,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
 
             // Create a new receiver which will start reading from the last message on the stream.
             TestUtility.Log($"Creating a new receiver with date-time {pInfo.LastEnqueuedTimeUtc}");
-            var receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, pInfo.LastEnqueuedTimeUtc);
+            var receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, EventPosition.FromEnqueuedTime(pInfo.LastEnqueuedTimeUtc));
 
             try
             {
@@ -224,7 +224,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             TestUtility.Log("Receiving Events via PartitionReceiver.ReceiveAsync(BatchSize)");
             const string partitionId = "0";
             PartitionSender partitionSender = this.EventHubClient.CreatePartitionSender(partitionId);
-            PartitionReceiver partitionReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, DateTime.UtcNow.AddMinutes(-10));
+            PartitionReceiver partitionReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, EventPosition.FromEnqueuedTime(DateTime.UtcNow.AddMinutes(-10)));
 
             try
             {
@@ -266,8 +266,8 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
         async Task PartitionReceiverEpochReceive()
         {
             TestUtility.Log("Testing EpochReceiver semantics");
-            var epochReceiver1 = this.EventHubClient.CreateEpochReceiver(PartitionReceiver.DefaultConsumerGroupName, "1", PartitionReceiver.StartOfStream, 1);
-            var epochReceiver2 = this.EventHubClient.CreateEpochReceiver(PartitionReceiver.DefaultConsumerGroupName, "1", PartitionReceiver.StartOfStream, 2);
+            var epochReceiver1 = this.EventHubClient.CreateEpochReceiver(PartitionReceiver.DefaultConsumerGroupName, "1", EventPosition.FromStart(), 1);
+            var epochReceiver2 = this.EventHubClient.CreateEpochReceiver(PartitionReceiver.DefaultConsumerGroupName, "1", EventPosition.FromStart(), 2);
             try
             {
                 // Read the events from Epoch 1 Receiver until we're at the end of the stream
@@ -319,8 +319,8 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
         [DisplayTestMethodName]
         async Task CreateNonEpochReceiverAfterEpochReceiver()
         {
-            var epochReceiver = this.EventHubClient.CreateEpochReceiver(PartitionReceiver.DefaultConsumerGroupName, "1", PartitionReceiver.StartOfStream, 1);
-            var nonEpochReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "1", PartitionReceiver.StartOfStream);
+            var epochReceiver = this.EventHubClient.CreateEpochReceiver(PartitionReceiver.DefaultConsumerGroupName, "1", EventPosition.FromStart(), 1);
+            var nonEpochReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "1", EventPosition.FromStart());
 
             try
             {
@@ -351,8 +351,8 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
         [DisplayTestMethodName]
         async Task CreateEpochReceiverAfterNonEpochReceiver()
         {
-            var nonEpochReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "1", PartitionReceiver.StartOfStream);
-            var epochReceiver = this.EventHubClient.CreateEpochReceiver(PartitionReceiver.DefaultConsumerGroupName, "1", PartitionReceiver.StartOfStream, 1);
+            var nonEpochReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "1", EventPosition.FromStart());
+            var epochReceiver = this.EventHubClient.CreateEpochReceiver(PartitionReceiver.DefaultConsumerGroupName, "1", EventPosition.FromStart(), 1);
 
             try
             {
@@ -389,7 +389,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
         async Task CloseReceiverClient()
         {
             var pSender = this.EventHubClient.CreatePartitionSender("0");
-            var pReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", PartitionReceiver.StartOfStream);
+            var pReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", EventPosition.FromStart());
 
             try
             {
@@ -426,7 +426,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
                 for (int i=0; i < 5; i++)
                 {
                     TestUtility.Log($"Creating receiver {i}");
-                    var newReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "1", PartitionReceiver.StartOfStream,
+                    var newReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "1", EventPosition.FromStart(),
                         new ReceiverOptions()
                         {
                             Identifier = $"receiver{i}"
@@ -440,7 +440,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
                 try
                 {
                     // Attempt to create 6th receiver. This should fail.
-                    var failReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "1", PartitionReceiver.StartOfStream);
+                    var failReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "1", EventPosition.FromStart());
                     await failReceiver.ReceiveAsync(10);
                     throw new InvalidOperationException("6th receiver should have encountered QuotaExceededException.");
                 }

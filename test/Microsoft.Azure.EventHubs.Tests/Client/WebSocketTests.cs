@@ -82,7 +82,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             {
                 // Receive single message.
                 TestUtility.Log("Receiving single event");
-                receiver = ehClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, targetPartitionId, PartitionReceiver.StartOfStream);
+                receiver = ehClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, targetPartitionId, EventPosition.FromStart());
                 var msg = await receiver.ReceiveAsync(1);
                 Assert.True(msg != null, $"Failed to receive single event from partition {targetPartitionId}");
             }

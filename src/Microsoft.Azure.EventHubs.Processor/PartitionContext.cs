@@ -20,7 +20,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             this.EventHubPath = eventHubPath;
             this.ConsumerGroupName = consumerGroupName;
             this.ThisLock = new object();
-            this.Offset = PartitionReceiver.StartOfStream;
+            this.Offset = EventPosition.FromStart().Offset;
             this.SequenceNumber = 0;
             this.RuntimeInformation = new ReceiverRuntimeInformation(partitionId);
         }

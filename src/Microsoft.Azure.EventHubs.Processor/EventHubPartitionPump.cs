@@ -86,7 +86,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                 this.partitionReceiver = this.eventHubClient.CreateEpochReceiver(
                     this.PartitionContext.ConsumerGroupName,
                     this.PartitionContext.PartitionId,
-                    (string)startAt,
+                    EventPosition.FromOffset((string)startAt),
                     epoch,
                     receiverOptions);
             }
@@ -94,8 +94,8 @@ namespace Microsoft.Azure.EventHubs.Processor
             {
                 this.partitionReceiver = this.eventHubClient.CreateEpochReceiver(
                     this.PartitionContext.ConsumerGroupName, 
-                    this.PartitionContext.PartitionId, 
-                    (DateTime)startAt, 
+                    this.PartitionContext.PartitionId,
+                    EventPosition.FromEnqueuedTime((DateTime)startAt),
                     epoch,
                     receiverOptions);
             }

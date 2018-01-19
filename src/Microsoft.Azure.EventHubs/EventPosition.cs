@@ -17,8 +17,29 @@ namespace Microsoft.Azure.EventHubs
     /// </summary>
     public class EventPosition
     {
+        const string StartOfStream = "-1";
+        const string EndOfStream = "@latest";
+
         EventPosition() { }
 
+        /// <summary>
+        /// Returns the position for the start of a stream. Provide this position in receiver creation
+        /// to starting receiving from the first available event in the partition.
+        /// </summary>
+        public static EventPosition FromStart()
+        {
+            return EventPosition.FromOffset(StartOfStream);
+        }
+
+        /// <summary>
+        /// Returns the position for the end of a stream. Provide this position in receiver creation
+        /// to start receiving from the next available event in the partition after the receiver is created.
+        /// </summary>
+        public static EventPosition FromEnd()
+        {
+            return EventPosition.FromOffset(EndOfStream);
+        }
+        
         /// <summary>
         /// Creates a position at the given offset.
         /// </summary>
@@ -32,17 +53,18 @@ namespace Microsoft.Azure.EventHubs
                 throw new ArgumentNullException(nameof(offset));
             }
 
-            return new EventPosition() { Offset = offset, OffsetInclusive = inclusive };
+            return new EventPosition() { Offset = offset, IsInclusive = inclusive };
         }
 
         /// <summary>
         /// Creates a position at the given offset.
         /// </summary>
         /// <param name="sequenceNumber"><see cref="EventData.SystemPropertiesCollection.SequenceNumber"/></param>
+        /// <param name="inclusive">If true, the specified event is included; otherwise the next event is returned.</param>
         /// <returns>An <see cref="EventPosition"/> object.</returns>
-        public static EventPosition FromSequenceNumber(long sequenceNumber)
+        public static EventPosition FromSequenceNumber(long sequenceNumber, bool inclusive = false)
         {
-            return new EventPosition() { SequenceNumber = sequenceNumber };
+            return new EventPosition() { SequenceNumber = sequenceNumber, IsInclusive = inclusive };
         }
 
         /// <summary>
@@ -59,30 +81,27 @@ namespace Microsoft.Azure.EventHubs
         /// Gets the offset of the event at the position. It can be null if the position is just created
         /// from a sequence number or an enqueued time.
         /// </summary>
-        public string Offset
+        internal string Offset
         {
-            get;
-            internal set;
+            get; set;
         }
 
         /// <summary>
         /// Indicates if the current event at the specified offset is included or not.
         /// It is only applicable if offset is set.
         /// </summary>
-        public bool OffsetInclusive
+        internal bool IsInclusive
         {
-            get;
-            internal set;
+            get; set;
         }
 
         /// <summary>
         /// Gets the enqueued time of the event at the position. It can be null if the position is just created
         /// from an offset or a sequence number.
         /// </summary>
-        public DateTime? EnqueuedTimeUtc
+        internal DateTime? EnqueuedTimeUtc
         {
-            get;
-            internal set;
+            get; set;
         }
 
         /// <summary>
@@ -100,14 +119,16 @@ namespace Microsoft.Azure.EventHubs
             // order of preference
             if (this.Offset != null)
             {
-                return this.OffsetInclusive ?
+                return this.IsInclusive ?
                     $"{AmqpClientConstants.FilterOffsetPartName} >= {this.Offset}" :
                     $"{AmqpClientConstants.FilterOffsetPartName} > {this.Offset}";
             }
 
             if (this.SequenceNumber.HasValue)
             {
-                return $"{AmqpClientConstants.FilterSeqNumberName} > {this.SequenceNumber.Value}";
+                return this.IsInclusive ?
+                    $"{AmqpClientConstants.FilterSeqNumberName} >= {this.SequenceNumber.Value}" :
+                    $"{AmqpClientConstants.FilterSeqNumberName} > {this.SequenceNumber.Value}";
             }
 
             if (this.EnqueuedTimeUtc.HasValue)
