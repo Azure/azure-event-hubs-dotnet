@@ -79,7 +79,7 @@ namespace Microsoft.Azure.EventHubs.Processor
         public int PrefetchCount { get; set; }
 
         /// <summary>
-        /// Gets or sets a delegate which is used to get the initial offset for a given partition to create <see cref="PartitionReceiver"/>.
+        /// Gets or sets a delegate which is used to get the initial position for a given partition to create <see cref="PartitionReceiver"/>.
         /// Delegate is invoked by passing in PartitionId and then user can return <see cref="PartitionReceiver"/> for receiving messages.
         /// This is only used when <see cref="Lease.Offset"/> is not provided and receiver is being created for the very first time.
         /// </summary>

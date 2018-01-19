@@ -69,9 +69,10 @@ namespace Microsoft.Azure.EventHubs.Processor
         async Task OpenClientsAsync() // throws EventHubsException, IOException, InterruptedException, ExecutionException
         {
             // Create new clients
-            object startAt = await this.PartitionContext.GetInitialOffsetAsync().ConfigureAwait(false);
+            EventPosition eventPosition = await this.PartitionContext.GetInitialOffsetAsync().ConfigureAwait(false);
             long epoch = this.Lease.Epoch;
-            ProcessorEventSource.Log.PartitionPumpCreateClientsStart(this.Host.Id, this.PartitionContext.PartitionId, epoch, startAt?.ToString());
+            ProcessorEventSource.Log.PartitionPumpCreateClientsStart(this.Host.Id, this.PartitionContext.PartitionId, epoch,
+                $"Offset:{eventPosition.Offset}, SequenceNumber:{eventPosition.SequenceNumber}, DateTime:{eventPosition.EnqueuedTimeUtc}");
             this.eventHubClient = EventHubClient.CreateFromConnectionString(this.Host.EventHubConnectionString);
 
             var receiverOptions = new ReceiverOptions()
@@ -81,24 +82,12 @@ namespace Microsoft.Azure.EventHubs.Processor
             };
 
             // Create new receiver and set options
-            if (startAt is string)
-            {
-                this.partitionReceiver = this.eventHubClient.CreateEpochReceiver(
-                    this.PartitionContext.ConsumerGroupName,
-                    this.PartitionContext.PartitionId,
-                    EventPosition.FromOffset((string)startAt),
-                    epoch,
-                    receiverOptions);
-            }
-            else if (startAt is DateTime)
-            {
-                this.partitionReceiver = this.eventHubClient.CreateEpochReceiver(
-                    this.PartitionContext.ConsumerGroupName, 
-                    this.PartitionContext.PartitionId,
-                    EventPosition.FromEnqueuedTime((DateTime)startAt),
-                    epoch,
-                    receiverOptions);
-            }
+            this.partitionReceiver = this.eventHubClient.CreateEpochReceiver(
+                this.PartitionContext.ConsumerGroupName,
+                this.PartitionContext.PartitionId,
+                eventPosition,
+                epoch,
+                receiverOptions);
 
             this.partitionReceiver.PrefetchCount = this.Host.EventProcessorOptions.PrefetchCount;
             
