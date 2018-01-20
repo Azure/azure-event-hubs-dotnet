@@ -78,7 +78,6 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
 
             // Some invalid partition values. These will fail on the service side.
             var invalidPartitions = new List<string>() { "XYZ", "-1", "1000", "-" };
-            
             foreach (var invalidPartitionId in invalidPartitions)
             {
                 await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () =>
@@ -92,10 +91,10 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             }
 
             // Some invalid partition values. These will fail on the client side.
-            invalidPartitions = new List<string>() { "", " ", null };
+            invalidPartitions = new List<string>() { " ", null, "" };
             foreach (var invalidPartitionId in invalidPartitions)
             {
-                await Assert.ThrowsAsync<ArgumentException>(async () =>
+                await Assert.ThrowsAsync<InvalidOperationException>(async () =>
                 {
                     TestUtility.Log($"Receiving from invalid partition {invalidPartitionId}");
                     receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, invalidPartitionId, EventPosition.FromStart());
