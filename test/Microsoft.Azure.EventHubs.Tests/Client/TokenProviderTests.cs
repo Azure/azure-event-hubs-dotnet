@@ -38,7 +38,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
 
             // Receive event.
             TestUtility.Log($"Receiving one message.");
-            var ehReceiver = ehClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", PartitionReceiver.StartOfStream);
+            var ehReceiver = ehClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", EventPosition.FromStart());
             var msg = await ehReceiver.ReceiveAsync(1);
             Assert.True(msg != null, "Failed to receive message.");
 
@@ -72,7 +72,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
 
             // Receive event.
             TestUtility.Log($"Receiving one message.");
-            var ehReceiver = ehClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", PartitionReceiver.StartOfStream);
+            var ehReceiver = ehClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", EventPosition.FromStart());
             var msg = await ehReceiver.ReceiveAsync(1);
             Assert.True(msg != null, "Failed to receive message.");
 
@@ -121,7 +121,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
 
             // Receive event.
             TestUtility.Log($"Receiving one message.");
-            var ehReceiver = ehClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", PartitionReceiver.StartOfStream);
+            var ehReceiver = ehClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", EventPosition.FromStart());
             var msg = await ehReceiver.ReceiveAsync(1);
             Assert.True(msg != null, "Failed to receive message.");
         }
@@ -160,7 +160,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
 
             // Receive event.
             TestUtility.Log($"Receiving one message.");
-            var ehReceiver = ehClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", PartitionReceiver.StartOfStream);
+            var ehReceiver = ehClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", EventPosition.FromStart());
             var msg = await ehReceiver.ReceiveAsync(1);
             Assert.True(msg != null, "Failed to receive message.");
         }
