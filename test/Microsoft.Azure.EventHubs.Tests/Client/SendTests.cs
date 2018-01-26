@@ -130,7 +130,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
         async Task CloseSenderClient()
         {
             var pSender = this.EventHubClient.CreatePartitionSender("0");
-            var pReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", PartitionReceiver.StartOfStream);
+            var pReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", EventPosition.FromStart());
 
             try
             {
@@ -185,7 +185,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             Assert.True(targetPartition != "", "None of the partition offsets moved.");
 
             // Receive all messages from target partition.
-            var receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, targetPartition, partitions[targetPartition]);
+            var receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, targetPartition, EventPosition.FromOffset(partitions[targetPartition]));
             var messages = await ReceiveAllMessages(receiver);
 
             // Validate 2 messages received.

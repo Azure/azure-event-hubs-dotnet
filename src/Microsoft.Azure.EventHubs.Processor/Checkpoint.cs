@@ -13,7 +13,7 @@ namespace Microsoft.Azure.EventHubs.Processor
         /// </summary>
         /// <param name="partitionId">The partition ID for the checkpoint</param>
         public Checkpoint(string partitionId)
-            : this(partitionId, PartitionReceiver.StartOfStream, 0)
+            : this(partitionId, EventPosition.FromStart().Offset, 0)
         {
         }
 

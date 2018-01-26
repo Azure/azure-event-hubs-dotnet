@@ -113,7 +113,12 @@ namespace Microsoft.Azure.EventHubs
                 });
         }
 
-        internal static Activity StartReceiveActivity(string clientId, EventHubsConnectionStringBuilder csb, string partitionKey, string consumerGroup, string startOffset)
+        internal static Activity StartReceiveActivity(
+            string clientId, 
+            EventHubsConnectionStringBuilder csb, 
+            string partitionKey, 
+            string consumerGroup, 
+            EventPosition eventPosition)
         {
             // skip if diagnostic source not enabled
             if (!DiagnosticListener.IsEnabled())
@@ -134,7 +139,9 @@ namespace Microsoft.Azure.EventHubs
             activity.AddTag("eh.event_hub_name", csb.EntityPath);
             activity.AddTag("eh.partition_key", partitionKey);
             activity.AddTag("eh.consumer_group", consumerGroup);
-            activity.AddTag("eh.start_offset", startOffset);
+            activity.AddTag("eh.start_offset", eventPosition.Offset);
+            activity.AddTag("eh.start_sequence_number", eventPosition.SequenceNumber?.ToString());
+            activity.AddTag("eh.start_date_time", eventPosition.EnqueuedTimeUtc?.ToString());
             activity.AddTag("eh.client_id", clientId);
 
             // in many cases activity start event is not interesting, 
