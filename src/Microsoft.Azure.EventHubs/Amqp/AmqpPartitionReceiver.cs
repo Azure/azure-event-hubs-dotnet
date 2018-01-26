@@ -320,7 +320,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                                 return;
                             }
 
-                            batchSize = receiveHandler.MaxBatchSize != 0 ? receiveHandler.MaxBatchSize : ClientConstants.ReceiveHandlerDefaultBatchSize;
+                            batchSize = receiveHandler.MaxBatchSize > 0 ? receiveHandler.MaxBatchSize : ClientConstants.ReceiveHandlerDefaultBatchSize;
                         }
 
                         receivedEvents = await this.ReceiveAsync(batchSize).ConfigureAwait(false);
