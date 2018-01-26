@@ -123,15 +123,6 @@ namespace Microsoft.Azure.EventHubs {
         }
         
         /// <summary>
-        ///    Looks up a localized string similar to The specified partitionKey &apos;{0}&apos; is invalid for partition &apos;{1}&apos;. Do not specify a partitionKey when sending using a PartitionedSender.  Instead use EventHubClient.Send..
-        /// </summary>
-        public static string PartitionInvalidPartitionKey {
-            get {
-                return ResourceManager.GetString("PartitionInvalidPartitionKey", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///    Looks up a localized string similar to Argument {0} must be a non-negative timeout value. The provided value was {1}..
         /// </summary>
         public static string TimeoutMustBeNonNegative {

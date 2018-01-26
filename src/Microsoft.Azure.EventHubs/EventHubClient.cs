@@ -370,7 +370,7 @@ namespace Microsoft.Azure.EventHubs
         public async Task SendAsync(IEnumerable<EventData> eventDatas, string partitionKey)
         {
             // eventDatas null check is inside ValidateEvents
-            int count = EventDataSender.ValidateEvents(eventDatas, null, partitionKey);
+            int count = EventDataSender.ValidateEvents(eventDatas);
 
             EventHubsEventSource.Log.EventSendStart(this.ClientId, count, partitionKey);
             Activity activity = EventHubsDiagnosticSource.StartSendActivity(this.ClientId, this.ConnectionStringBuilder, partitionKey, eventDatas, count);
