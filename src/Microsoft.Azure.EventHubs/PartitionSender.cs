@@ -136,7 +136,7 @@ namespace Microsoft.Azure.EventHubs
                 throw Fx.Exception.InvalidOperation(Resources.PartitionSenderInvalidWithPartitionKeyOnBatch);
             }
 
-            int count = EventDataSender.ValidateEvents(eventDatas, this.PartitionId, null);
+            int count = EventDataSender.ValidateEvents(eventDatas);
             EventHubsEventSource.Log.EventSendStart(this.ClientId, count, null);
             Activity activity = EventHubsDiagnosticSource.StartSendActivity(this.ClientId, this.EventHubClient.ConnectionStringBuilder, this.PartitionId, eventDatas, count);
 
