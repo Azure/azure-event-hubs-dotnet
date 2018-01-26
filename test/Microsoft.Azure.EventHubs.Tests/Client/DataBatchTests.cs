@@ -86,7 +86,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             foreach (var partitionId in this.PartitionIds)
             {
                 var lastEvent = await this.EventHubClient.GetPartitionRuntimeInformationAsync(partitionId);
-                receivers.Add(this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, lastEvent.LastEnqueuedOffset));
+                receivers.Add(this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, EventPosition.FromOffset(lastEvent.LastEnqueuedOffset)));
             }
 
             try

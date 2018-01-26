@@ -30,7 +30,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
         {
             EventData receivedEvent = null;
             PartitionSender partitionSender = this.EventHubClient.CreatePartitionSender(partitionId);
-            PartitionReceiver partitionReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, DateTime.UtcNow.AddMinutes(-10));
+            PartitionReceiver partitionReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, EventPosition.FromEnqueuedTime(DateTime.UtcNow.AddMinutes(-10)));
 
             try
             {
@@ -52,6 +52,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
                     foreach (var eventData in eventDatas)
                     {
                         object objectValue;
+
                         if (eventData.Properties != null && eventData.Properties.TryGetValue("EventId", out objectValue))
                         {
                             TestUtility.Log($"Received message with EventId {objectValue}");

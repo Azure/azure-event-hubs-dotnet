@@ -50,7 +50,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
                     receiver = this.EventHubClient.CreateReceiver(
                         PartitionReceiver.DefaultConsumerGroupName,
                         partitionId,
-                        partitionOffsets[partitionId]);
+                        EventPosition.FromOffset(partitionOffsets[partitionId]));
                     var messagesFromPartition = await ReceiveAllMessages(receiver);
                     TestUtility.Log($"Received {messagesFromPartition.Count} messages from partition {partitionId}.");
                     foreach (var ed in messagesFromPartition)

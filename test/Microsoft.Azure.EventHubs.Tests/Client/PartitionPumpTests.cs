@@ -19,7 +19,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
         {
             TestUtility.Log("Receiving Events via PartitionReceiver.SetReceiveHandler()");
             string partitionId = "1";
-            PartitionReceiver partitionReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, DateTime.UtcNow.AddMinutes(-10));
+            PartitionReceiver partitionReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, EventPosition.FromEnqueuedTime(DateTime.UtcNow.AddMinutes(-10)));
             PartitionSender partitionSender = this.EventHubClient.CreatePartitionSender(partitionId);
 
             try
@@ -93,7 +93,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
 
             var pInfo = await this.EventHubClient.GetPartitionRuntimeInformationAsync(partitionId);
 
-            PartitionReceiver partitionReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, pInfo.LastEnqueuedOffset);
+            PartitionReceiver partitionReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, EventPosition.FromOffset(pInfo.LastEnqueuedOffset));
             await TestUtility.SendToPartitionAsync(this.EventHubClient, partitionId, $"{partitionId} event.", totalNumberOfMessagesToSend);
 
             try
