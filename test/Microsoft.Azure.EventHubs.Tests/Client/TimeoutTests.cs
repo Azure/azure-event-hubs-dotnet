@@ -25,7 +25,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
                 try
                 {
                     // Start receiving from a future time so that Receive call won't be able to fetch any events.
-                    receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", DateTime.UtcNow.AddMinutes(1));
+                    receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", EventPosition.FromEnqueuedTime(DateTime.UtcNow.AddMinutes(1)));
 
                     var startTime = DateTime.Now;
                     await receiver.ReceiveAsync(1, TimeSpan.FromSeconds(receiveTimeoutInSeconds));
@@ -72,7 +72,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
 
                         // Start receiving from a future time so that Receive call won't be able to fetch any events.
                         var ehClient = EventHubClient.CreateFromConnectionString(TestUtility.EventHubsConnectionString);
-                        receiver = ehClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", DateTime.UtcNow.AddMinutes(1));
+                        receiver = ehClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", EventPosition.FromEnqueuedTime(DateTime.UtcNow.AddMinutes(1)));
                         var ed = await receiver.ReceiveAsync(1, TimeSpan.FromSeconds(receiveTimeoutInSeconds));
                         if (ed == null)
                         {

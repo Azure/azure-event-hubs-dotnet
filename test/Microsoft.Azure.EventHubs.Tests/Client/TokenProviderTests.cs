@@ -37,10 +37,19 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             await ehSender.SendAsync(eventData);
 
             // Receive event.
-            TestUtility.Log($"Receiving one message.");
-            var ehReceiver = ehClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", PartitionReceiver.StartOfStream);
-            var msg = await ehReceiver.ReceiveAsync(1);
-            Assert.True(msg != null, "Failed to receive message.");
+            // Receive event.
+            PartitionReceiver ehReceiver = null;
+            try
+            {
+                TestUtility.Log($"Receiving one message.");
+                ehReceiver = ehClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", EventPosition.FromStart());
+                var msg = await ehReceiver.ReceiveAsync(1);
+                Assert.True(msg != null, "Failed to receive message.");
+            }
+            finally
+            {
+                await ehReceiver?.CloseAsync();
+            }
 
             // Get EH runtime information.
             TestUtility.Log($"Getting Event Hub runtime information.");
@@ -71,10 +80,18 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             await ehSender.SendAsync(eventData);
 
             // Receive event.
-            TestUtility.Log($"Receiving one message.");
-            var ehReceiver = ehClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", PartitionReceiver.StartOfStream);
-            var msg = await ehReceiver.ReceiveAsync(1);
-            Assert.True(msg != null, "Failed to receive message.");
+            PartitionReceiver ehReceiver = null;
+            try
+            {
+                TestUtility.Log($"Receiving one message.");
+                ehReceiver = ehClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", EventPosition.FromStart());
+                var msg = await ehReceiver.ReceiveAsync(1);
+                Assert.True(msg != null, "Failed to receive message.");
+            }
+            finally
+            {
+                await ehReceiver?.CloseAsync();
+            }
 
             // Get EH runtime information.
             TestUtility.Log($"Getting Event Hub runtime information.");
@@ -120,10 +137,18 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             await ehSender.SendAsync(eventData);
 
             // Receive event.
-            TestUtility.Log($"Receiving one message.");
-            var ehReceiver = ehClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", PartitionReceiver.StartOfStream);
-            var msg = await ehReceiver.ReceiveAsync(1);
-            Assert.True(msg != null, "Failed to receive message.");
+            PartitionReceiver ehReceiver = null;
+            try
+            {
+                TestUtility.Log($"Receiving one message.");
+                ehReceiver = ehClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", EventPosition.FromStart());
+                var msg = await ehReceiver.ReceiveAsync(1);
+                Assert.True(msg != null, "Failed to receive message.");
+            }
+            finally
+            {
+                await ehReceiver?.CloseAsync();
+            }
         }
 
 
@@ -159,10 +184,18 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             await ehSender.SendAsync(eventData);
 
             // Receive event.
-            TestUtility.Log($"Receiving one message.");
-            var ehReceiver = ehClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", PartitionReceiver.StartOfStream);
-            var msg = await ehReceiver.ReceiveAsync(1);
-            Assert.True(msg != null, "Failed to receive message.");
+            PartitionReceiver ehReceiver = null;
+            try
+            {
+                TestUtility.Log($"Receiving one message.");
+                ehReceiver = ehClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", EventPosition.FromStart());
+                var msg = await ehReceiver.ReceiveAsync(1);
+                Assert.True(msg != null, "Failed to receive message.");
+            }
+            finally
+            {
+                await ehReceiver?.CloseAsync();
+            }
         }
     }
 }

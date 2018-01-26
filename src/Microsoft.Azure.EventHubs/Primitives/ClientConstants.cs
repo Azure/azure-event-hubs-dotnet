@@ -9,6 +9,13 @@ namespace Microsoft.Azure.EventHubs
     {
         public const int TimerToleranceInSeconds = 5;
         public const int ServerBusyBaseSleepTimeInSecs = 4;
+
+        // Message property names
+        public const string EnqueuedTimeUtcName = "x-opt-enqueued-time";
+        public const string SequenceNumberName = "x-opt-sequence-number";
+        public const string OffsetName = "x-opt-offset";
+        public const string PublisherName = "x-opt-publisher";
+        public const string PartitionKeyName = "x-opt-partition-key";
         public const int MaxReceiverIdentifierLength = 64;
 
         public const string SasTokenType = "servicebus.windows.net:sastoken";
