@@ -425,7 +425,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
             {
                 // Create a receiver on the consumer group and try to receive.
                 // Receive call will fail if consumer group is missing.
-                var receiver = ehClient.CreateReceiver(customConsumerGroupName, this.PartitionIds.First(), PartitionReceiver.StartOfStream);
+                var receiver = ehClient.CreateReceiver(customConsumerGroupName, this.PartitionIds.First(), EventPosition.FromStart());
                 await receiver.ReceiveAsync(1, TimeSpan.FromSeconds(5));
             }
             catch (MessagingEntityNotFoundException)
@@ -531,7 +531,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
             var processorOptions = new EventProcessorOptions
             {
                 ReceiveTimeout = TimeSpan.FromSeconds(15),
-                InitialOffsetProvider = partitionId => lastEnqueueDateTime,
+                InitialOffsetProvider = partitionId => EventPosition.FromEnqueuedTime(lastEnqueueDateTime),
                 MaxBatchSize = 100
             };
 
@@ -564,7 +564,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
             var processorOptions = new EventProcessorOptions
             {
                 ReceiveTimeout = TimeSpan.FromSeconds(15),
-                InitialOffsetProvider = partitionId => partitions[partitionId].Item1,
+                InitialOffsetProvider = partitionId => EventPosition.FromOffset(partitions[partitionId].Item1),
                 MaxBatchSize = 100
             };
 
@@ -589,7 +589,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
             var processorOptions = new EventProcessorOptions
             {
                 ReceiveTimeout = TimeSpan.FromSeconds(15),
-                InitialOffsetProvider = partitionId => PartitionReceiver.EndOfStream,
+                InitialOffsetProvider = partitionId => EventPosition.FromEnd(),
                 MaxBatchSize = 100
             };
 
@@ -628,7 +628,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
             var processorOptions = new EventProcessorOptions
             {
                 ReceiveTimeout = TimeSpan.FromSeconds(15),
-                InitialOffsetProvider = partitionId => PartitionReceiver.StartOfStream,
+                InitialOffsetProvider = partitionId => EventPosition.FromStart(),
                 MaxBatchSize = 100
             };
 
@@ -762,7 +762,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
                 TestUtility.Log("Creating a new receiver with epoch 2. This will trigger ReceiverDisconnectedException in the host.");
                 var ehClient = EventHubClient.CreateFromConnectionString(TestUtility.EventHubsConnectionString);
                 externalReceiver = ehClient.CreateEpochReceiver(PartitionReceiver.DefaultConsumerGroupName,
-                    targetPartition, PartitionReceiver.StartOfStream, 2);
+                    targetPartition, EventPosition.FromStart(), 2);
                 await externalReceiver.ReceiveAsync(100, TimeSpan.FromSeconds(5));
 
                 // Give another 1 minute for host to recover then do the validatins.

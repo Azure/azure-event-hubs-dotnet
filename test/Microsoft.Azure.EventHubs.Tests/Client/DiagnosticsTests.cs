@@ -316,7 +316,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             await TestUtility.SendToPartitionAsync(this.EventHubClient, partitionKey, sendEvent, 1);
 
             // Create receiver from marked offset.
-            var receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionKey, pInfo.LastEnqueuedOffset);
+            var receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionKey, EventPosition.FromOffset(pInfo.LastEnqueuedOffset));
             var messages = await receiver.ReceiveAsync(10);
 
             Assert.True(messages.Count() == 1, $"Received {messages.Count()} messages whereas 1 expected.");
