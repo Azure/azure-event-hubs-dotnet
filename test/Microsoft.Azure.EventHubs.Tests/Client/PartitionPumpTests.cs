@@ -151,6 +151,95 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             }
         }
 
+        [Fact]
+        [DisplayTestMethodName]
+        async Task DefaultBehaviorInvokesOnNull()
+        {
+            PartitionReceiver partitionReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", EventPosition.FromEnd());
+
+            try
+            {
+                EventWaitHandle nullReceivedEvent = new EventWaitHandle(false, EventResetMode.ManualReset);
+                var handler = new TestPartitionReceiveHandler();
+
+                handler.EventsReceived += (s, eventDatas) =>
+                {
+                    if (eventDatas == null)
+                    {
+                        TestUtility.Log("Received null.");
+                        nullReceivedEvent.Set();
+                    }
+                };
+
+                partitionReceiver.SetReceiveHandler(handler);
+
+                if (!nullReceivedEvent.WaitOne(TimeSpan.FromSeconds(120)))
+                {
+                    throw new InvalidOperationException("Did not receive null.");
+                }
+            }
+            finally
+            {
+                // Unregister handler.
+                partitionReceiver.SetReceiveHandler(null);
+
+                // Close clients.
+                await partitionReceiver.CloseAsync();
+            }
+        }
+
+
+        [Fact]
+        [DisplayTestMethodName]
+        async Task NoInvokeOnNull()
+        {
+            PartitionReceiver partitionReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", EventPosition.FromEnd());
+
+            try
+            {
+                EventWaitHandle nullReceivedEvent = new EventWaitHandle(false, EventResetMode.ManualReset);
+                EventWaitHandle dataReceivedEvent = new EventWaitHandle(false, EventResetMode.ManualReset);
+                var handler = new TestPartitionReceiveHandler();
+
+                handler.EventsReceived += (s, eventDatas) =>
+                {
+                    if (eventDatas == null)
+                    {
+                        TestUtility.Log("Received null.");
+                        nullReceivedEvent.Set();
+                    }
+                    else
+                    {
+                        TestUtility.Log("Received message.");
+                        dataReceivedEvent.Set();
+                    }
+                };
+
+                partitionReceiver.SetReceiveHandler(handler, false);
+
+                if (nullReceivedEvent.WaitOne(TimeSpan.FromSeconds(120)))
+                {
+                    throw new InvalidOperationException("Received null.");
+                }
+
+                // Send one message. Pump should receive this.
+                await TestUtility.SendToPartitionAsync(this.EventHubClient, "0", "new event");
+
+                if (!dataReceivedEvent.WaitOne(TimeSpan.FromSeconds(60)))
+                {
+                    throw new InvalidOperationException("Data Received Event was not signaled.");
+                }
+            }
+            finally
+            {
+                // Unregister handler.
+                partitionReceiver.SetReceiveHandler(null);
+
+                // Close clients.
+                await partitionReceiver.CloseAsync();
+            }
+        }
+
         class TestPartitionReceiveHandler : IPartitionReceiveHandler
         {
             public event EventHandler<IEnumerable<EventData>> EventsReceived;

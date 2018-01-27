@@ -126,7 +126,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
             return null;
         }
 
-        protected override void OnSetReceiveHandler(IPartitionReceiveHandler newReceiveHandler)
+        protected override void OnSetReceiveHandler(IPartitionReceiveHandler newReceiveHandler, bool invokeWhenNoEvents)
         {
             lock (this.receivePumpLock)
             {
@@ -151,7 +151,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     if (this.receivePumpTask == null)
                     {
                         this.receivePumpCancellationSource = new CancellationTokenSource();
-                        this.receivePumpTask = this.ReceivePumpAsync(this.receivePumpCancellationSource.Token);
+                        this.receivePumpTask = this.ReceivePumpAsync(this.receivePumpCancellationSource.Token, invokeWhenNoEvents);
                     }
                 }
                 else
@@ -277,7 +277,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
             return filterMap;
         }
 
-        async Task ReceivePumpAsync(CancellationToken cancellationToken)
+        async Task ReceivePumpAsync(CancellationToken cancellationToken, bool invokeWhenNoEvents)
         {
             try
             {
@@ -312,14 +312,17 @@ namespace Microsoft.Azure.EventHubs.Amqp
                         continue;
                     }
 
-                    try
+                    if (invokeWhenNoEvents || receivedEvents != null)
                     {
-                        await this.ReceiveHandlerProcessEventsAsync(receivedEvents).ConfigureAwait(false);
-                    }
-                    catch (Exception userCodeError)
-                    {
-                        EventHubsEventSource.Log.ReceiveHandlerExitingWithError(this.ClientId, this.PartitionId, userCodeError.Message);
-                        await this.ReceiveHandlerProcessErrorAsync(userCodeError).ConfigureAwait(false);
+                        try
+                        {
+                            await this.ReceiveHandlerProcessEventsAsync(receivedEvents).ConfigureAwait(false);
+                        }
+                        catch (Exception userCodeError)
+                        {
+                            EventHubsEventSource.Log.ReceiveHandlerExitingWithError(this.ClientId, this.PartitionId, userCodeError.Message);
+                            await this.ReceiveHandlerProcessErrorAsync(userCodeError).ConfigureAwait(false);
+                        }
                     }
                 }
             }

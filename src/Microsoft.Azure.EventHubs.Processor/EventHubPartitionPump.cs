@@ -55,7 +55,9 @@ namespace Microsoft.Azure.EventHubs.Processor
                 // meaning it is safe to set the handler and start calling IEventProcessor.OnEvents.
                 // Set the status to running before setting the client handler, so the IEventProcessor.OnEvents can never race and see status != running.
                 this.PumpStatus = PartitionPumpStatus.Running;
-                this.partitionReceiver.SetReceiveHandler(this.partitionReceiveHandler);
+                this.partitionReceiver.SetReceiveHandler(
+                    this.partitionReceiveHandler,
+                    this.Host.EventProcessorOptions.InvokeProcessorAfterReceiveTimeout);
             }
 
             if (this.PumpStatus == PartitionPumpStatus.OpenFailed)

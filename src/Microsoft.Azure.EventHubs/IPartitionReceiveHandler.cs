@@ -9,7 +9,7 @@ namespace Microsoft.Azure.EventHubs
 
     /// <summary>
     /// A handler interface for the receive operation. Use any implementation of this interface to specify
-    /// user action when using <see cref="PartitionReceiver.SetReceiveHandler(IPartitionReceiveHandler)"/>.
+    /// user action when using <see cref="PartitionReceiver.SetReceiveHandler(IPartitionReceiveHandler, bool)"/>.
     /// </summary>
     public interface IPartitionReceiveHandler
     {
