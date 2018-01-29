@@ -289,6 +289,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     try
                     {
                         int batchSize;
+
                         lock (this.receivePumpLock)
                         {
                             if (this.receiveHandler == null)
@@ -296,7 +297,8 @@ namespace Microsoft.Azure.EventHubs.Amqp
                                 // Pump has been shutdown, nothing more to do.
                                 return;
                             }
-                            batchSize = receiveHandler.MaxBatchSize;
+
+                            batchSize = receiveHandler.MaxBatchSize > 0 ? receiveHandler.MaxBatchSize : ClientConstants.ReceiveHandlerDefaultBatchSize;
                         }
 
                         receivedEvents = await this.ReceiveAsync(batchSize).ConfigureAwait(false);
