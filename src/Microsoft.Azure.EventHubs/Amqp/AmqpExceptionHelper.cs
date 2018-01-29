@@ -115,6 +115,10 @@ namespace Microsoft.Azure.EventHubs.Amqp
             {
                 return new ReceiverDisconnectedException(message);
             }
+            else if (string.Equals(condition, AmqpErrorCode.ResourceLimitExceeded.Value))
+            {
+                return new QuotaExceededException(message);
+            }
             else
             {
                 return new EventHubsException(true, message);

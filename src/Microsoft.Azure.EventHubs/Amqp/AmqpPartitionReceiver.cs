@@ -9,6 +9,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
     using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Azure.Amqp;
+    using Microsoft.Azure.Amqp.Encoding;
     using Microsoft.Azure.Amqp.Framing;
 
     class AmqpPartitionReceiver : PartitionReceiver
@@ -23,11 +24,10 @@ namespace Microsoft.Azure.EventHubs.Amqp
             AmqpEventHubClient eventHubClient,
             string consumerGroupName,
             string partitionId,
-            string startOffset,
-            bool offsetInclusive,
-            DateTime? startTime,
-            long? epoch)
-            : base(eventHubClient, consumerGroupName, partitionId, startOffset, offsetInclusive, startTime, epoch)
+            EventPosition eventPosition,
+            long? epoch,
+            ReceiverOptions receiverOptions)
+            : base(eventHubClient, consumerGroupName, partitionId, eventPosition, epoch, receiverOptions)
         {
             string entityPath = eventHubClient.ConnectionStringBuilder.EntityPath;
             this.Path = $"{entityPath}/ConsumerGroups/{consumerGroupName}/Partitions/{partitionId}";
@@ -74,7 +74,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                             throw receiveLink.TerminalException;
                         }
 
-                        this.EventHubClient.RetryPolicy.ResetRetryCount(this.ClientId);
+                        this.RetryPolicy.ResetRetryCount(this.ClientId);
 
                         if (hasMessages && amqpMessages != null)
                         {
@@ -101,8 +101,8 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 catch (Exception ex)
                 {
                     // Evaluate retry condition?
-                    this.EventHubClient.RetryPolicy.IncrementRetryCount(this.ClientId);
-                    TimeSpan? retryInterval = this.EventHubClient.RetryPolicy.GetNextRetryInterval(this.ClientId, ex, timeoutHelper.RemainingTime());
+                    this.RetryPolicy.IncrementRetryCount(this.ClientId);
+                    TimeSpan? retryInterval = this.RetryPolicy.GetNextRetryInterval(this.ClientId, ex, timeoutHelper.RemainingTime());
                     if (retryInterval != null)
                     {
                         await Task.Delay(retryInterval.Value).ConfigureAwait(false);
@@ -130,15 +130,23 @@ namespace Microsoft.Azure.EventHubs.Amqp
         {
             lock (this.receivePumpLock)
             {
-                if (newReceiveHandler != null && this.receiveHandler != null)
+                if (newReceiveHandler != null)
                 {
-                    // Notify existing handler first (but don't wait).
-                    this.receiveHandler.ProcessErrorAsync(new OperationCanceledException("New handler has registered for this receiver."));
-                }
+                    if (this.receiveHandler != null)
+                    {
+                        // Notify existing handler first (but don't wait).
+                        Task.Run(() =>
+                            this.receiveHandler.ProcessErrorAsync(new OperationCanceledException("New handler has registered for this receiver.")))
+                            .ContinueWith(t =>
+                                t.Exception.Handle(ex =>
+                                {
+                                    // We omit any failures from ProcessErrorAsync
+                                    return true;
+                                }), TaskContinuationOptions.OnlyOnFaulted);
+                    }
 
-                this.receiveHandler = newReceiveHandler;
-                if (this.receiveHandler != null)
-                {
+                    this.receiveHandler = newReceiveHandler;
+
                     // We have a new receiveHandler, ensure pump is running.
                     if (this.receivePumpTask == null)
                     {
@@ -148,14 +156,13 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 }
                 else
                 {
-                    // We have no receiveHandler, ensure pump is shut down.
+                    // newReceiveHandler == null, so this is an unregister call, ensure pump is shut down.
                     if (this.receivePumpTask != null)
                     {
-                        this.receivePumpCancellationSource.Cancel();
-                        this.receivePumpCancellationSource.Dispose();
-                        this.receivePumpCancellationSource = null;
-                        this.receivePumpTask = null;
+                        this.ReceiveHandlerClose();
                     }
+
+                    this.receiveHandler = null;
                 }
             }
         }
@@ -164,10 +171,9 @@ namespace Microsoft.Azure.EventHubs.Amqp
         {
             var amqpEventHubClient = ((AmqpEventHubClient)this.EventHubClient);
 
-            // Allow at least AmqpMinimumOpenSessionTimeoutInSeconds seconds to open the session.
-            var openSessionTimeout = AmqpClientConstants.AmqpMinimumOpenSessionTimeoutInSeconds > timeout.TotalSeconds ?
-                TimeSpan.FromSeconds(AmqpClientConstants.AmqpMinimumOpenSessionTimeoutInSeconds) : timeout;
-            var timeoutHelper = new TimeoutHelper(openSessionTimeout);
+            // We won't use remaining timeout during create session call.
+            // For large or small operation timeout values using remaining time won't make any sense.
+            var timeoutHelper = new TimeoutHelper(TimeSpan.FromSeconds(AmqpClientConstants.AmqpSessionTimeoutInSeconds));
 
             AmqpConnection connection = await amqpEventHubClient.ConnectionManager.GetOrCreateAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
 
@@ -209,9 +215,23 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 linkSettings.Target = new Target { Address = this.ClientId };
                 linkSettings.SettleType = SettleMode.SettleOnSend;
 
+                // Receiver metrics enabled?
+                if (this.ReceiverRuntimeMetricEnabled)
+                {
+                    linkSettings.DesiredCapabilities = new Multiple<AmqpSymbol>(new List<AmqpSymbol>
+                        {
+                            AmqpClientConstants.EnableReceiverRuntimeMetricName
+                        });
+                }
+
                 if (this.Epoch.HasValue)
                 {
                     linkSettings.AddProperty(AmqpClientConstants.AttachEpoch, this.Epoch.Value);
+                }
+
+                if (!string.IsNullOrWhiteSpace(this.Identifier))
+                {
+                    linkSettings.AddProperty(AmqpClientConstants.ReceiverIdentifierName, this.Identifier);
                 }
 
                 var link = new ReceivingAmqpLink(linkSettings);
@@ -246,35 +266,15 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
         IList<AmqpDescribed> CreateFilters()
         {
-            if (string.IsNullOrWhiteSpace(this.StartOffset) && !this.StartTime.HasValue)
-            {
-                return null;
-            }
+            List<AmqpDescribed> filterMap = null;
 
-            List<AmqpDescribed> filterMap = new List<AmqpDescribed>();
-            if (!string.IsNullOrWhiteSpace(this.StartOffset) || this.StartTime.HasValue)
+            if (this.EventPosition != null)
             {
-                // In the case of DateTime, we want to be amqp-compliant so 
-                // we should transmit the DateTime in a amqp-timestamp format,
-                // which is defined as "64-bit two's-complement integer representing milliseconds since the unix epoch"
-                // ref: http://docs.oasis-open.org/amqp/core/v1.0/amqp-core-complete-v1.0.pdf
-                string sqlExpression = !string.IsNullOrWhiteSpace(this.StartOffset) ?
-                    this.OffsetInclusive ?
-                        string.Format(CultureInfo.InvariantCulture, AmqpClientConstants.FilterInclusiveOffsetFormatString, this.StartOffset) :
-                        string.Format(CultureInfo.InvariantCulture, AmqpClientConstants.FilterOffsetFormatString, this.StartOffset) :
-                    string.Format(CultureInfo.InvariantCulture, AmqpClientConstants.FilterReceivedAtFormatString, TimeStampEncodingGetMilliseconds(this.StartTime.Value));
-                filterMap.Add(new AmqpSelectorFilter(sqlExpression));
+                filterMap = new List<AmqpDescribed>();
+                filterMap.Add(new AmqpSelectorFilter(this.EventPosition.GetExpression()));
             }
 
             return filterMap;
-        }
-
-        // This is equivalent to Microsoft.Azure.Amqp's internal API TimeStampEncoding.GetMilliseconds
-        static long TimeStampEncodingGetMilliseconds(DateTime value)
-        {
-            DateTime utcValue = value.ToUniversalTime();
-            double milliseconds = (utcValue - AmqpConstants.StartOfEpoch).TotalMilliseconds;
-            return (long)milliseconds;
         }
 
         async Task ReceivePumpAsync(CancellationToken cancellationToken)
@@ -289,6 +289,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     try
                     {
                         int batchSize;
+
                         lock (this.receivePumpLock)
                         {
                             if (this.receiveHandler == null)
@@ -296,7 +297,8 @@ namespace Microsoft.Azure.EventHubs.Amqp
                                 // Pump has been shutdown, nothing more to do.
                                 return;
                             }
-                            batchSize = receiveHandler.MaxBatchSize;
+
+                            batchSize = receiveHandler.MaxBatchSize > 0 ? receiveHandler.MaxBatchSize : ClientConstants.ReceiveHandlerDefaultBatchSize;
                         }
 
                         receivedEvents = await this.ReceiveAsync(batchSize).ConfigureAwait(false);
@@ -329,8 +331,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 EventHubsEventSource.Log.ReceiveHandlerExitingWithError(this.ClientId, this.PartitionId, ex.Message);
                 Environment.FailFast(ex.ToString());
             }
-
-            this.ReceiveHandlerClose();
         }
 
         // Encapsulates taking the receivePumpLock, checking this.receiveHandler for null,
@@ -375,6 +375,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
         Task ReceiveHandlerProcessEventsAsync(IEnumerable<EventData> eventDatas)
         {
             Task processEventsTask = null;
+
             lock (this.receivePumpLock)
             {
                 if (this.receiveHandler != null)

@@ -22,9 +22,9 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             TestUtility.Log("Discovering end of stream on each partition.");
             foreach (var partitionId in this.PartitionIds)
             {
-                var lastEvent = await DiscoverEndOfStreamForPartition(partitionId);
-                partitionOffsets.Add(partitionId, lastEvent.Item1);
-                TestUtility.Log($"Partition {partitionId} has last message with offset {lastEvent.Item1}");
+                var lastEvent = await this.EventHubClient.GetPartitionRuntimeInformationAsync(partitionId);
+                partitionOffsets.Add(partitionId, lastEvent.LastEnqueuedOffset);
+                TestUtility.Log($"Partition {partitionId} has last message with offset {lastEvent.LastEnqueuedOffset}");
             }
 
             // Now send a set of messages with different partition keys.
@@ -50,7 +50,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
                     receiver = this.EventHubClient.CreateReceiver(
                         PartitionReceiver.DefaultConsumerGroupName,
                         partitionId,
-                        partitionOffsets[partitionId]);
+                        EventPosition.FromOffset(partitionOffsets[partitionId]));
                     var messagesFromPartition = await ReceiveAllMessages(receiver);
                     TestUtility.Log($"Received {messagesFromPartition.Count} messages from partition {partitionId}.");
                     foreach (var ed in messagesFromPartition)
@@ -78,43 +78,18 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
 
         [Fact]
         [DisplayTestMethodName]
-        async Task UseSharedAccessSignature()
+        async Task SendAndReceiveLargeMessage()
         {
-            // Generate shared access token.
-            var csb = new EventHubsConnectionStringBuilder(TestUtility.EventHubsConnectionString);
-            var tokenProvider = TokenProvider.CreateSharedAccessSignatureTokenProvider(csb.SasKeyName, csb.SasKey);
-            var token = await tokenProvider.GetTokenAsync(csb.Endpoint.ToString(), "Send,Receive", TimeSpan.FromSeconds(120));
-            var sas = token.TokenValue.ToString();
+            var bodySize = 250 * 1024;
+            var targetPartition = "0";
 
-            // Update connection string builder to use shared access signature instead.
-            csb.SasKey = "";
-            csb.SasKeyName = "";
-            csb.SharedAccessSignature = sas;
+            var edToSend = new EventData(new byte[bodySize]);
 
-            // Create new client with updated connection string.
-            var ehClient = EventHubClient.CreateFromConnectionString(csb.ToString());
+            TestUtility.Log($"Sending one message with body size {bodySize} bytes.");
+            var edReceived = await SendAndReceiveEvent(targetPartition, edToSend);
 
-            // Send one event
-            TestUtility.Log($"Sending one message.");
-            var ehSender = ehClient.CreatePartitionSender("0");
-            var eventData = new EventData(Encoding.UTF8.GetBytes("Hello EventHub by partitionKey!"));
-            await ehSender.SendAsync(eventData);
-
-            // Receive event.
-            TestUtility.Log($"Receiving one message.");
-            var ehReceiver = ehClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", PartitionReceiver.StartOfStream);
-            var msg = await ehReceiver.ReceiveAsync(1);
-            Assert.True(msg != null, "Failed to receive message.");
-
-            // Get EH runtime information.
-            TestUtility.Log($"Getting Event Hub runtime information.");
-            var ehInfo = await ehClient.GetRuntimeInformationAsync();
-            Assert.True(ehInfo != null, "Failed to get runtime information.");
-
-            // Get EH partition runtime information.
-            TestUtility.Log($"Getting Event Hub partition '0' runtime information.");
-            var partitionInfo = await ehClient.GetPartitionRuntimeInformationAsync("0");
-            Assert.True(ehInfo != null, "Failed to get runtime partition information.");
+            // Validate body size.
+            Assert.True(edReceived.Body.Count == bodySize, $"Sent {bodySize} bytes and received {edReceived.Body.Count}");
         }
     }
 }

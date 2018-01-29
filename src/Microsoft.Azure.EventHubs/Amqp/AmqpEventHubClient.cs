@@ -5,7 +5,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
 {
     using System;
     using System.Linq;
-    using System.Net;
     using System.Threading.Tasks;
     using Microsoft.Azure.Amqp.Sasl;
     using Microsoft.Azure.Amqp;
@@ -26,13 +25,29 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
             if (!string.IsNullOrWhiteSpace(csb.SharedAccessSignature))
             {
-                this.TokenProvider = TokenProvider.CreateSharedAccessSignatureTokenProvider(csb.SharedAccessSignature);
+                this.InternalTokenProvider = TokenProvider.CreateSharedAccessSignatureTokenProvider(csb.SharedAccessSignature);
             }
             else
             {
-                this.TokenProvider = TokenProvider.CreateSharedAccessSignatureTokenProvider(csb.SasKeyName, csb.SasKey);
+                this.InternalTokenProvider = TokenProvider.CreateSharedAccessSignatureTokenProvider(csb.SasKeyName, csb.SasKey);
             }
 
+            this.CbsTokenProvider = new TokenProviderAdapter(this);
+            this.ConnectionManager = new FaultTolerantAmqpObject<AmqpConnection>(this.CreateConnectionAsync, this.CloseConnection);
+        }
+
+        public AmqpEventHubClient(
+            Uri endpointAddress, 
+            string entityPath, 
+            ITokenProvider tokenProvider, 
+            TimeSpan operationTimeout, 
+            TransportType transportType)
+            : base(new EventHubsConnectionStringBuilder(endpointAddress, entityPath, operationTimeout, transportType))
+        {
+            this.ContainerId = Guid.NewGuid().ToString("N");
+            this.AmqpVersion = new Version(1, 0, 0, 0);
+            this.MaxFrameSize = AmqpConstants.DefaultMaxFrameSize;
+            this.InternalTokenProvider = tokenProvider;
             this.CbsTokenProvider = new TokenProviderAdapter(this);
             this.ConnectionManager = new FaultTolerantAmqpObject<AmqpConnection>(this.CreateConnectionAsync, this.CloseConnection);
         }
@@ -47,7 +62,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
         uint MaxFrameSize { get; }
 
-        internal TokenProvider TokenProvider { get; }
+        internal ITokenProvider InternalTokenProvider { get; }
 
         internal override EventDataSender OnCreateEventSender(string partitionId)
         {
@@ -55,10 +70,10 @@ namespace Microsoft.Azure.EventHubs.Amqp
         }
 
         protected override PartitionReceiver OnCreateReceiver(
-            string consumerGroupName, string partitionId, string startOffset, bool offsetInclusive, DateTime? startTime, long? epoch)
+            string consumerGroupName, string partitionId, EventPosition eventPosition, long? epoch, ReceiverOptions receiverOptions)
         {
             return new AmqpPartitionReceiver(
-                this, consumerGroupName, partitionId, startOffset, offsetInclusive, startTime, epoch);
+                this, consumerGroupName, partitionId, eventPosition, epoch, receiverOptions);
         }
 
         protected override Task OnCloseAsync()
@@ -110,7 +125,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
             string sslHostName = null,
             bool useWebSockets = false,
             bool sslStreamUpgrade = false,
-            NetworkCredential networkCredential = null,
+            System.Net.NetworkCredential networkCredential = null,
             bool forceTokenProvider = true)
         {
             var settings = new AmqpSettings();
@@ -266,11 +281,9 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
             public async Task<CbsToken> GetTokenAsync(Uri namespaceAddress, string appliesTo, string[] requiredClaims)
             {
-                string claim = requiredClaims?.FirstOrDefault();
-                var tokenProvider = this.eventHubClient.TokenProvider;
                 var timeout = this.eventHubClient.ConnectionStringBuilder.OperationTimeout;
-                var token = await tokenProvider.GetTokenAsync(appliesTo, claim, timeout).ConfigureAwait(false);
-                return new CbsToken(token.TokenValue, CbsConstants.ServiceBusSasTokenType, token.ExpiresAtUtc);
+                var token = await this.eventHubClient.InternalTokenProvider.GetTokenAsync(appliesTo, timeout).ConfigureAwait(false);
+                return new CbsToken(token.TokenValue, token.TokenType, token.ExpiresAtUtc);
             }
         }
     }

@@ -35,9 +35,7 @@ namespace Microsoft.Azure.EventHubs
         /// <param name="clientId">The <see cref="ClientEntity.ClientId"/> associated with the operation to retry</param>
         public void IncrementRetryCount(string clientId)
         {
-            int retryCount;
-            this.retryCounts.TryGetValue(clientId, out retryCount);
-            this.retryCounts[clientId] = retryCount + 1;
+            this.retryCounts.AddOrUpdate(clientId, 1, (k, v) => v + 1);
         }
 
         /// <summary>
@@ -146,5 +144,9 @@ namespace Microsoft.Azure.EventHubs
 
             return retryAfter;
         }
+
+        /// <summary>Creates a new copy of the current <see cref="RetryPolicy" /> and clones it into a new instance.</summary>
+        /// <returns>A new copy of <see cref="RetryPolicy" />.</returns>
+        public abstract RetryPolicy Clone();
     }
 }

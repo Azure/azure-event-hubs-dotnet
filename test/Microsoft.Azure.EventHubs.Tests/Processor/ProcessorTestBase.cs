@@ -202,10 +202,11 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
                 await Task.Delay(TimeSpan.FromSeconds(60));
 
                 TestUtility.Log("Sending an event to each partition");
+                var ehClient = EventHubClient.CreateFromConnectionString(TestUtility.EventHubsConnectionString);
                 var sendTasks = new List<Task>();
                 foreach (var partitionId in PartitionIds)
                 {
-                    sendTasks.Add(this.SendToPartitionAsync(partitionId, $"{partitionId} event.", TestUtility.EventHubsConnectionString));
+                    sendTasks.Add(TestUtility.SendToPartitionAsync(ehClient, partitionId, $"{partitionId} event."));
                 }
                 await Task.WhenAll(sendTasks);
 
@@ -404,6 +405,8 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
         {
             var customConsumerGroupName = "cgroup1";
 
+            var ehClient = EventHubClient.CreateFromConnectionString(TestUtility.EventHubsConnectionString);
+
             // Generate a new lease container name that will be used through out the test.
             string leaseContainerName = Guid.NewGuid().ToString();
 
@@ -422,8 +425,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
             {
                 // Create a receiver on the consumer group and try to receive.
                 // Receive call will fail if consumer group is missing.
-                var ehClient = EventHubClient.CreateFromConnectionString(TestUtility.EventHubsConnectionString);
-                var receiver = ehClient.CreateReceiver(customConsumerGroupName, this.PartitionIds.First(), PartitionReceiver.StartOfStream);
+                var receiver = ehClient.CreateReceiver(customConsumerGroupName, this.PartitionIds.First(), EventPosition.FromStart());
                 await receiver.ReceiveAsync(1, TimeSpan.FromSeconds(5));
             }
             catch (MessagingEntityNotFoundException)
@@ -479,7 +481,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
                 var sendTasks = new List<Task>();
                 foreach (var partitionId in PartitionIds)
                 {
-                    sendTasks.Add(this.SendToPartitionAsync(partitionId, $"{partitionId} event.", TestUtility.EventHubsConnectionString));
+                    sendTasks.Add(TestUtility.SendToPartitionAsync(ehClient, partitionId, $"{partitionId} event."));
                 }
 
                 await Task.WhenAll(sendTasks);
@@ -529,7 +531,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
             var processorOptions = new EventProcessorOptions
             {
                 ReceiveTimeout = TimeSpan.FromSeconds(15),
-                InitialOffsetProvider = partitionId => lastEnqueueDateTime,
+                InitialOffsetProvider = partitionId => EventPosition.FromEnqueuedTime(lastEnqueueDateTime),
                 MaxBatchSize = 100
             };
 
@@ -562,7 +564,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
             var processorOptions = new EventProcessorOptions
             {
                 ReceiveTimeout = TimeSpan.FromSeconds(15),
-                InitialOffsetProvider = partitionId => partitions[partitionId].Item1,
+                InitialOffsetProvider = partitionId => EventPosition.FromOffset(partitions[partitionId].Item1),
                 MaxBatchSize = 100
             };
 
@@ -587,7 +589,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
             var processorOptions = new EventProcessorOptions
             {
                 ReceiveTimeout = TimeSpan.FromSeconds(15),
-                InitialOffsetProvider = partitionId => PartitionReceiver.EndOfStream,
+                InitialOffsetProvider = partitionId => EventPosition.FromEnd(),
                 MaxBatchSize = 100
             };
 
@@ -626,7 +628,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
             var processorOptions = new EventProcessorOptions
             {
                 ReceiveTimeout = TimeSpan.FromSeconds(15),
-                InitialOffsetProvider = partitionId => PartitionReceiver.StartOfStream,
+                InitialOffsetProvider = partitionId => EventPosition.FromStart(),
                 MaxBatchSize = 100
             };
 
@@ -760,7 +762,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
                 TestUtility.Log("Creating a new receiver with epoch 2. This will trigger ReceiverDisconnectedException in the host.");
                 var ehClient = EventHubClient.CreateFromConnectionString(TestUtility.EventHubsConnectionString);
                 externalReceiver = ehClient.CreateEpochReceiver(PartitionReceiver.DefaultConsumerGroupName,
-                    targetPartition, PartitionReceiver.StartOfStream, 2);
+                    targetPartition, EventPosition.FromStart(), 2);
                 await externalReceiver.ReceiveAsync(100, TimeSpan.FromSeconds(5));
 
                 // Give another 1 minute for host to recover then do the validatins.
@@ -925,15 +927,12 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
                 await Task.Delay(5000);
 
                 TestUtility.Log($"Sending {totalNumberOfEventsToSend} event(s) to each partition");
+                var ehClient = EventHubClient.CreateFromConnectionString(TestUtility.EventHubsConnectionString);
                 var sendTasks = new List<Task>();
                 foreach (var partitionId in PartitionIds)
                 {
-                    for (int i = 0; i < totalNumberOfEventsToSend; i++)
-                    {
-                        sendTasks.Add(this.SendToPartitionAsync(partitionId, $"{partitionId} event.", TestUtility.EventHubsConnectionString));
-                    }
+                    sendTasks.Add(TestUtility.SendToPartitionAsync(ehClient, partitionId, $"{partitionId} event.", totalNumberOfEventsToSend));
                 }
-
                 await Task.WhenAll(sendTasks);
 
                 // Wait until all partitions are silent, i.e. no more events to receive.
@@ -945,8 +944,9 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
                 TestUtility.Log($"Verifying at least {totalNumberOfEventsToSend} event(s) was received by each partition");
                 foreach (var partitionId in PartitionIds)
                 {
-                    Assert.True(runResult.ReceivedEvents.ContainsKey(partitionId) 
-                        && runResult.ReceivedEvents[partitionId].Count >=  totalNumberOfEventsToSend,
+                    Assert.True(runResult.ReceivedEvents.ContainsKey(partitionId),
+                        $"Partition {partitionId} didn't receive any messages. Expected {totalNumberOfEventsToSend}, received 0.");
+                    Assert.True(runResult.ReceivedEvents[partitionId].Count >= totalNumberOfEventsToSend,
                         $"Partition {partitionId} didn't receive expected number of messages. Expected {totalNumberOfEventsToSend}, received {runResult.ReceivedEvents[partitionId].Count}.");
                 }
 
@@ -959,20 +959,6 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
             }
 
             return runResult;
-        }
-
-        protected async Task SendToPartitionAsync(string partitionId, string messageBody, string connectionString)
-        {
-            var eventHubClient = EventHubClient.CreateFromConnectionString(connectionString);
-            try
-            {
-                var partitionSender = eventHubClient.CreatePartitionSender(partitionId);
-                await partitionSender.SendAsync(new EventData(Encoding.UTF8.GetBytes(messageBody)));
-            }
-            finally
-            {
-                await eventHubClient.CloseAsync();
-            }
         }
     }
 

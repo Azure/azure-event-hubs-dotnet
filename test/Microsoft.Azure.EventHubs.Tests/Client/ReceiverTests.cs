@@ -46,7 +46,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
 
             // Create a new receiver which will start reading from the end of the stream.
             TestUtility.Log($"Creating a new receiver with offset EndOFStream");
-            var receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, PartitionReceiver.EndOfStream);
+            var receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, EventPosition.FromEnd());
 
             try
             {
@@ -93,7 +93,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             TestUtility.Log($"Randomly picked partition {partitionId}");
 
             // Send and receive a message to identify the end of stream.
-            var lastMessage = await DiscoverEndOfStreamForPartition(partitionId);
+            var pInfo = await this.EventHubClient.GetPartitionRuntimeInformationAsync(partitionId);
 
             // Send a new message which is expected to go to the end of stream.
             // We are expecting to receive only this message.
@@ -102,8 +102,8 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             await this.EventHubClient.CreatePartitionSender(partitionId).SendAsync(eventSent);
 
             // Create a new receiver which will start reading from the last message on the stream.
-            TestUtility.Log($"Creating a new receiver with offset {lastMessage.Item1}");
-            var receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, lastMessage.Item1);
+            TestUtility.Log($"Creating a new receiver with offset {pInfo.LastEnqueuedOffset}");
+            var receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, EventPosition.FromOffset(pInfo.LastEnqueuedOffset));
 
             try
             {
@@ -117,6 +117,44 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
                     , "Stamps didn't match on the message sent and received!");
 
                 TestUtility.Log("Received correct message as expected.");
+
+                // Next receive on this partition shouldn't return any more messages.
+                receivedMessages = await receiver.ReceiveAsync(100, TimeSpan.FromSeconds(15));
+                Assert.True(receivedMessages == null, $"Received messages at the end.");
+            }
+            finally
+            {
+                await receiver.CloseAsync();
+            }
+        }
+
+        [Fact]
+        [DisplayTestMethodName]
+        async Task CreateReceiverWithInclusiveOffset()
+        {
+            // Randomly pick one of the available partitons.
+            var partitionId = this.PartitionIds[new Random().Next(this.PartitionIds.Count())];
+            TestUtility.Log($"Randomly picked partition {partitionId}");
+
+            await TestUtility.SendToPartitionAsync(this.EventHubClient, partitionId, $"{partitionId} event.");
+
+            // Find out where to start reading on the partition.
+            var pInfo = await this.EventHubClient.GetPartitionRuntimeInformationAsync(partitionId);
+
+            // Send a message which is expected to go to the end of stream.
+            // We are expecting to receive this message as well.
+            await TestUtility.SendToPartitionAsync(this.EventHubClient, partitionId, $"{partitionId} event.");
+
+            // Create a new receiver which will start reading from the last message on the stream.
+            TestUtility.Log($"Creating a new receiver with offset {pInfo.LastEnqueuedOffset}");
+            var receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, EventPosition.FromOffset(pInfo.LastEnqueuedOffset, true));
+
+            try
+            {
+                var receivedMessages = await receiver.ReceiveAsync(100);
+
+                // We should have received only 1 message from this call.
+                Assert.True(receivedMessages.Count() == 2, $"Didn't receive 2 messages. Received {receivedMessages.Count()} messages(s).");
 
                 // Next receive on this partition shouldn't return any more messages.
                 receivedMessages = await receiver.ReceiveAsync(100, TimeSpan.FromSeconds(15));
@@ -137,7 +175,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             TestUtility.Log($"Randomly picked partition {partitionId}");
 
             // Send and receive a message to identify the end of stream.
-            var lastMessage = await DiscoverEndOfStreamForPartition(partitionId);
+            var pInfo = await this.EventHubClient.GetPartitionRuntimeInformationAsync(partitionId);
 
             // Send a new message which is expected to go to the end of stream.
             // We are expecting to receive only this message.
@@ -146,8 +184,8 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             await this.EventHubClient.CreatePartitionSender(partitionId).SendAsync(eventSent);
 
             // Create a new receiver which will start reading from the last message on the stream.
-            TestUtility.Log($"Creating a new receiver with date-time {lastMessage.Item2}");
-            var receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, lastMessage.Item2);
+            TestUtility.Log($"Creating a new receiver with date-time {pInfo.LastEnqueuedTimeUtc}");
+            var receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, EventPosition.FromEnqueuedTime(pInfo.LastEnqueuedTimeUtc));
 
             try
             {
@@ -172,6 +210,88 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             }
         }
 
+        [Fact(Skip = "reason")]
+        [DisplayTestMethodName]
+        async Task CreateReceiverWithSequenceNumber()
+        {
+            // Randomly pick one of the available partitons.
+            var partitionId = this.PartitionIds[new Random().Next(this.PartitionIds.Count())];
+            TestUtility.Log($"Randomly picked partition {partitionId}");
+
+            // Send and receive a message to identify the end of stream.
+            var pInfo = await this.EventHubClient.GetPartitionRuntimeInformationAsync(partitionId);
+
+            // Send a new message which is expected to go to the end of stream.
+            // We are expecting to receive only this message.
+            var eventSent = new EventData(new byte[1]);
+            eventSent.Properties["stamp"] = Guid.NewGuid().ToString();
+            await this.EventHubClient.CreatePartitionSender(partitionId).SendAsync(eventSent);
+
+            // Create a new receiver which will start reading from the last message on the stream.
+            TestUtility.Log($"Creating a new receiver with sequence number {pInfo.LastEnqueuedSequenceNumber}");
+            var receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, EventPosition.FromSequenceNumber(pInfo.LastEnqueuedSequenceNumber));
+
+            try
+            {
+                var receivedMessages = await receiver.ReceiveAsync(100);
+
+                // We should have received only 1 message from this call.
+                Assert.True(receivedMessages.Count() == 1, $"Didn't receive 1 message. Received {receivedMessages.Count()} messages(s).");
+
+                // Check stamp.
+                Assert.True(receivedMessages.Single().Properties["stamp"].ToString() == eventSent.Properties["stamp"].ToString()
+                    , "Stamps didn't match on the message sent and received!");
+
+                TestUtility.Log("Received correct message as expected.");
+
+                // Next receive on this partition shouldn't return any more messages.
+                receivedMessages = await receiver.ReceiveAsync(100, TimeSpan.FromSeconds(15));
+                Assert.True(receivedMessages == null, $"Received messages at the end.");
+            }
+            finally
+            {
+                await receiver.CloseAsync();
+            }
+        }
+
+        [Fact(Skip = "reason")]
+        [DisplayTestMethodName]
+        async Task CreateReceiverWithInclusiveSequenceNumber()
+        {
+            // Randomly pick one of the available partitons.
+            var partitionId = this.PartitionIds[new Random().Next(this.PartitionIds.Count())];
+            TestUtility.Log($"Randomly picked partition {partitionId}");
+
+            await TestUtility.SendToPartitionAsync(this.EventHubClient, partitionId, $"{partitionId} event.");
+
+            // Find out where to start reading on the partition.
+            var pInfo = await this.EventHubClient.GetPartitionRuntimeInformationAsync(partitionId);
+
+            // Send a message which is expected to go to the end of stream.
+            // We are expecting to receive this message as well.
+            await TestUtility.SendToPartitionAsync(this.EventHubClient, partitionId, $"{partitionId} event.");
+
+            // Create a new receiver which will start reading from the last message on the stream.
+            TestUtility.Log($"Creating a new receiver with sequence number {pInfo.LastEnqueuedSequenceNumber}");
+            var receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, EventPosition.FromSequenceNumber(pInfo .LastEnqueuedSequenceNumber, true));
+
+            try
+            {
+                var receivedMessages = await receiver.ReceiveAsync(100);
+
+                // We should have received only 1 message from this call.
+                Assert.True(receivedMessages.Count() == 2, $"Didn't receive 2 messages. Received {receivedMessages.Count()} messages(s).");
+
+                // Next receive on this partition shouldn't return any more messages.
+                receivedMessages = await receiver.ReceiveAsync(100, TimeSpan.FromSeconds(15));
+                Assert.True(receivedMessages == null, $"Received messages at the end.");
+            }
+            finally
+            {
+                await receiver.CloseAsync();
+            }
+        }
+
         [Fact]
         [DisplayTestMethodName]
         async Task PartitionReceiverReceiveBatch()
@@ -180,7 +300,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             TestUtility.Log("Receiving Events via PartitionReceiver.ReceiveAsync(BatchSize)");
             const string partitionId = "0";
             PartitionSender partitionSender = this.EventHubClient.CreatePartitionSender(partitionId);
-            PartitionReceiver partitionReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, DateTime.UtcNow.AddMinutes(-10));
+            PartitionReceiver partitionReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, EventPosition.FromEnqueuedTime(DateTime.UtcNow.AddMinutes(-10)));
 
             try
             {
@@ -222,8 +342,8 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
         async Task PartitionReceiverEpochReceive()
         {
             TestUtility.Log("Testing EpochReceiver semantics");
-            var epochReceiver1 = this.EventHubClient.CreateEpochReceiver(PartitionReceiver.DefaultConsumerGroupName, "1", PartitionReceiver.StartOfStream, 1);
-            var epochReceiver2 = this.EventHubClient.CreateEpochReceiver(PartitionReceiver.DefaultConsumerGroupName, "1", PartitionReceiver.StartOfStream, 2);
+            var epochReceiver1 = this.EventHubClient.CreateEpochReceiver(PartitionReceiver.DefaultConsumerGroupName, "1", EventPosition.FromStart(), 1);
+            var epochReceiver2 = this.EventHubClient.CreateEpochReceiver(PartitionReceiver.DefaultConsumerGroupName, "1", EventPosition.FromStart(), 2);
             try
             {
                 // Read the events from Epoch 1 Receiver until we're at the end of the stream
@@ -275,8 +395,8 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
         [DisplayTestMethodName]
         async Task CreateNonEpochReceiverAfterEpochReceiver()
         {
-            var epochReceiver = this.EventHubClient.CreateEpochReceiver(PartitionReceiver.DefaultConsumerGroupName, "1", PartitionReceiver.StartOfStream, 1);
-            var nonEpochReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "1", PartitionReceiver.StartOfStream);
+            var epochReceiver = this.EventHubClient.CreateEpochReceiver(PartitionReceiver.DefaultConsumerGroupName, "1", EventPosition.FromStart(), 1);
+            var nonEpochReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "1", EventPosition.FromStart());
 
             try
             {
@@ -307,8 +427,8 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
         [DisplayTestMethodName]
         async Task CreateEpochReceiverAfterNonEpochReceiver()
         {
-            var nonEpochReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "1", PartitionReceiver.StartOfStream);
-            var epochReceiver = this.EventHubClient.CreateEpochReceiver(PartitionReceiver.DefaultConsumerGroupName, "1", PartitionReceiver.StartOfStream, 1);
+            var nonEpochReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "1", EventPosition.FromStart());
+            var epochReceiver = this.EventHubClient.CreateEpochReceiver(PartitionReceiver.DefaultConsumerGroupName, "1", EventPosition.FromStart(), 1);
 
             try
             {
@@ -342,76 +462,10 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
 
         [Fact]
         [DisplayTestMethodName]
-        async Task PartitionReceiverSetReceiveHandler()
-        {
-            TestUtility.Log("Receiving Events via PartitionReceiver.SetReceiveHandler()");
-            string partitionId = "1";
-            PartitionReceiver partitionReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, DateTime.UtcNow.AddMinutes(-10));
-            PartitionSender partitionSender = this.EventHubClient.CreatePartitionSender(partitionId);
-
-            try
-            {
-                string uniqueEventId = Guid.NewGuid().ToString();
-                TestUtility.Log($"Sending an event to Partition {partitionId} with custom property EventId {uniqueEventId}");
-                var sendEvent = new EventData(Encoding.UTF8.GetBytes("Hello EventHub!"));
-                sendEvent.Properties["EventId"] = uniqueEventId;
-                await partitionSender.SendAsync(sendEvent);
-
-                EventWaitHandle dataReceivedEvent = new EventWaitHandle(false, EventResetMode.ManualReset);
-                var handler = new TestPartitionReceiveHandler();
-
-                // Not expecting any errors.
-                handler.ErrorReceived += (s, e) =>
-                {
-                    throw new Exception($"TestPartitionReceiveHandler.ProcessError {e.GetType().Name}: {e.Message}");
-                };
-
-                handler.EventsReceived += (s, eventDatas) =>
-                {
-                    int count = eventDatas != null ? eventDatas.Count() : 0;
-                    TestUtility.Log($"Received {count} event(s):");
-
-                    foreach (var eventData in eventDatas)
-                    {
-                        object objectValue;
-                        if (eventData.Properties != null && eventData.Properties.TryGetValue("EventId", out objectValue))
-                        {
-                            TestUtility.Log($"Received message with EventId {objectValue}");
-                            string receivedId = objectValue.ToString();
-                            if (receivedId == uniqueEventId)
-                            {
-                                TestUtility.Log("Success");
-                                dataReceivedEvent.Set();
-                                break;
-                            }
-                        }
-                    }
-                };
-
-                partitionReceiver.SetReceiveHandler(handler);
-
-                if (!dataReceivedEvent.WaitOne(TimeSpan.FromSeconds(20)))
-                {
-                    throw new InvalidOperationException("Data Received Event was not signaled.");
-                }
-            }
-            finally
-            {
-                // Unregister handler.
-                partitionReceiver.SetReceiveHandler(null);
-
-                // Close clients.
-                await partitionSender.CloseAsync();
-                await partitionReceiver.CloseAsync();
-            }
-        }
-
-        [Fact]
-        [DisplayTestMethodName]
         async Task CloseReceiverClient()
         {
             var pSender = this.EventHubClient.CreatePartitionSender("0");
-            var pReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", PartitionReceiver.StartOfStream);
+            var pReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", EventPosition.FromStart());
 
             try
             {
@@ -437,29 +491,51 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             });
         }
 
-        class TestPartitionReceiveHandler : IPartitionReceiveHandler
+        [Fact]
+        [DisplayTestMethodName]
+        async Task ReceiverIdentifier()
         {
-            public event EventHandler<IEnumerable<EventData>> EventsReceived;
+            List<PartitionReceiver> receivers = new List<PartitionReceiver>();
 
-            public event EventHandler<Exception> ErrorReceived;
-
-            public TestPartitionReceiveHandler()
+            try
             {
-                this.MaxBatchSize = 10;
+                for (int i=0; i < 5; i++)
+                {
+                    TestUtility.Log($"Creating receiver {i}");
+                    var newReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "1", EventPosition.FromStart(),
+                        new ReceiverOptions()
+                        {
+                            Identifier = $"receiver{i}"
+                        });
+
+                    // Issue a receive call so link will become active.
+                    await newReceiver.ReceiveAsync(10);
+                    receivers.Add(newReceiver);
+                }
+
+                try
+                {
+                    // Attempt to create 6th receiver. This should fail.
+                    var failReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "1", EventPosition.FromStart());
+                    await failReceiver.ReceiveAsync(10);
+                    throw new InvalidOperationException("6th receiver should have encountered QuotaExceededException.");
+                }
+                catch (QuotaExceededException ex)
+                {
+                    TestUtility.Log($"Received expected exception {ex.GetType()}: {ex.Message}");
+                    foreach (var receiver in receivers)
+                    {
+                        Assert.True(ex.Message.Contains(receiver.Identifier), $"QuotaExceededException message is missing receiver identifier '{receiver.Identifier}'");
+                    }
+                }
             }
-
-            public int MaxBatchSize { get; set; }
-
-            Task IPartitionReceiveHandler.ProcessErrorAsync(Exception error)
+            finally
             {
-                this.ErrorReceived?.Invoke(this, error);
-                return Task.CompletedTask;
-            }
-
-            Task IPartitionReceiveHandler.ProcessEventsAsync(IEnumerable<EventData> events)
-            {
-                this.EventsReceived?.Invoke(this, events);
-                return Task.CompletedTask;
+                // Close all receivers.
+                foreach (var receiver in receivers)
+                {
+                    await receiver.CloseAsync();
+                }
             }
         }
     }

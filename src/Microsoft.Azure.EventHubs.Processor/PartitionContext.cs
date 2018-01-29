@@ -22,8 +22,9 @@ namespace Microsoft.Azure.EventHubs.Processor
             this.ConsumerGroupName = consumerGroupName;
             this.CancellationToken = cancellationToken;
             this.ThisLock = new object();
-            this.Offset = PartitionReceiver.StartOfStream;
+            this.Offset = EventPosition.FromStart().Offset;
             this.SequenceNumber = 0;
+            this.RuntimeInformation = new ReceiverRuntimeInformation(partitionId);
         }
 
         /// <summary>
@@ -57,6 +58,16 @@ namespace Microsoft.Azure.EventHubs.Processor
             }
         }
 
+        /// <summary>
+        /// Gets the approximate receiver runtime information for a logical partition of an Event Hub.
+        /// To enable the setting, refer to <see cref="EventProcessorOptions.EnableReceiverRuntimeMetric"/>
+        /// </summary>
+        public ReceiverRuntimeInformation RuntimeInformation
+        {
+            get;
+            private set;
+        }
+
         internal string Offset { get; set; }
 
         internal long SequenceNumber { get; set; }
@@ -80,43 +91,28 @@ namespace Microsoft.Azure.EventHubs.Processor
             }
         }
 
-        internal async Task<object> GetInitialOffsetAsync() // throws InterruptedException, ExecutionException
+        internal async Task<EventPosition> GetInitialOffsetAsync() // throws InterruptedException, ExecutionException
         {
             Checkpoint startingCheckpoint = await this.host.CheckpointManager.GetCheckpointAsync(this.PartitionId).ConfigureAwait(false);
-            object startAt;
+            EventPosition eventPosition;
 
             if (startingCheckpoint == null)
             {
                 // No checkpoint was ever stored. Use the initialOffsetProvider instead.
-                Func<string, object> initialOffsetProvider = this.host.EventProcessorOptions.InitialOffsetProvider;
+                Func<string, EventPosition> initialOffsetProvider = this.host.EventProcessorOptions.InitialOffsetProvider;
                 ProcessorEventSource.Log.PartitionPumpInfo(this.host.Id, this.PartitionId, "Calling user-provided initial offset provider");
-                startAt = initialOffsetProvider(this.PartitionId);
-
-                if (startAt is string)
-                {
-                    this.Offset = (string)startAt;
-                    this.SequenceNumber = 0; // TODO we use sequenceNumber to check for regression of offset, 0 could be a problem until it gets updated from an event
-                    ProcessorEventSource.Log.PartitionPumpInfo(this.host.Id, this.PartitionId, $"Initial offset/sequenceNumber provided: {this.Offset}/{this.SequenceNumber}");
-                }
-                else if (startAt is DateTime)
-                {
-                    // can't set offset/sequenceNumber
-                    ProcessorEventSource.Log.PartitionPumpInfo(this.host.Id, this.PartitionId, $"Initial timestamp provided: {(DateTime)startAt}");
-                }
-                else
-                {
-                    throw new ArgumentException("Unexpected object type returned by user-provided initialOffsetProvider");
-                }
+                eventPosition = initialOffsetProvider(this.PartitionId);
+                ProcessorEventSource.Log.PartitionPumpInfo(this.host.Id, this.PartitionId, $"Initial Position Provider. Offset:{eventPosition.Offset}, SequenceNumber:{eventPosition.SequenceNumber}, DateTime:{eventPosition.EnqueuedTimeUtc}");
             }
             else
             {
                 this.Offset = startingCheckpoint.Offset;
                 this.SequenceNumber = startingCheckpoint.SequenceNumber;
                 ProcessorEventSource.Log.PartitionPumpInfo(this.host.Id, this.PartitionId, $"Retrieved starting offset/sequenceNumber: {this.Offset}/{this.SequenceNumber}");
-                startAt = this.Offset;
+                eventPosition = EventPosition.FromOffset(this.Offset);
             }
 
-            return startAt;
+            return eventPosition;
         }
 
         /// <summary>

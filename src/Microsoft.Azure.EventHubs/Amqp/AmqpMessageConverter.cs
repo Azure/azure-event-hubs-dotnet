@@ -21,12 +21,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
             SectionFlag.DeliveryAnnotations |
             SectionFlag.Properties;
 
-        public const string EnqueuedTimeUtcName = "x-opt-enqueued-time";
-        public const string SequenceNumberName = "x-opt-sequence-number";
-        public const string OffsetName = "x-opt-offset";
-
-        public const string PublisherName = "x-opt-publisher";
-        public const string PartitionKeyName = "x-opt-partition-key";
         public const string TimeSpanName = AmqpConstants.Vendor + ":timespan";
         public const string UriName = AmqpConstants.Vendor + ":uri";
         public const string DateTimeOffsetName = AmqpConstants.Vendor + ":datetime-offset";
@@ -117,6 +111,14 @@ namespace Microsoft.Azure.EventHubs.Amqp
             return amqpMessage;
         }
 
+        public static void UpdateAmqpMessagePartitionKey(AmqpMessage message, string partitionKey)
+        {
+            if (partitionKey != null)
+            {
+                message.MessageAnnotations.Map[ClientConstants.PartitionKeyName] = partitionKey;
+            }
+        }
+
         static void UpdateAmqpMessageHeadersAndProperties(
             AmqpMessage message,
             string publisher,
@@ -125,7 +127,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
         {
             if (!string.IsNullOrEmpty(publisher))
             {
-                message.MessageAnnotations.Map[PublisherName] = publisher;
+                message.MessageAnnotations.Map[ClientConstants.PublisherName] = publisher;
             }
 
             if (copyUserProperties && eventData.Properties != null && eventData.Properties.Count > 0)
@@ -146,79 +148,51 @@ namespace Microsoft.Azure.EventHubs.Amqp
             }
         }
 
-        static void UpdateAmqpMessagePartitionKey(AmqpMessage message, string partitionKey)
-        {
-            if (partitionKey != null)
-            {
-                message.MessageAnnotations.Map[PartitionKeyName] = partitionKey;
-            }
-        }
-
         static void UpdateEventDataHeaderAndProperties(AmqpMessage amqpMessage, EventData data)
         {
             SectionFlag sections = amqpMessage.Sections;
+
             if ((sections & SectionFlag.MessageAnnotations) != 0)
             {
-                // services (e.g. IoTHub) assumes that all Amqp message annotation will get bubbled up so we will cycle
-                // through the list and add them to system properties as well.
-                foreach (var keyValuePair in amqpMessage.MessageAnnotations.Map)
-                {
-                    if (data.Properties == null)
-                    {
-                        data.Properties = new Dictionary<string, object>();
-                    }
-
-                    object netObject;
-                    if (TryGetNetObjectFromAmqpObject(keyValuePair.Value, MappingType.ApplicationProperty, out netObject))
-                    {
-                        data.Properties[keyValuePair.Key.ToString()] = netObject;
-                    }
-                }
-
-                // Custom override for EventHub scenario. Note that these 
-                // "can" override existing properties, which is intentional as
-                // in the EH these system properties take precedence over Amqp data.
-                //string publisher;
-                //if (amqpMessage.MessageAnnotations.Map.TryGetValue<string>(PublisherName, out publisher))
-                //{
-                //    data.Publisher = publisher;
-                //}
-
-//#if DEBUG
-//                short partitionId;
-//                if (amqpMessage.MessageAnnotations.Map.TryGetValue<short>(PartitionIdName, out partitionId))
-//                {
-//                    data.PartitionId = partitionId;
-//                }
-//#endif
-
                 if (data.SystemProperties == null)
                 {
                     data.SystemProperties = new EventData.SystemPropertiesCollection();
                 }
 
-                string partitionKey;
-                if (amqpMessage.MessageAnnotations.Map.TryGetValue(AmqpMessageConverter.PartitionKeyName, out partitionKey))
+                foreach (var keyValuePair in amqpMessage.MessageAnnotations.Map)
                 {
-                    data.SystemProperties.PartitionKey = partitionKey;
+                    object netObject;
+                    if (TryGetNetObjectFromAmqpObject(keyValuePair.Value, MappingType.ApplicationProperty, out netObject))
+                    {
+                        data.SystemProperties[keyValuePair.Key.ToString()] = netObject;
+                    }
+                }
+            }
+
+            if ((sections & SectionFlag.DeliveryAnnotations) != 0)
+            {
+                long lastSequenceNumber;
+                if (amqpMessage.DeliveryAnnotations.Map.TryGetValue<long>(AmqpClientConstants.ManagementPartitionLastEnqueuedSequenceNumber, out lastSequenceNumber))
+                {
+                    data.LastSequenceNumber = lastSequenceNumber;
                 }
 
-                DateTime enqueuedTimeUtc;
-                if (amqpMessage.MessageAnnotations.Map.TryGetValue(AmqpMessageConverter.EnqueuedTimeUtcName, out enqueuedTimeUtc))
+                string lastEnqueuedOffset;
+                if (amqpMessage.DeliveryAnnotations.Map.TryGetValue<string>(AmqpClientConstants.ManagementPartitionLastEnqueuedOffset, out lastEnqueuedOffset))
                 {
-                    data.SystemProperties.EnqueuedTimeUtc = enqueuedTimeUtc;
+                    data.LastEnqueuedOffset = lastEnqueuedOffset;
                 }
 
-                long sequenceNumber;
-                if (amqpMessage.MessageAnnotations.Map.TryGetValue(AmqpMessageConverter.SequenceNumberName, out sequenceNumber))
+                DateTime lastEnqueuedTime;
+                if (amqpMessage.DeliveryAnnotations.Map.TryGetValue<DateTime>(AmqpClientConstants.ManagementPartitionLastEnqueuedTimeUtc, out lastEnqueuedTime))
                 {
-                    data.SystemProperties.SequenceNumber = sequenceNumber;
+                    data.LastEnqueuedTime = lastEnqueuedTime;
                 }
 
-                string offset;
-                if (amqpMessage.MessageAnnotations.Map.TryGetValue(AmqpMessageConverter.OffsetName, out offset))
+                DateTime retrievalTime;
+                if (amqpMessage.DeliveryAnnotations.Map.TryGetValue<DateTime>(AmqpClientConstants.ManagementPartitionRuntimeInfoRetrievalTimeUtc, out retrievalTime))
                 {
-                    data.SystemProperties.Offset = offset;
+                    data.RetrievalTime = retrievalTime;
                 }
             }
 
@@ -423,7 +397,5 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
             return netObject != null;
         }
-
-
     }
 }

@@ -14,6 +14,8 @@ namespace Microsoft.Azure.EventHubs.Amqp
         public static readonly AmqpSymbol BatchFlushIntervalName = AmqpConstants.Vendor + ":batch-flush-interval";
         public static readonly AmqpSymbol EntityTypeName = AmqpConstants.Vendor + ":entity-type";
         public static readonly AmqpSymbol TimeoutName = AmqpConstants.Vendor + ":timeout";
+        public static readonly AmqpSymbol EnableReceiverRuntimeMetricName = AmqpConstants.Vendor + ":enable-receiver-runtime-metric";
+        public static readonly AmqpSymbol ReceiverIdentifierName = AmqpConstants.Vendor + ":receiver-name";
 
         // Error codes
         public static readonly AmqpSymbol DeadLetterName = AmqpConstants.Vendor + ":dead-letter";
@@ -41,6 +43,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
         public static readonly AmqpSymbol MessageReceiptsFilterName = AmqpConstants.Vendor + ":message-receipts-filter";
         public static readonly AmqpSymbol ClientSideCursorFilterName = AmqpConstants.Vendor + ":client-side-filter";
         public static readonly TimeSpan ClientMinimumTokenRefreshInterval = TimeSpan.FromMinutes(4);
+        public const string FilterSeqNumberName = "amqp.annotation." + ClientConstants.SequenceNumberName;
         public const string FilterOffsetPartName = "amqp.annotation.x-opt-offset";
         public const string FilterOffset = FilterOffsetPartName + " > ";
         public const string FilterInclusiveOffset = FilterOffsetPartName + " >= ";
@@ -64,6 +67,11 @@ namespace Microsoft.Azure.EventHubs.Amqp
         public const string ManagementEventHubCreatedAt = "created_at";
         public const string ManagementEventHubPartitionCount = "partition_count";
         public const string ManagementEventHubPartitionIds = "partition_ids";
+        public const string ManagementPartitionBeginSequenceNumber = "begin_sequence_number";
+        public const string ManagementPartitionLastEnqueuedSequenceNumber = "last_enqueued_sequence_number";
+        public const string ManagementPartitionLastEnqueuedOffset = "last_enqueued_offset";
+        public const string ManagementPartitionLastEnqueuedTimeUtc = "last_enqueued_time_utc";
+        public const string ManagementPartitionRuntimeInfoRetrievalTimeUtc = "runtime_info_retrieval_time_utc";
 
         // Response codes
         public const string ResponseStatusCode = "status-code";
@@ -75,6 +83,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
         public const string UriSchemeWss = "wss";
 
         // Miscellaneous 
-        public const int AmqpMinimumOpenSessionTimeoutInSeconds = 60;
+        public const int AmqpSessionTimeoutInSeconds = 30;
     }
 }

@@ -11,8 +11,6 @@ namespace Microsoft.Azure.EventHubs.Processor
     /// </summary>
     public sealed class EventProcessorHost
     {
-        readonly bool initializeLeaseManager;
-
         /// <summary>
         /// Create a new host to process events from an Event Hub.
         /// 
@@ -72,7 +70,6 @@ namespace Microsoft.Azure.EventHubs.Processor
                 eventHubConnectionString,
                 new AzureStorageCheckpointLeaseManager(storageConnectionString, leaseContainerName, storageBlobPrefix))
         {
-            this.initializeLeaseManager = true;
         }
 
         /// <summary>
@@ -173,6 +170,12 @@ namespace Microsoft.Azure.EventHubs.Processor
         /// </summary>
         public string ConsumerGroupName { get; }
 
+        /// <summary>Gets or sets the 
+        /// <see cref="PartitionManagerOptions" /> instance used by the 
+        /// <see cref="EventProcessorHost" /> object.</summary> 
+        /// <value>The <see cref="PartitionManagerOptions" /> instance.</value>
+        public PartitionManagerOptions PartitionManagerOptions { get; set; }
+        
         // All of these accessors are for internal use only.
         internal string EventHubConnectionString { get; private set; }
 
@@ -243,6 +246,13 @@ namespace Microsoft.Azure.EventHubs.Processor
                 throw new ArgumentNullException(factory == null ? nameof(factory) : nameof(processorOptions));
             }
 
+            // Initialize partition manager options with default values if not already set by the client.
+            if (this.PartitionManagerOptions == null)
+            {
+                // Assign partition manager with default options.
+                this.PartitionManagerOptions = new PartitionManagerOptions();
+            }
+
             ProcessorEventSource.Log.EventProcessorHostOpenStart(this.Id, factory.GetType().ToString());
             try
             {
@@ -256,10 +266,8 @@ namespace Microsoft.Azure.EventHubs.Processor
                     this.EventHubConnectionString = cbs.ToString();
                 }
 
-                if (this.initializeLeaseManager)
-                {
-                    ((AzureStorageCheckpointLeaseManager)this.LeaseManager).Initialize(this);
-                }
+                // Initialize lease manager if this is an AzureStorageCheckpointLeaseManager
+                (this.LeaseManager as AzureStorageCheckpointLeaseManager)?.Initialize(this);
 
                 this.ProcessorFactory = factory;
                 this.EventProcessorOptions = processorOptions;
