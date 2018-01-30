@@ -24,12 +24,10 @@ namespace Microsoft.Azure.EventHubs.Amqp
             AmqpEventHubClient eventHubClient,
             string consumerGroupName,
             string partitionId,
-            string startOffset,
-            bool offsetInclusive,
-            DateTime? startTime,
+            EventPosition eventPosition,
             long? epoch,
             ReceiverOptions receiverOptions)
-            : base(eventHubClient, consumerGroupName, partitionId, startOffset, offsetInclusive, startTime, epoch, receiverOptions)
+            : base(eventHubClient, consumerGroupName, partitionId, eventPosition, epoch, receiverOptions)
         {
             string entityPath = eventHubClient.ConnectionStringBuilder.EntityPath;
             this.Path = $"{entityPath}/ConsumerGroups/{consumerGroupName}/Partitions/{partitionId}";
@@ -231,6 +229,11 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     linkSettings.AddProperty(AmqpClientConstants.AttachEpoch, this.Epoch.Value);
                 }
 
+                if (!string.IsNullOrWhiteSpace(this.Identifier))
+                {
+                    linkSettings.AddProperty(AmqpClientConstants.ReceiverIdentifierName, this.Identifier);
+                }
+
                 var link = new ReceivingAmqpLink(linkSettings);
                 linkSettings.LinkName = $"{amqpEventHubClient.ContainerId};{connection.Identifier}:{session.Identifier}:{link.Identifier}";
                 link.AttachTo(session);
@@ -263,35 +266,15 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
         IList<AmqpDescribed> CreateFilters()
         {
-            if (string.IsNullOrWhiteSpace(this.StartOffset) && !this.StartTime.HasValue)
-            {
-                return null;
-            }
+            List<AmqpDescribed> filterMap = null;
 
-            List<AmqpDescribed> filterMap = new List<AmqpDescribed>();
-            if (!string.IsNullOrWhiteSpace(this.StartOffset) || this.StartTime.HasValue)
+            if (this.EventPosition != null)
             {
-                // In the case of DateTime, we want to be amqp-compliant so 
-                // we should transmit the DateTime in a amqp-timestamp format,
-                // which is defined as "64-bit two's-complement integer representing milliseconds since the unix epoch"
-                // ref: http://docs.oasis-open.org/amqp/core/v1.0/amqp-core-complete-v1.0.pdf
-                string sqlExpression = !string.IsNullOrWhiteSpace(this.StartOffset) ?
-                    this.OffsetInclusive ?
-                        string.Format(CultureInfo.InvariantCulture, AmqpClientConstants.FilterInclusiveOffsetFormatString, this.StartOffset) :
-                        string.Format(CultureInfo.InvariantCulture, AmqpClientConstants.FilterOffsetFormatString, this.StartOffset) :
-                    string.Format(CultureInfo.InvariantCulture, AmqpClientConstants.FilterReceivedAtFormatString, TimeStampEncodingGetMilliseconds(this.StartTime.Value));
-                filterMap.Add(new AmqpSelectorFilter(sqlExpression));
+                filterMap = new List<AmqpDescribed>();
+                filterMap.Add(new AmqpSelectorFilter(this.EventPosition.GetExpression()));
             }
 
             return filterMap;
-        }
-
-        // This is equivalent to Microsoft.Azure.Amqp's internal API TimeStampEncoding.GetMilliseconds
-        static long TimeStampEncodingGetMilliseconds(DateTime value)
-        {
-            DateTime utcValue = value.ToUniversalTime();
-            double milliseconds = (utcValue - AmqpConstants.StartOfEpoch).TotalMilliseconds;
-            return (long)milliseconds;
         }
 
         async Task ReceivePumpAsync(CancellationToken cancellationToken)
@@ -306,6 +289,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     try
                     {
                         int batchSize;
+
                         lock (this.receivePumpLock)
                         {
                             if (this.receiveHandler == null)
@@ -313,7 +297,8 @@ namespace Microsoft.Azure.EventHubs.Amqp
                                 // Pump has been shutdown, nothing more to do.
                                 return;
                             }
-                            batchSize = receiveHandler.MaxBatchSize;
+
+                            batchSize = receiveHandler.MaxBatchSize > 0 ? receiveHandler.MaxBatchSize : ClientConstants.ReceiveHandlerDefaultBatchSize;
                         }
 
                         receivedEvents = await this.ReceiveAsync(batchSize).ConfigureAwait(false);

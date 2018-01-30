@@ -117,7 +117,7 @@ namespace Microsoft.Azure.EventHubs
         /// <summary>
         /// A collection used to store properties which are set by the Event Hubs service.
         /// </summary>
-        public sealed class SystemPropertiesCollection
+        public sealed class SystemPropertiesCollection : Dictionary<string, object>
         {
             internal SystemPropertiesCollection()
             {
@@ -126,14 +126,36 @@ namespace Microsoft.Azure.EventHubs
             /// <summary>Gets the logical sequence number of the event within the partition stream of the Event Hub.</summary>
             public long SequenceNumber
             {
-                get; internal set;
+                get
+                {
+                    object value;
+                    if (this.TryGetValue(ClientConstants.SequenceNumberName, out value))
+                    {
+                        return (long)value;
+                    }
+                    else
+                    {
+                        throw new ArgumentException(Resources.MissingSystemProperty.FormatForUser(ClientConstants.SequenceNumberName));
+                    }
+                }
             }
 
             /// <summary>Gets or sets the date and time of the sent time in UTC.</summary>
             /// <value>The enqueue time in UTC. This value represents the actual time of enqueuing the message.</value>
             public DateTime EnqueuedTimeUtc
             {
-                get; internal set;
+                get
+                {
+                    object value;
+                    if (this.TryGetValue(ClientConstants.EnqueuedTimeUtcName, out value))
+                    {
+                        return (DateTime)value;
+                    }
+                    else
+                    {
+                        throw new ArgumentException(Resources.MissingSystemProperty.FormatForUser(ClientConstants.EnqueuedTimeUtcName));
+                    }
+                }
             }
 
             /// <summary>
@@ -141,13 +163,35 @@ namespace Microsoft.Azure.EventHubs
             /// </summary>
             public string Offset
             {
-                get; internal set;
+                get
+                {
+                    object value;
+                    if (this.TryGetValue(ClientConstants.OffsetName, out value))
+                    {
+                        return (string)value;
+                    }
+                    else
+                    {
+                        throw new ArgumentException(Resources.MissingSystemProperty.FormatForUser(ClientConstants.OffsetName));
+                    }
+                }
             }
 
             /// <summary>Gets the partition key of the corresponding partition that stored the <see cref="EventData"/></summary>
             public string PartitionKey
             {
-                get; internal set;
+                get
+                {
+                    object value;
+                    if (this.TryGetValue(ClientConstants.PartitionKeyName, out value))
+                    {
+                        return (string)value;
+                    }
+                    else
+                    {
+                        throw new ArgumentException(Resources.MissingSystemProperty.FormatForUser(ClientConstants.PartitionKeyName));
+                    }
+                }
             }
         }
     }

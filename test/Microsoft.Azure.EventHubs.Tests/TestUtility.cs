@@ -4,6 +4,7 @@
 namespace Microsoft.Azure.EventHubs.Tests
 {
     using System;
+    using System.Collections.Generic;
     using System.Diagnostics;
     using System.Text;
     using System.Threading.Tasks;
@@ -54,17 +55,41 @@ namespace Microsoft.Azure.EventHubs.Tests
             return connectionStringBuilder.ToString();
         }
 
-        internal static async Task SendToPartitionAsync(EventHubClient ehClient, string partitionId, string messageBody, int numberOfMessages = 1)
+        internal static Task SendToPartitionAsync(EventHubClient ehClient, string partitionId, string messageBody, int numberOfMessages = 1)
+        {
+            return SendToPartitionAsync(ehClient, partitionId, new EventData(Encoding.UTF8.GetBytes(messageBody)), numberOfMessages);
+        }
+
+        internal static async Task SendToPartitionAsync(EventHubClient ehClient, string partitionId, EventData eventData, int numberOfMessages = 1)
         {
             TestUtility.Log($"Starting to send {numberOfMessages} to partition {partitionId}.");
             var partitionSender = ehClient.CreatePartitionSender(partitionId);
 
             for (int i = 0; i < numberOfMessages; i++)
             {
-                await partitionSender.SendAsync(new EventData(Encoding.UTF8.GetBytes(messageBody)));
+                await partitionSender.SendAsync(eventData);
             }
 
             TestUtility.Log("Sends done.");
+        }
+
+        internal static async Task<Dictionary<string, string>> DiscoverEndOfStreamForPartitionsAsync(
+            EventHubClient ehClient, 
+            string[] partitionIds)
+        {
+            // Mark offsets in all partitions so we can attempt to receive from that point.
+            var partitionOffsets = new Dictionary<string, string>();
+
+            // Discover the end of stream on each partition.
+            TestUtility.Log("Discovering end of stream on each partition.");
+            foreach (var partitionId in partitionIds)
+            {
+                var lastEvent = await ehClient.GetPartitionRuntimeInformationAsync(partitionId);
+                partitionOffsets.Add(partitionId, lastEvent.LastEnqueuedOffset);
+                TestUtility.Log($"Partition {partitionId} has last message with offset {lastEvent.LastEnqueuedOffset}");
+            }
+
+            return partitionOffsets;
         }
 
         internal static async Task<Tuple<string, DateTime, string>> DiscoverEndOfStreamForPartitionAsync(EventHubClient ehClient, string partitionId)
@@ -82,3 +107,4 @@ namespace Microsoft.Azure.EventHubs.Tests
         }
     }
 }
+ 

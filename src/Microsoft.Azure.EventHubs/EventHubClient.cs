@@ -3,10 +3,12 @@
 
 namespace Microsoft.Azure.EventHubs
 {
-    using Amqp;
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.Threading.Tasks;
+    using Microsoft.Azure.EventHubs.Amqp;
+    using Microsoft.IdentityModel.Clients.ActiveDirectory;
 
     /// <summary>
     /// Anchor class - all EventHub client operations start here.
@@ -67,6 +69,156 @@ namespace Microsoft.Azure.EventHubs
 
             var csb = new EventHubsConnectionStringBuilder(connectionString);
             return Create(csb);
+        }
+
+        /// <summary>
+        /// Creates a new instance of the Event Hubs client using the specified endpoint, entity path, and token provider.
+        /// </summary>
+        /// <param name="endpointAddress">Fully qualified domain name for Event Hubs. Most likely, {yournamespace}.servicebus.windows.net</param>
+        /// <param name="entityPath">Event Hub path</param>
+        /// <param name="tokenProvider">Token provider which will generate security tokens for authorization.</param>
+        /// <param name="operationTimeout">Operation timeout for Event Hubs operations.</param>
+        /// <param name="transportType">Transport type on connection.</param>
+        /// <returns></returns>
+        public static EventHubClient Create(
+            Uri endpointAddress, 
+            string entityPath, 
+            ITokenProvider tokenProvider, 
+            TimeSpan? operationTimeout = null, 
+            TransportType transportType = TransportType.Amqp)
+        {
+            if (endpointAddress == null)
+            {
+                throw Fx.Exception.ArgumentNull(nameof(endpointAddress));
+            }
+
+            if (string.IsNullOrWhiteSpace(entityPath))
+            {
+                throw Fx.Exception.ArgumentNullOrWhiteSpace(nameof(entityPath));
+            }
+
+            if (tokenProvider == null)
+            {
+                throw Fx.Exception.ArgumentNull(nameof(tokenProvider));
+            }
+
+            EventHubsEventSource.Log.EventHubClientCreateStart(endpointAddress.Host, entityPath);
+            EventHubClient eventHubClient = new AmqpEventHubClient(
+                endpointAddress,
+                entityPath,
+                tokenProvider,
+                operationTimeout?? ClientConstants.DefaultOperationTimeout,
+                transportType);
+            EventHubsEventSource.Log.EventHubClientCreateStop(eventHubClient.ClientId);
+            return eventHubClient;
+        }
+
+        /// <summary>
+        /// Creates a new instance of the Event Hubs client using the specified endpoint, entity path, AAD authentication context.
+        /// </summary>
+        /// <param name="endpointAddress">Fully qualified domain name for Event Hubs. Most likely, {yournamespace}.servicebus.windows.net</param>
+        /// <param name="entityPath">Event Hub path</param>
+        /// <param name="authContext">AuthenticationContext for AAD.</param>
+        /// <param name="clientCredential">The app credential.</param>
+        /// <param name="operationTimeout">Operation timeout for Event Hubs operations.</param>
+        /// <param name="transportType">Transport type on connection.</param>
+        /// <returns></returns>
+        public static EventHubClient Create(
+            Uri endpointAddress, 
+            string entityPath, 
+            AuthenticationContext authContext,
+            ClientCredential clientCredential,
+            TimeSpan? operationTimeout = null,
+            TransportType transportType = TransportType.Amqp)
+        {
+            return Create(
+                endpointAddress, 
+                entityPath, 
+                TokenProvider.CreateAadTokenProvider(authContext, clientCredential),
+                operationTimeout,
+                transportType);
+        }
+
+        /// <summary>
+        /// Creates a new instance of the Event Hubs client using the specified endpoint, entity path, AAD authentication context.
+        /// </summary>
+        /// <param name="endpointAddress">Fully qualified domain name for Event Hubs. Most likely, {yournamespace}.servicebus.windows.net</param>
+        /// <param name="entityPath">Event Hub path</param>
+        /// <param name="authContext">AuthenticationContext for AAD.</param>
+        /// <param name="clientId">ClientId for AAD.</param>
+        /// <param name="redirectUri">The redirectUri on Client App.</param>
+        /// <param name="platformParameters">Platform parameters</param>
+        /// <param name="userIdentifier">User Identifier</param>
+        /// <param name="operationTimeout">Operation timeout for Event Hubs operations.</param>
+        /// <param name="transportType">Transport type on connection.</param>
+        /// <returns></returns>
+        public static EventHubClient Create(
+            Uri endpointAddress,
+            string entityPath,
+            AuthenticationContext authContext,
+            string clientId,
+            Uri redirectUri,
+            IPlatformParameters platformParameters,
+            UserIdentifier userIdentifier = null,
+            TimeSpan? operationTimeout = null,
+            TransportType transportType = TransportType.Amqp)
+        {
+            return Create(
+                endpointAddress,
+                entityPath,
+                TokenProvider.CreateAadTokenProvider(authContext, clientId, redirectUri, platformParameters, userIdentifier),
+                operationTimeout,
+                transportType);
+        }
+
+#if !UAP10_0
+        /// <summary>
+        /// Creates a new instance of the Event Hubs client using the specified endpoint, entity path, AAD authentication context.
+        /// </summary>
+        /// <param name="endpointAddress">Fully qualified domain name for Event Hubs. Most likely, {yournamespace}.servicebus.windows.net</param>
+        /// <param name="entityPath">Event Hub path</param>
+        /// <param name="authContext">AuthenticationContext for AAD.</param>
+        /// <param name="clientAssertionCertificate">The client assertion certificate credential.</param>
+        /// <param name="operationTimeout">Operation timeout for Event Hubs operations.</param>
+        /// <param name="transportType">Transport type on connection.</param>
+        /// <returns></returns>
+        public static EventHubClient Create(
+            Uri endpointAddress,
+            string entityPath,
+            AuthenticationContext authContext,
+            ClientAssertionCertificate clientAssertionCertificate,
+            TimeSpan? operationTimeout = null,
+            TransportType transportType = TransportType.Amqp)
+        {
+            return Create(
+                endpointAddress,
+                entityPath,
+                TokenProvider.CreateAadTokenProvider(authContext, clientAssertionCertificate),
+                operationTimeout,
+                transportType);
+        }
+#endif
+
+        /// <summary>
+        /// Creates a new instance of the Event Hubs client using the specified endpoint, entity path on Azure Managed Service Identity authentication.
+        /// </summary>
+        /// <param name="endpointAddress">Fully qualified domain name for Event Hubs. Most likely, {yournamespace}.servicebus.windows.net</param>
+        /// <param name="entityPath">Event Hub path</param>
+        /// <param name="operationTimeout">Operation timeout for Event Hubs operations.</param>
+        /// <param name="transportType">Transport type on connection.</param>
+        /// <returns></returns>
+        public static EventHubClient CreateWithManagedServiceIdentity(
+            Uri endpointAddress,
+            string entityPath,
+            TimeSpan? operationTimeout = null,
+            TransportType transportType = TransportType.Amqp)
+        {
+            return Create(
+                endpointAddress,
+                entityPath,
+                TokenProvider.CreateManagedServiceIdentityTokenProvider(),
+                operationTimeout,
+                transportType);
         }
 
         static EventHubClient Create(EventHubsConnectionStringBuilder csb)
@@ -218,21 +370,43 @@ namespace Microsoft.Azure.EventHubs
         public async Task SendAsync(IEnumerable<EventData> eventDatas, string partitionKey)
         {
             // eventDatas null check is inside ValidateEvents
-            int count = EventDataSender.ValidateEvents(eventDatas, null, partitionKey);
+            int count = EventDataSender.ValidateEvents(eventDatas);
+
             EventHubsEventSource.Log.EventSendStart(this.ClientId, count, partitionKey);
+            Activity activity = EventHubsDiagnosticSource.StartSendActivity(this.ClientId, this.ConnectionStringBuilder, partitionKey, eventDatas, count);
+
+            Task sendTask = null;
             try
             {
-                await this.InnerSender.SendAsync(eventDatas, partitionKey).ConfigureAwait(false);
+                sendTask = this.InnerSender.SendAsync(eventDatas, partitionKey);
+                await sendTask.ConfigureAwait(false);
             }
             catch (Exception exception)
             {
                 EventHubsEventSource.Log.EventSendException(this.ClientId, exception.ToString());
+                EventHubsDiagnosticSource.FailSendActivity(activity, this.ConnectionStringBuilder, partitionKey, eventDatas, exception);
                 throw;
             }
             finally
             {
                 EventHubsEventSource.Log.EventSendStop(this.ClientId);
+                EventHubsDiagnosticSource.StopSendActivity(activity, this.ConnectionStringBuilder, partitionKey, eventDatas, sendTask);
             }
+        }
+
+        /// <summary>
+        /// Send a batch of <see cref="EventData"/> in <see cref="EventDataBatch"/>.
+        /// </summary>
+        /// <param name="eventDataBatch">the batch of events to send to EventHub</param>
+        /// <returns>A Task that completes when the send operation is done.</returns>
+        public async Task SendAsync(EventDataBatch eventDataBatch)
+        {
+            if (eventDataBatch == null)
+            {
+                throw Fx.Exception.Argument(nameof(eventDataBatch), Resources.EventDataListIsNullOrEmpty);
+            }
+
+            await this.SendAsync(eventDataBatch.ToEnumerable(), eventDataBatch.PartitionKey);
         }
 
         /// <summary>
@@ -257,119 +431,27 @@ namespace Microsoft.Azure.EventHubs
         }
 
         /// <summary>
-        /// Create a receiver for a specific EventHub partition from the specific consumer group.
-        /// <para/>
-        /// NOTE: There can be a maximum number of receivers that can run in parallel per ConsumerGroup per Partition. 
-        /// The limit is enforced by the Event Hub service - current limit is 5 receivers in parallel. Having multiple receivers 
-        /// reading from offsets that are far apart on the same consumer group / partition combo will have significant performance Impact. 
-        /// </summary>
-        /// <param name="consumerGroupName">the consumer group name that this receiver should be grouped under.</param>
-        /// <param name="partitionId">the partition Id that the receiver belongs to. All data received will be from this partition only.</param>
-        /// <param name="startingOffset">the offset to start receiving the events from. To receive from start of the stream use <see cref="PartitionReceiver.StartOfStream"/></param>
-        /// <param name="receiverOptions">Options for a event hub receiver.</param>
-        /// <returns>The created PartitionReceiver</returns>
-        /// <seealso cref="PartitionReceiver"/>
-        public PartitionReceiver CreateReceiver(string consumerGroupName, string partitionId, string startingOffset, ReceiverOptions receiverOptions = null)
-        {
-            return this.CreateReceiver(consumerGroupName, partitionId, startingOffset, false, receiverOptions);
-        }
-
-        /// <summary>
-        /// Create the EventHub receiver with given partition id and start receiving from the specified starting offset.
+        /// Create the EventHub receiver with given <see cref="EventPosition"/>.
         /// The receiver is created for a specific EventHub Partition from the specific consumer group.
         /// </summary>
         /// <param name="consumerGroupName">the consumer group name that this receiver should be grouped under.</param>
         /// <param name="partitionId">the partition Id that the receiver belongs to. All data received will be from this partition only.</param>
-        /// <param name="startOffset">the offset to start receiving the events from. To receive from start of the stream use: <see cref="PartitionReceiver.StartOfStream"/></param>
-        /// <param name="offsetInclusive">if set to true, the startingOffset is treated as an inclusive offset - meaning the first event returned is the
-        /// <param name="receiverOptions">Options for a event hub receiver.</param>
-        /// one that has the starting offset. Normally first event returned is the event after the starting offset.</param>
-        /// <returns>The created PartitionReceiver</returns>
-        /// <seealso cref="PartitionReceiver"/>
-        public PartitionReceiver CreateReceiver(string consumerGroupName, string partitionId, string startOffset, bool offsetInclusive, ReceiverOptions receiverOptions = null)
-        {
-            if (string.IsNullOrWhiteSpace(consumerGroupName) || string.IsNullOrWhiteSpace(partitionId))
-            {
-                throw Fx.Exception.ArgumentNullOrWhiteSpace(string.IsNullOrWhiteSpace(consumerGroupName) ? nameof(consumerGroupName) : nameof(partitionId));
-            }
-
-            return this.OnCreateReceiver(consumerGroupName, partitionId, startOffset, offsetInclusive, null, null, receiverOptions);
-        }
-
-        /// <summary>
-        /// Create the EventHub receiver with given partition id and start receiving from the specified starting offset.
-        /// The receiver is created for a specific EventHub Partition from the specific consumer group.
-        /// </summary>
-        /// <param name="consumerGroupName">the consumer group name that this receiver should be grouped under.</param>
-        /// <param name="partitionId">the partition Id that the receiver belongs to. All data received will be from this partition only.</param>
-        /// <param name="startTime">the DateTime instant that receive operations will start receive events from. Events received will have <see cref="EventData.SystemPropertiesCollection.EnqueuedTimeUtc"/> later than this Instant.</param>
+        /// <param name="eventPosition">The starting <see cref="EventPosition"/> at which to start receiving messages.</param>
         /// <param name="receiverOptions">Options for a event hub receiver.</param>
         /// <returns>The created PartitionReceiver</returns>
         /// <seealso cref="PartitionReceiver"/>
-        public PartitionReceiver CreateReceiver(string consumerGroupName, string partitionId, DateTime startTime, ReceiverOptions receiverOptions = null)
+        public PartitionReceiver CreateReceiver(string consumerGroupName, string partitionId, EventPosition eventPosition, ReceiverOptions receiverOptions = null)
         {
-            if (string.IsNullOrWhiteSpace(consumerGroupName) || string.IsNullOrWhiteSpace(partitionId))
+            if (eventPosition == null)
             {
-                throw Fx.Exception.ArgumentNullOrWhiteSpace(string.IsNullOrWhiteSpace(consumerGroupName) ? nameof(consumerGroupName) : nameof(partitionId));
+                throw Fx.Exception.ArgumentNull(nameof(eventPosition));
             }
 
-            return this.OnCreateReceiver(consumerGroupName, partitionId, null, false, startTime, null, receiverOptions);
+            return this.OnCreateReceiver(consumerGroupName, partitionId, eventPosition, null, receiverOptions);
         }
 
         /// <summary>
-        /// Create a Epoch based EventHub receiver with given partition id and start receiving from the beginning of the partition stream.
-        /// The receiver is created for a specific EventHub Partition from the specific consumer group.
-        /// <para/>
-        /// It is important to pay attention to the following when creating epoch based receiver:
-        /// <para/>- Ownership enforcement: Once you created an epoch based receiver, you cannot create a non-epoch receiver to the same consumerGroup-Partition combo until all receivers to the combo are closed.
-        /// <para/>- Ownership stealing: If a receiver with higher epoch value is created for a consumerGroup-Partition combo, any older epoch receiver to that combo will be force closed.
-        /// <para/>- Any receiver closed due to lost of ownership to a consumerGroup-Partition combo will get ReceiverDisconnectedException for all operations from that receiver.
-        /// </summary>
-        /// <param name="consumerGroupName">the consumer group name that this receiver should be grouped under.</param>
-        /// <param name="partitionId">the partition Id that the receiver belongs to. All data received will be from this partition only.</param>
-        /// <param name="startingOffset">the offset to start receiving the events from. To receive from start of the stream use <see cref="PartitionReceiver.StartOfStream"/></param>
-        /// <param name="epoch">an unique identifier (epoch value) that the service uses, to enforce partition/lease ownership.</param>
-        /// <param name="receiverOptions">Options for a event hub receiver.</param>
-        /// <returns>The created PartitionReceiver</returns>
-        /// <seealso cref="PartitionReceiver"/>
-        public PartitionReceiver CreateEpochReceiver(string consumerGroupName, string partitionId, string startingOffset, long epoch, ReceiverOptions receiverOptions = null)
-        {
-            return this.CreateEpochReceiver(consumerGroupName, partitionId, startingOffset, false, epoch);
-        }
-
-        /// <summary>
-        ///  Create a Epoch based EventHub receiver with given partition id and start receiving from the beginning of the partition stream.
-        ///  The receiver is created for a specific EventHub Partition from the specific consumer group.
-        ///  <para/> 
-        ///  It is important to pay attention to the following when creating epoch based receiver:
-        ///  <para/>- Ownership enforcement: Once you created an epoch based receiver, you cannot create a non-epoch receiver to the same consumerGroup-Partition combo until all receivers to the combo are closed.
-        ///  <para/>- Ownership stealing: If a receiver with higher epoch value is created for a consumerGroup-Partition combo, any older epoch receiver to that combo will be force closed.
-        ///  <para/>- Any receiver closed due to lost of ownership to a consumerGroup-Partition combo will get ReceiverDisconnectedException for all operations from that receiver.
-        /// </summary>
-        /// <param name="consumerGroupName">the consumer group name that this receiver should be grouped under.</param>
-        /// <param name="partitionId">the partition Id that the receiver belongs to. All data received will be from this partition only.</param>
-        /// <param name="startingOffset">the offset to start receiving the events from. To receive from start of the stream use <see cref="PartitionReceiver.StartOfStream"/></param>
-        /// <param name="offsetInclusive">if set to true, the startingOffset is treated as an inclusive offset - meaning the first event returned is the one that has the starting offset. Normally first event returned is the event after the starting offset.</param>
-        /// <param name="epoch">an unique identifier (epoch value) that the service uses, to enforce partition/lease ownership. </param>
-        /// <param name="receiverOptions">Options for a event hub receiver.</param>
-        /// <returns>The created PartitionReceiver</returns>
-        /// <seealso cref="PartitionReceiver"/>
-        public PartitionReceiver CreateEpochReceiver(string consumerGroupName, string partitionId, string startingOffset, bool offsetInclusive, long epoch, ReceiverOptions receiverOptions = null)
-        {
-            if (string.IsNullOrWhiteSpace(consumerGroupName) || string.IsNullOrWhiteSpace(partitionId))
-            {
-                throw Fx.Exception.ArgumentNullOrWhiteSpace(string.IsNullOrWhiteSpace(consumerGroupName) ? nameof(consumerGroupName) : nameof(partitionId));
-            }
-            else if (epoch < PartitionReceiver.NullEpoch)
-            {
-                throw Fx.Exception.ArgumentOutOfRange(nameof(epoch), epoch, "Epoch cannot be negative. Please specify a zero or positive long value.");
-            }
-
-            return this.OnCreateReceiver(consumerGroupName, partitionId, startingOffset, offsetInclusive, null, epoch, receiverOptions);
-        }
-
-        /// <summary>
-        /// Create a Epoch based EventHub receiver with given partition id and start receiving from the beginning of the partition stream.
+        /// Create a Epoch based EventHub receiver with given <see cref="EventPosition"/>.
         /// The receiver is created for a specific EventHub Partition from the specific consumer group.
         /// <para/>It is important to pay attention to the following when creating epoch based receiver:
         /// <para/>- Ownership enforcement: Once you created an epoch based receiver, you cannot create a non-epoch receiver to the same consumerGroup-Partition combo until all receivers to the combo are closed.
@@ -378,23 +460,19 @@ namespace Microsoft.Azure.EventHubs
         /// </summary>
         /// <param name="consumerGroupName">the consumer group name that this receiver should be grouped under.</param>
         /// <param name="partitionId">the partition Id that the receiver belongs to. All data received will be from this partition only.</param>
-        /// <param name="startTime">the date time instant that receive operations will start receive events from. Events received will have <see cref="EventData.SystemPropertiesCollection.EnqueuedTimeUtc"/> later than this instant.</param>
+        /// <param name="eventPosition">The starting <see cref="EventPosition"/> at which to start receiving messages.</param>
         /// <param name="epoch">a unique identifier (epoch value) that the service uses, to enforce partition/lease ownership.</param>
         /// <param name="receiverOptions">Options for a event hub receiver.</param>
         /// <returns>The created PartitionReceiver</returns>
         /// <seealso cref="PartitionReceiver"/>
-        public PartitionReceiver CreateEpochReceiver(string consumerGroupName, string partitionId, DateTime startTime, long epoch, ReceiverOptions receiverOptions = null)
+        public PartitionReceiver CreateEpochReceiver(string consumerGroupName, string partitionId, EventPosition eventPosition, long epoch, ReceiverOptions receiverOptions = null)
         {
-            if (string.IsNullOrWhiteSpace(consumerGroupName) || string.IsNullOrWhiteSpace(partitionId))
+            if (eventPosition == null)
             {
-                throw Fx.Exception.ArgumentNullOrWhiteSpace(string.IsNullOrWhiteSpace(consumerGroupName) ? nameof(consumerGroupName) : nameof(partitionId));
-            }
-            else if (epoch < PartitionReceiver.NullEpoch)
-            {
-                throw Fx.Exception.ArgumentOutOfRange(nameof(epoch), epoch, "Epoch cannot be negative. Please specify a zero or positive long value.");
+                throw Fx.Exception.ArgumentNull(nameof(eventPosition));
             }
 
-            return this.OnCreateReceiver(consumerGroupName, partitionId, null, false, startTime, epoch, receiverOptions);
+            return this.OnCreateReceiver(consumerGroupName, partitionId, eventPosition, epoch, receiverOptions);
         }
 
         /// <summary>
@@ -450,7 +528,16 @@ namespace Microsoft.Azure.EventHubs
         /// <returns>Returns <see cref="EventDataBatch" />.</returns>
         public EventDataBatch CreateBatch()
         {
-            return new EventDataBatch(this.InnerSender.MaxMessageSize);
+            return this.CreateBatch(new BatchOptions());
+        }
+        
+        /// <summary>Creates a batch where event data objects can be added for later SendAsync call.</summary>
+        /// <param name="options"><see cref="BatchOptions" /> to define partition key and max message size.</param>
+        /// <returns>Returns <see cref="EventDataBatch" />.</returns>
+        public EventDataBatch CreateBatch(BatchOptions options)
+        {
+            return new EventDataBatch(options.MaxMessageSize > 0 ?
+                options.MaxMessageSize : this.InnerSender.MaxMessageSize, options.PartitionKey);
         }
 
         /// <summary> Gets or sets a value indicating whether the runtime metric of a receiver is enabled. </summary>
@@ -471,13 +558,11 @@ namespace Microsoft.Azure.EventHubs
         /// <summary></summary>
         /// <param name="consumerGroupName"></param>
         /// <param name="partitionId"></param>
-        /// <param name="startOffset"></param>
-        /// <param name="offsetInclusive"></param>
-        /// <param name="startTime"></param>
+        /// <param name="eventPosition"></param>
         /// <param name="epoch"></param>
         /// <param name="receiverOptions"></param>
         /// <returns></returns>
-        protected abstract PartitionReceiver OnCreateReceiver(string consumerGroupName, string partitionId, string startOffset, bool offsetInclusive, DateTime? startTime, long? epoch, ReceiverOptions receiverOptions);
+        protected abstract PartitionReceiver OnCreateReceiver(string consumerGroupName, string partitionId, EventPosition eventPosition, long? epoch, ReceiverOptions receiverOptions);
 
         /// <summary></summary>
         /// <returns></returns>

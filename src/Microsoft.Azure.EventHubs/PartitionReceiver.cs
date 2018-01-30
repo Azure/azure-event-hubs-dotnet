@@ -5,6 +5,7 @@ namespace Microsoft.Azure.EventHubs
 {
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.Globalization;
     using System.Text;
     using System.Threading.Tasks;
@@ -18,21 +19,10 @@ namespace Microsoft.Azure.EventHubs
     /// non-epoch receivers.
     /// </para>
     /// </summary>
-    /// <seealso cref="EventHubClient.CreateReceiver(string, string, string, ReceiverOptions)"/>
-    /// <seealso cref="EventHubClient.CreateEpochReceiver(string, string, string, long, ReceiverOptions)"/>
+    /// <seealso cref="EventHubClient.CreateReceiver(string, string, EventPosition, ReceiverOptions)"/>
+    /// <seealso cref="EventHubClient.CreateEpochReceiver(string, string, EventPosition, long, ReceiverOptions)"/>
     public abstract class PartitionReceiver : ClientEntity
     {
-        /// <summary>
-        /// This is a constant defined to represent the start of a partition stream in EventHub.
-        /// </summary>
-        public static readonly string StartOfStream = "-1";
-
-        /// <summary>
-        /// The constant that denotes the end of a stream. This can be used as an offset argument in receiver creation to 
-        /// start receiving from the latest event, instead of a specific point in time/offset value.
-        /// </summary>
-        public static readonly string EndOfStream = "@latest";
-
         /// <summary>
         /// The default consumer group name: $Default.
         /// </summary>
@@ -48,18 +38,14 @@ namespace Microsoft.Azure.EventHubs
         /// <param name="eventHubClient"></param>
         /// <param name="consumerGroupName"></param>
         /// <param name="partitionId"></param>
-        /// <param name="startOffset"></param>
-        /// <param name="offsetInclusive"></param>
-        /// <param name="startTime"></param>
+        /// <param name="eventPosition"></param>
         /// <param name="epoch"></param>
         /// <param name="receiverOptions"></param>
         protected internal PartitionReceiver(
             EventHubClient eventHubClient,
             string consumerGroupName,
             string partitionId,
-            string startOffset,
-            bool offsetInclusive,
-            DateTime? startTime,
+            EventPosition eventPosition,
             long? epoch,
             ReceiverOptions receiverOptions)
             : base($"{nameof(PartitionReceiver)}{ClientEntity.GetNextId()}({eventHubClient.EventHubName},{consumerGroupName},{partitionId})")
@@ -67,14 +53,13 @@ namespace Microsoft.Azure.EventHubs
             this.EventHubClient = eventHubClient;
             this.ConsumerGroupName = consumerGroupName;
             this.PartitionId = partitionId;
-            this.StartOffset = startOffset;
-            this.OffsetInclusive = offsetInclusive;
-            this.StartTime = startTime;
+            this.EventPosition = eventPosition;
             this.PrefetchCount = DefaultPrefetchCount;
             this.Epoch = epoch;
             this.RuntimeInfo = new ReceiverRuntimeInformation(partitionId);
             this.ReceiverRuntimeMetricEnabled = receiverOptions == null ? this.EventHubClient.EnableReceiverRuntimeMetric
                 : receiverOptions.EnableReceiverRuntimeMetric;
+            this.Identifier = receiverOptions != null ? receiverOptions.Identifier : null;
             this.RetryPolicy = eventHubClient.RetryPolicy.Clone();
 
             EventHubsEventSource.Log.ClientCreated(this.ClientId, this.FormatTraceDetails());
@@ -110,13 +95,15 @@ namespace Microsoft.Azure.EventHubs
         public long? Epoch { get; }
 
         /// <summary></summary>
-        protected DateTime? StartTime { get; private set; }
+        protected EventPosition EventPosition { get; set; }
 
-        /// <summary></summary>
-        protected bool OffsetInclusive { get; }
-
-        /// <summary></summary>
-        protected string StartOffset { get; private set; }
+        /// <summary>Gets the identifier of a receiver which was set during the creation of the receiver.</summary> 
+        /// <value>A string representing the identifier of a receiver. It will return null if the identifier is not set.</value>
+        public string Identifier
+        {
+            get;
+            private set;
+        }
 
         /// <summary>
         /// Receive a batch of <see cref="EventData"/>'s from an EventHub partition
@@ -162,17 +149,24 @@ namespace Microsoft.Azure.EventHubs
         public async Task<IEnumerable<EventData>> ReceiveAsync(int maxMessageCount, TimeSpan waitTime)
         {
             EventHubsEventSource.Log.EventReceiveStart(this.ClientId);
+            Activity activity = EventHubsDiagnosticSource.StartReceiveActivity(this.ClientId, this.EventHubClient.ConnectionStringBuilder, this.PartitionId, this.ConsumerGroupName, this.EventPosition);
+
+            Task<IList<EventData>> receiveTask = null;
+            IList<EventData> events = null;
             int count = 0;
+
             try
             {
-                IList<EventData> events = await this.OnReceiveAsync(maxMessageCount, waitTime).ConfigureAwait(false);
+                receiveTask = this.OnReceiveAsync(maxMessageCount, waitTime);
+                events = await receiveTask.ConfigureAwait(false);
                 count = events?.Count ?? 0;
                 EventData lastEvent = events?[count - 1];
                 if (lastEvent != null)
                 {
                     // Store the current position in the stream of messages
-                    this.StartOffset = lastEvent.SystemProperties.Offset;
-                    this.StartTime = lastEvent.SystemProperties.EnqueuedTimeUtc;
+                    this.EventPosition.Offset = lastEvent.SystemProperties.Offset;
+                    this.EventPosition.EnqueuedTimeUtc = lastEvent.SystemProperties.EnqueuedTimeUtc;
+                    this.EventPosition.SequenceNumber = lastEvent.SystemProperties.SequenceNumber;
 
                     // Update receiver runtime metrics?
                     if (this.ReceiverRuntimeMetricEnabled)
@@ -189,11 +183,13 @@ namespace Microsoft.Azure.EventHubs
             catch (Exception e)
             {
                 EventHubsEventSource.Log.EventReceiveException(this.ClientId, e.ToString());
+                EventHubsDiagnosticSource.FailReceiveActivity(activity, this.EventHubClient.ConnectionStringBuilder, this.PartitionId, this.ConsumerGroupName, e);
                 throw;
             }
             finally
             {
                 EventHubsEventSource.Log.EventReceiveStop(this.ClientId, count);
+                EventHubsDiagnosticSource.StopReceiveActivity(activity, this.EventHubClient.ConnectionStringBuilder, this.PartitionId, this.ConsumerGroupName, events, receiveTask);
             }
         }
 
@@ -260,14 +256,20 @@ namespace Microsoft.Azure.EventHubs
         {
             StringBuilder sb = new StringBuilder();
             sb.AppendFormat("ConsumerGroup:{0}, PartitionId:{1}", this.ConsumerGroupName, PartitionId);
-            if (!string.IsNullOrEmpty(this.StartOffset))
+
+            if (!string.IsNullOrEmpty(this.EventPosition.Offset))
             {
-                sb.AppendFormat(", StartOffset:{0}, OffsetInclusive:{1}", this.StartOffset, this.OffsetInclusive);
+                sb.AppendFormat(", StartOffset:{0}, IsInclusive:{1}", this.EventPosition.Offset, this.EventPosition.IsInclusive);
             }
 
-            if (this.StartTime.HasValue)
+            if (this.EventPosition.SequenceNumber != null)
             {
-                sb.AppendFormat(", StartTime:{0}", this.StartTime.Value.ToString(CultureInfo.InvariantCulture));
+                sb.AppendFormat(", SequenceNumber:{0}, IsInclusive:{1}", this.EventPosition.SequenceNumber, this.EventPosition.IsInclusive);
+            }
+
+            if (this.EventPosition.EnqueuedTimeUtc != null)
+            {
+                sb.AppendFormat(", StartTime:{0}", this.EventPosition.EnqueuedTimeUtc);
             }
 
             if (this.Epoch.HasValue)

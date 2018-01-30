@@ -38,7 +38,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             this.MaxBatchSize = 10;
             this.PrefetchCount = 300;
             this.ReceiveTimeout = TimeSpan.FromMinutes(1);
-            this.InitialOffsetProvider = partitionId => PartitionReceiver.StartOfStream;
+            this.InitialOffsetProvider = partitionId => EventPosition.FromStart();
         }
 
         /// <summary>
@@ -79,12 +79,11 @@ namespace Microsoft.Azure.EventHubs.Processor
         public int PrefetchCount { get; set; }
 
         /// <summary>
-        /// Get or sets the current function used to determine the initial offset at which to start receiving
-        /// events for a partition.
-        /// <para>A null return indicates that it is using the internal provider, which uses the last checkpointed
-        /// offset value (if present) or StartOfSTream (if not).</para>
+        /// Gets or sets a delegate which is used to get the initial position for a given partition to create <see cref="PartitionReceiver"/>.
+        /// Delegate is invoked by passing in PartitionId and then user can return <see cref="PartitionReceiver"/> for receiving messages.
+        /// This is only used when <see cref="Lease.Offset"/> is not provided and receiver is being created for the very first time.
         /// </summary>
-        public Func<string, object> InitialOffsetProvider { get; set; }
+        public Func<string, EventPosition> InitialOffsetProvider { get; set; }
 
         /// <summary>
         /// Returns whether the EventProcessorHost will call IEventProcessor.OnEvents(null) when a receive
