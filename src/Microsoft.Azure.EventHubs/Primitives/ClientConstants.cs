@@ -17,6 +17,7 @@ namespace Microsoft.Azure.EventHubs
         public const string PublisherName = "x-opt-publisher";
         public const string PartitionKeyName = "x-opt-partition-key";
         public const int MaxReceiverIdentifierLength = 64;
+        public const int ReceiveHandlerDefaultBatchSize = 10;
 
         public const string SasTokenType = "servicebus.windows.net:sastoken";
         public const string JsonWebTokenType = "jwt";

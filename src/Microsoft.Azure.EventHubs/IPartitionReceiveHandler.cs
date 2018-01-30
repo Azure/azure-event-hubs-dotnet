@@ -14,9 +14,9 @@ namespace Microsoft.Azure.EventHubs
     public interface IPartitionReceiveHandler
     {
         /// <summary>
-        /// Gets the maximum batch size.
+        /// Gets or sets the maximum batch size.
         /// </summary>
-        int MaxBatchSize { get; }
+        int MaxBatchSize { get; set; }
 
         /// <summary>
         /// Users should implement this method to specify the action to be performed on the received events.
