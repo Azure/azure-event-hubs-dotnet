@@ -153,7 +153,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
 
         [Fact]
         [DisplayTestMethodName]
-        async Task DefaultBehaviorInvokesOnNull()
+        async Task InvokeOnNull()
         {
             PartitionReceiver partitionReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", EventPosition.FromEnd());
 
@@ -171,7 +171,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
                     }
                 };
 
-                partitionReceiver.SetReceiveHandler(handler);
+                partitionReceiver.SetReceiveHandler(handler, true);
 
                 if (!nullReceivedEvent.WaitOne(TimeSpan.FromSeconds(120)))
                 {
@@ -191,7 +191,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
 
         [Fact]
         [DisplayTestMethodName]
-        async Task NoInvokeOnNull()
+        async Task DefaultBehaviorNoInvokeOnNull()
         {
             PartitionReceiver partitionReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", EventPosition.FromEnd());
 
@@ -215,7 +215,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
                     }
                 };
 
-                partitionReceiver.SetReceiveHandler(handler, false);
+                partitionReceiver.SetReceiveHandler(handler);
 
                 if (nullReceivedEvent.WaitOne(TimeSpan.FromSeconds(120)))
                 {

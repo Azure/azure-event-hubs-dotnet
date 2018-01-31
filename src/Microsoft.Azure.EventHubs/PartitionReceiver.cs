@@ -198,7 +198,7 @@ namespace Microsoft.Azure.EventHubs
         /// </summary>
         /// <param name="receiveHandler">The <see cref="IPartitionReceiveHandler"/> used to process events.</param>
         /// <param name="invokeWhenNoEvents">Flag to indicate whether the handler should be invoked when the receive call times out.</param>
-        public void SetReceiveHandler(IPartitionReceiveHandler receiveHandler, bool invokeWhenNoEvents = true)
+        public void SetReceiveHandler(IPartitionReceiveHandler receiveHandler, bool invokeWhenNoEvents = false)
         {
             EventHubsEventSource.Log.SetReceiveHandlerStart(this.ClientId, receiveHandler != null ? receiveHandler.GetType().ToString() : "null");
             this.OnSetReceiveHandler(receiveHandler, invokeWhenNoEvents);
