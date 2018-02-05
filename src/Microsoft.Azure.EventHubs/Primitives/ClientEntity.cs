@@ -33,7 +33,7 @@ namespace Microsoft.Azure.EventHubs
         }
 
         /// <summary>
-        /// Gets the <see cref="RetryPolicy.RetryPolicy"/> for the ClientEntity.
+        /// Gets the <see cref="EventHubs.RetryPolicy"/> for the ClientEntity.
         /// </summary>
         public RetryPolicy RetryPolicy
         {
