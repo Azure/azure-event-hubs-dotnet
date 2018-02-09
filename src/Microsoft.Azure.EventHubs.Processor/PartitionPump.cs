@@ -6,10 +6,13 @@ namespace Microsoft.Azure.EventHubs.Processor
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Threading;
     using System.Threading.Tasks;
 
     abstract class PartitionPump
-    {   
+    {
+        CancellationTokenSource cancellationTokenSource;
+
         protected PartitionPump(EventProcessorHost host, Lease lease)
         {
             this.Host = host;
@@ -37,7 +40,9 @@ namespace Microsoft.Azure.EventHubs.Processor
         {
             this.PumpStatus = PartitionPumpStatus.Opening;
 
-            this.PartitionContext = new PartitionContext(this.Host, this.Lease.PartitionId, this.Host.EventHubPath, this.Host.ConsumerGroupName);
+            this.cancellationTokenSource = new CancellationTokenSource();
+
+            this.PartitionContext = new PartitionContext(this.Host, this.Lease.PartitionId, this.Host.EventHubPath, this.Host.ConsumerGroupName, this.cancellationTokenSource.Token);
             this.PartitionContext.Lease = this.Lease;
 
             if (this.PumpStatus == PartitionPumpStatus.Opening)
@@ -86,6 +91,8 @@ namespace Microsoft.Azure.EventHubs.Processor
             this.PumpStatus = PartitionPumpStatus.Closing;
             try
             {
+                this.cancellationTokenSource.Cancel();
+
                 await this.OnClosingAsync(reason).ConfigureAwait(false);
 
                 if (this.Processor != null)
@@ -111,8 +118,8 @@ namespace Microsoft.Azure.EventHubs.Processor
 
             if (reason != CloseReason.LeaseLost)
             {
-                // Since this pump is dead, release the lease. 
-                // Ignore LeaseLostException 
+                // Since this pump is dead, release the lease.
+                // Ignore LeaseLostException
                 try
                 {
                     await this.Host.LeaseManager.ReleaseLeaseAsync(this.PartitionContext.Lease).ConfigureAwait(false);
