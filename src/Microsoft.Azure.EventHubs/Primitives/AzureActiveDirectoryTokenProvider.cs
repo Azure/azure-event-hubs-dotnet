@@ -10,7 +10,7 @@ namespace Microsoft.Azure.EventHubs
     /// <summary>
     /// Represents the Azure Active Directory token provider for the Event Hubs.
     /// </summary>
-    public class AzureActiveDirectoryTokenProvider : TokenProvider
+    internal class AzureActiveDirectoryTokenProvider : TokenProvider
     {
         readonly AuthenticationContext authContext;
         readonly ClientCredential clientCredential;

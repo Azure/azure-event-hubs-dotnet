@@ -80,7 +80,7 @@ namespace Microsoft.Azure.EventHubs
         /// <param name="operationTimeout">Operation timeout for Event Hubs operations.</param>
         /// <param name="transportType">Transport type on connection.</param>
         /// <returns></returns>
-        public static EventHubClient Create(
+        internal static EventHubClient Create(
             Uri endpointAddress, 
             string entityPath, 
             ITokenProvider tokenProvider, 
@@ -123,7 +123,7 @@ namespace Microsoft.Azure.EventHubs
         /// <param name="operationTimeout">Operation timeout for Event Hubs operations.</param>
         /// <param name="transportType">Transport type on connection.</param>
         /// <returns></returns>
-        public static EventHubClient Create(
+        internal static EventHubClient Create(
             Uri endpointAddress, 
             string entityPath, 
             AuthenticationContext authContext,
@@ -152,7 +152,7 @@ namespace Microsoft.Azure.EventHubs
         /// <param name="operationTimeout">Operation timeout for Event Hubs operations.</param>
         /// <param name="transportType">Transport type on connection.</param>
         /// <returns></returns>
-        public static EventHubClient Create(
+        internal static EventHubClient Create(
             Uri endpointAddress,
             string entityPath,
             AuthenticationContext authContext,
@@ -182,7 +182,7 @@ namespace Microsoft.Azure.EventHubs
         /// <param name="operationTimeout">Operation timeout for Event Hubs operations.</param>
         /// <param name="transportType">Transport type on connection.</param>
         /// <returns></returns>
-        public static EventHubClient Create(
+        internal static EventHubClient Create(
             Uri endpointAddress,
             string entityPath,
             AuthenticationContext authContext,
@@ -207,7 +207,7 @@ namespace Microsoft.Azure.EventHubs
         /// <param name="operationTimeout">Operation timeout for Event Hubs operations.</param>
         /// <param name="transportType">Transport type on connection.</param>
         /// <returns></returns>
-        public static EventHubClient CreateWithManagedServiceIdentity(
+        internal static EventHubClient CreateWithManagedServiceIdentity(
             Uri endpointAddress,
             string entityPath,
             TimeSpan? operationTimeout = null,
