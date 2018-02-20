@@ -15,6 +15,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
         public static readonly AmqpSymbol EntityTypeName = AmqpConstants.Vendor + ":entity-type";
         public static readonly AmqpSymbol TimeoutName = AmqpConstants.Vendor + ":timeout";
         public static readonly AmqpSymbol EnableReceiverRuntimeMetricName = AmqpConstants.Vendor + ":enable-receiver-runtime-metric";
+        public static readonly AmqpSymbol ReceiverIdentifierName = AmqpConstants.Vendor + ":receiver-name";
 
         // Error codes
         public static readonly AmqpSymbol DeadLetterName = AmqpConstants.Vendor + ":dead-letter";
@@ -42,6 +43,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
         public static readonly AmqpSymbol MessageReceiptsFilterName = AmqpConstants.Vendor + ":message-receipts-filter";
         public static readonly AmqpSymbol ClientSideCursorFilterName = AmqpConstants.Vendor + ":client-side-filter";
         public static readonly TimeSpan ClientMinimumTokenRefreshInterval = TimeSpan.FromMinutes(4);
+        public const string FilterSeqNumberName = "amqp.annotation." + ClientConstants.SequenceNumberName;
         public const string FilterOffsetPartName = "amqp.annotation.x-opt-offset";
         public const string FilterOffset = FilterOffsetPartName + " > ";
         public const string FilterInclusiveOffset = FilterOffsetPartName + " >= ";

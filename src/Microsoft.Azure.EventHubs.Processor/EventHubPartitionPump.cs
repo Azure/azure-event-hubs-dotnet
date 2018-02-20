@@ -55,7 +55,9 @@ namespace Microsoft.Azure.EventHubs.Processor
                 // meaning it is safe to set the handler and start calling IEventProcessor.OnEvents.
                 // Set the status to running before setting the client handler, so the IEventProcessor.OnEvents can never race and see status != running.
                 this.PumpStatus = PartitionPumpStatus.Running;
-                this.partitionReceiver.SetReceiveHandler(this.partitionReceiveHandler);
+                this.partitionReceiver.SetReceiveHandler(
+                    this.partitionReceiveHandler,
+                    this.Host.EventProcessorOptions.InvokeProcessorAfterReceiveTimeout);
             }
 
             if (this.PumpStatus == PartitionPumpStatus.OpenFailed)
@@ -69,9 +71,10 @@ namespace Microsoft.Azure.EventHubs.Processor
         async Task OpenClientsAsync() // throws EventHubsException, IOException, InterruptedException, ExecutionException
         {
             // Create new clients
-            object startAt = await this.PartitionContext.GetInitialOffsetAsync().ConfigureAwait(false);
+            EventPosition eventPosition = await this.PartitionContext.GetInitialOffsetAsync().ConfigureAwait(false);
             long epoch = this.Lease.Epoch;
-            ProcessorEventSource.Log.PartitionPumpCreateClientsStart(this.Host.Id, this.PartitionContext.PartitionId, epoch, startAt?.ToString());
+            ProcessorEventSource.Log.PartitionPumpCreateClientsStart(this.Host.Id, this.PartitionContext.PartitionId, epoch,
+                $"Offset:{eventPosition.Offset}, SequenceNumber:{eventPosition.SequenceNumber}, DateTime:{eventPosition.EnqueuedTimeUtc}");
             this.eventHubClient = EventHubClient.CreateFromConnectionString(this.Host.EventHubConnectionString);
 
             var receiverOptions = new ReceiverOptions()
@@ -81,24 +84,12 @@ namespace Microsoft.Azure.EventHubs.Processor
             };
 
             // Create new receiver and set options
-            if (startAt is string)
-            {
-                this.partitionReceiver = this.eventHubClient.CreateEpochReceiver(
-                    this.PartitionContext.ConsumerGroupName,
-                    this.PartitionContext.PartitionId,
-                    (string)startAt,
-                    epoch,
-                    receiverOptions);
-            }
-            else if (startAt is DateTime)
-            {
-                this.partitionReceiver = this.eventHubClient.CreateEpochReceiver(
-                    this.PartitionContext.ConsumerGroupName, 
-                    this.PartitionContext.PartitionId, 
-                    (DateTime)startAt, 
-                    epoch,
-                    receiverOptions);
-            }
+            this.partitionReceiver = this.eventHubClient.CreateEpochReceiver(
+                this.PartitionContext.ConsumerGroupName,
+                this.PartitionContext.PartitionId,
+                eventPosition,
+                epoch,
+                receiverOptions);
 
             this.partitionReceiver.PrefetchCount = this.Host.EventProcessorOptions.PrefetchCount;
             
@@ -146,7 +137,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                 this.MaxBatchSize = eventHubPartitionPump.Host.EventProcessorOptions.MaxBatchSize;
             }
 
-            public int MaxBatchSize { get; }
+            public int MaxBatchSize { get; set; }
 
             public Task ProcessEventsAsync(IEnumerable<EventData> events)
             {

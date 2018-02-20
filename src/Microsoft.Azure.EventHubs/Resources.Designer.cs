@@ -123,15 +123,6 @@ namespace Microsoft.Azure.EventHubs {
         }
         
         /// <summary>
-        ///    Looks up a localized string similar to The specified partitionKey &apos;{0}&apos; is invalid for partition &apos;{1}&apos;. Do not specify a partitionKey when sending using a PartitionedSender.  Instead use EventHubClient.Send..
-        /// </summary>
-        public static string PartitionInvalidPartitionKey {
-            get {
-                return ResourceManager.GetString("PartitionInvalidPartitionKey", resourceCulture);
-            }
-        }
-        
-        /// <summary>
         ///    Looks up a localized string similar to Argument {0} must be a non-negative timeout value. The provided value was {1}..
         /// </summary>
         public static string TimeoutMustBeNonNegative {
@@ -186,6 +177,39 @@ namespace Microsoft.Azure.EventHubs {
             get
             {
                 return ResourceManager.GetString("ArgumentInvalidCombination", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///    Looks up a localized string similar to System property '{0}' is missing in the event.
+        /// </summary>
+        public static string MissingSystemProperty
+        {
+            get
+            {
+                return ResourceManager.GetString("MissingSystemProperty", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///    Looks up a localized string similar to EventData batch with partitionKey cannot be sent on PartitionSender.
+        /// </summary>
+        public static string PartitionSenderInvalidWithPartitionKeyOnBatch
+        {
+            get
+            {
+                return ResourceManager.GetString("PartitionSenderInvalidWithPartitionKeyOnBatch", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        /// Gets localized string like: The identifier parameter exceeds the maximum allowed size of {0} characters.
+        /// </summary>
+        internal static string ReceiverIdentifierOverMaxValue
+        {
+            get
+            {
+                return ResourceManager.GetString("ReceiverIdentifierOverMaxValue", resourceCulture);
             }
         }
     }

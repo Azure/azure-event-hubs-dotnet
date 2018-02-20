@@ -9,14 +9,14 @@ namespace Microsoft.Azure.EventHubs
 
     /// <summary>
     /// A handler interface for the receive operation. Use any implementation of this interface to specify
-    /// user action when using <see cref="PartitionReceiver.SetReceiveHandler(IPartitionReceiveHandler)"/>.
+    /// user action when using <see cref="PartitionReceiver.SetReceiveHandler(IPartitionReceiveHandler, bool)"/>.
     /// </summary>
     public interface IPartitionReceiveHandler
     {
         /// <summary>
-        /// Gets the maximum batch size.
+        /// Gets or sets the maximum batch size.
         /// </summary>
-        int MaxBatchSize { get; }
+        int MaxBatchSize { get; set; }
 
         /// <summary>
         /// Users should implement this method to specify the action to be performed on the received events.

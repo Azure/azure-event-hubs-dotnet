@@ -28,17 +28,13 @@ namespace Microsoft.Azure.EventHubs
 
         protected abstract Task OnSendAsync(IEnumerable<EventData> eventDatas, string partitionKey);
 
-        internal static int ValidateEvents(IEnumerable<EventData> eventDatas, string partitionId, string partitionKey)
+        internal static int ValidateEvents(IEnumerable<EventData> eventDatas)
         {
             int count;
+
             if (eventDatas == null || (count = eventDatas.Count()) == 0)
             {
                 throw Fx.Exception.Argument(nameof(eventDatas), Resources.EventDataListIsNullOrEmpty);
-            }
-
-            if (partitionId != null && partitionKey != null)
-            {
-                throw Fx.Exception.Argument(nameof(partitionKey), Resources.PartitionInvalidPartitionKey.FormatForUser(partitionKey, partitionId));
             }
 
             return count;
