@@ -268,10 +268,8 @@ namespace Microsoft.Azure.EventHubs.Processor
             }
     	    catch (StorageException se)
     	    {
-    		    StorageExtendedErrorInformation extendedErrorInfo = se.RequestInformation.ExtendedErrorInformation;
-    		    if (extendedErrorInfo != null &&
-        		    (extendedErrorInfo.ErrorCode == BlobErrorCodeStrings.BlobAlreadyExists ||
-    	    	     extendedErrorInfo.ErrorCode == BlobErrorCodeStrings.LeaseIdMissing)) // occurs when somebody else already has leased the blob
+    		    if (se.RequestInformation.ErrorCode == BlobErrorCodeStrings.BlobAlreadyExists ||
+                     se.RequestInformation.ErrorCode == BlobErrorCodeStrings.LeaseIdMissing) // occurs when somebody else already has leased the blob
     		    {
                     // The blob already exists.
                     ProcessorEventSource.Log.AzureStorageManagerInfo(this.host.Id, partitionId, "Lease already exists");
@@ -458,19 +456,15 @@ namespace Microsoft.Azure.EventHubs.Processor
             if (se.RequestInformation.HttpStatusCode == 409 || // conflict
                 se.RequestInformation.HttpStatusCode == 412) // precondition failed
             {
-                StorageExtendedErrorInformation extendedErrorInfo = se.RequestInformation.ExtendedErrorInformation;
+                ProcessorEventSource.Log.AzureStorageManagerInfo(this.host.Id, partitionId,
+                    "HandleStorageException - Error code: " + se.RequestInformation.ErrorCode);
+                ProcessorEventSource.Log.AzureStorageManagerInfo(this.host.Id, partitionId,
+                    "HandleStorageException - Error message: " + se.RequestInformation.ExtendedErrorInformation?.ErrorMessage);
 
-                if (extendedErrorInfo != null)
-                {
-                    string errorCode = extendedErrorInfo.ErrorCode;
-                    ProcessorEventSource.Log.AzureStorageManagerInfo(this.host.Id, partitionId, "HandleStorageException - Error code: " + errorCode);
-                    ProcessorEventSource.Log.AzureStorageManagerInfo(this.host.Id, partitionId, "HandleStorageException - Error message: " + extendedErrorInfo.ErrorMessage);
-                }
-
-                if (extendedErrorInfo == null ||
-                    extendedErrorInfo.ErrorCode == BlobErrorCodeStrings.LeaseLost ||
-                    extendedErrorInfo.ErrorCode == BlobErrorCodeStrings.LeaseIdMismatchWithLeaseOperation ||
-                    extendedErrorInfo.ErrorCode == BlobErrorCodeStrings.LeaseIdMismatchWithBlobOperation)
+                if (se.RequestInformation.ErrorCode == null ||
+                    se.RequestInformation.ErrorCode == BlobErrorCodeStrings.LeaseLost ||
+                    se.RequestInformation.ErrorCode == BlobErrorCodeStrings.LeaseIdMismatchWithLeaseOperation ||
+                    se.RequestInformation.ErrorCode == BlobErrorCodeStrings.LeaseIdMismatchWithBlobOperation)
                 {
                     return new LeaseLostException(partitionId, se);
                 }
