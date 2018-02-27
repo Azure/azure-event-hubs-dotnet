@@ -4,6 +4,7 @@
 namespace Microsoft.Azure.EventHubs.Processor
 {
     using System;
+    using System.Threading;
     using System.Threading.Tasks;
 
     /// <summary>
@@ -13,17 +14,23 @@ namespace Microsoft.Azure.EventHubs.Processor
     {
         readonly EventProcessorHost host;
 
-        internal PartitionContext(EventProcessorHost host, string partitionId, string eventHubPath, string consumerGroupName)
+        internal PartitionContext(EventProcessorHost host, string partitionId, string eventHubPath, string consumerGroupName, CancellationToken cancellationToken)
         {
             this.host = host;
             this.PartitionId = partitionId;
             this.EventHubPath = eventHubPath;
             this.ConsumerGroupName = consumerGroupName;
+            this.CancellationToken = cancellationToken;
             this.ThisLock = new object();
             this.Offset = EventPosition.FromStart().Offset;
             this.SequenceNumber = 0;
             this.RuntimeInformation = new ReceiverRuntimeInformation(partitionId);
         }
+
+        /// <summary>
+        /// Gets triggered when the partition gets closed.
+        /// </summary>
+        public CancellationToken CancellationToken { get; }
 
         /// <summary>
         /// Gets the name of the consumer group.
@@ -139,7 +146,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             {
                 throw new ArgumentNullException("eventData");
             }
-            
+
             // We have never seen this sequence number yet
             if (eventData.SystemProperties.SequenceNumber > this.SequenceNumber)
             {
