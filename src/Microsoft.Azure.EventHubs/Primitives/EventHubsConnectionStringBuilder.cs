@@ -56,7 +56,6 @@ namespace Microsoft.Azure.EventHubs
         static readonly string EntityPathConfigName = "EntityPath";
         static readonly string OperationTimeoutConfigName = "OperationTimeout";
         static readonly string TransportTypeConfigName = "TransportType";
-        static readonly string ProxyUriConfigName = "ProxyUri";
         static readonly string SharedAccessSignatureConfigName = "SharedAccessSignature";
 
         /// <summary>
@@ -209,13 +208,6 @@ namespace Microsoft.Azure.EventHubs
         public TransportType TransportType { get; set; }
 
         /// <summary>
-        /// Gets or sets the proxy endpoint URI.
-        /// A proxy is applicable only when transport type is set to AmqpWebSockets.
-        /// If not set, systemwide proxy setting will be honored.
-        /// </summary>
-        public Uri ProxyUri { get; set; }
-
-        /// <summary>
         /// Creates a cloned object of the current <see cref="EventHubsConnectionStringBuilder"/>.
         /// </summary>
         /// <returns>A new <see cref="EventHubsConnectionStringBuilder"/></returns>
@@ -267,11 +259,6 @@ namespace Microsoft.Azure.EventHubs
             if (this.TransportType != ClientConstants.DefaultTransportType)
             {
                 connectionStringBuilder.Append($"{TransportTypeConfigName}{KeyValueSeparator}{this.TransportType}{KeyValuePairDelimiter}");
-            }
-
-            if (this.ProxyUri != null)
-            {
-                connectionStringBuilder.Append($"{ProxyUriConfigName}{KeyValueSeparator}{this.ProxyUri}{KeyValuePairDelimiter}");
             }
 
             return connectionStringBuilder.ToString();
@@ -357,10 +344,6 @@ namespace Microsoft.Azure.EventHubs
                 else if (key.Equals(TransportTypeConfigName, StringComparison.OrdinalIgnoreCase))
                 {
                     this.TransportType = (TransportType)Enum.Parse(typeof(TransportType), value);
-                }
-                else if (key.Equals(ProxyUriConfigName, StringComparison.OrdinalIgnoreCase))
-                {
-                    this.ProxyUri = new Uri(value);
                 }
                 else
                 {

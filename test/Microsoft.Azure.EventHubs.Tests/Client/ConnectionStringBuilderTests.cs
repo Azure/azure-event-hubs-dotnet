@@ -23,7 +23,6 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             csb.OperationTimeout = TimeSpan.FromSeconds(100);
             csb.SasKeyName = "newsaskeyname";
             csb.SasKey = "newsaskey";
-            csb.ProxyUri = new Uri("http://myproxy.server.com:8080");
             var newConnectionString = csb.ToString();
 
             // Now try creating a new ConnectionStringBuilder from modified connection string.
@@ -35,7 +34,6 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             Assert.Equal(TimeSpan.FromSeconds(100), newCsb.OperationTimeout);
             Assert.Equal("newsaskeyname", newCsb.SasKeyName);
             Assert.Equal("newsaskey", newCsb.SasKey);
-            Assert.Equal(new Uri("http://myproxy.server.com:8080"), newCsb.ProxyUri);
         }
 
         [Fact]
