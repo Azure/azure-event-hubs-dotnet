@@ -4,7 +4,6 @@
 namespace Microsoft.Azure.EventHubs.Amqp
 {
     using System;
-    using System.Linq;
     using System.Threading.Tasks;
     using Microsoft.Azure.Amqp.Sasl;
     using Microsoft.Azure.Amqp;
@@ -192,7 +191,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
             return tlsSettings;
         }
 
-        static TransportSettings CreateWebSocketsTransportSettings(string hostName)
+        static TransportSettings CreateWebSocketsTransportSettings(string hostName, Uri proxyUri)
         {
             var uriBuilder = new UriBuilder(hostName)
             {
@@ -204,6 +203,14 @@ namespace Microsoft.Azure.EventHubs.Amqp
             {
                 Uri = uriBuilder.Uri
             };
+
+            // Proxy Uri provided?
+            if(proxyUri != null)
+            {
+#if !UAP10_0
+                ts.Proxy = new System.Net.WebProxy(proxyUri);
+#endif
+            }
 
             return ts;
         }
@@ -237,7 +244,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
             TransportSettings tpSettings = null;
             if (useWebSockets)
             {
-                tpSettings = CreateWebSocketsTransportSettings(hostName);
+                tpSettings = CreateWebSocketsTransportSettings(hostName, this.ConnectionStringBuilder.ProxyUri);
             }
             else
             {
