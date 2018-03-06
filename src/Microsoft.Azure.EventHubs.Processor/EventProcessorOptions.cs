@@ -95,7 +95,6 @@ namespace Microsoft.Azure.EventHubs.Processor
         /// <summary>
         /// Gets or sets the web proxy.
         /// A proxy is applicable only when transport type is set to AmqpWebSockets.
-        /// If not set, systemwide proxy settings will be honored.
         /// </summary>
         public IWebProxy WebProxy
         {
