@@ -201,7 +201,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
             };
             var ts = new WebSocketTransportSettings()
             {
-                Uri = uriBuilder.Uri,
+                Uri = uriBuilder.Uri
             };
 
             // Proxy Uri provided?
