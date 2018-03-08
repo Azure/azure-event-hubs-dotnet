@@ -6,6 +6,7 @@ namespace Microsoft.Azure.EventHubs
     using System;
     using System.Collections.Generic;
     using System.Diagnostics;
+    using System.Net;
     using System.Threading.Tasks;
     using Microsoft.Azure.EventHubs.Amqp;
     using Microsoft.IdentityModel.Clients.ActiveDirectory;
@@ -543,6 +544,17 @@ namespace Microsoft.Azure.EventHubs
         /// <summary> Gets or sets a value indicating whether the runtime metric of a receiver is enabled. </summary>
         /// <value> true if a client wants to access <see cref="ReceiverRuntimeInformation"/> using <see cref="PartitionReceiver"/>. </value>
         public bool EnableReceiverRuntimeMetric
+        {
+            get;
+            set;
+        }
+
+        /// <summary>
+        /// Gets or sets the web proxy.
+        /// A proxy is applicable only when transport type is set to AmqpWebSockets.
+        /// If not set, systemwide proxy settings will be honored.
+        /// </summary>
+        public IWebProxy WebProxy
         {
             get;
             set;

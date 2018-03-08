@@ -19,7 +19,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
         {
             var targetPartition = "0";
             var zeroBodyEventData = new EventData(new byte[0]);
-            var edReceived = await SendAndReceiveEvent(targetPartition, zeroBodyEventData);
+            var edReceived = await SendAndReceiveEventAsync(targetPartition, zeroBodyEventData);
 
             // Validate body.
             Assert.True(edReceived.Body.Count == 0, $"Received event's body isn't zero byte long.");
@@ -89,7 +89,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             byte[] byteArr = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
 
             var edToSend = new EventData(new ArraySegment<byte>(byteArr));
-            var edReceived = await SendAndReceiveEvent(targetPartition, edToSend);
+            var edReceived = await SendAndReceiveEventAsync(targetPartition, edToSend);
 
             // Validate array segment count.
             Assert.True(edReceived.Body.Count == byteArr.Count(), $"Sent {byteArr.Count()} bytes and received {edReceived.Body.Count}");

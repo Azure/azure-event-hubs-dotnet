@@ -86,7 +86,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             var edToSend = new EventData(new byte[bodySize]);
 
             TestUtility.Log($"Sending one message with body size {bodySize} bytes.");
-            var edReceived = await SendAndReceiveEvent(targetPartition, edToSend);
+            var edReceived = await SendAndReceiveEventAsync(targetPartition, edToSend);
 
             // Validate body size.
             Assert.True(edReceived.Body.Count == bodySize, $"Sent {bodySize} bytes and received {edReceived.Body.Count}");
