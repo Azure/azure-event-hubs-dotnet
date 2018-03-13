@@ -102,7 +102,7 @@ namespace Microsoft.Azure.EventHubs.Processor
         {
     	    AzureBlobLease lease = (AzureBlobLease)await GetLeaseAsync(partitionId).ConfigureAwait(false);
             Checkpoint checkpoint = null;
-            if (lease?.Offset != null)
+            if (lease != null && !string.IsNullOrEmpty(lease.Offset))
             {
                 checkpoint = new Checkpoint(partitionId)
                 {
