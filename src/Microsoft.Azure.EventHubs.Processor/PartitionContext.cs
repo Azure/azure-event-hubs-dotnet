@@ -99,9 +99,8 @@ namespace Microsoft.Azure.EventHubs.Processor
             if (startingCheckpoint == null)
             {
                 // No checkpoint was ever stored. Use the initialOffsetProvider instead.
-                Func<string, EventPosition> initialOffsetProvider = this.host.EventProcessorOptions.InitialOffsetProvider;
                 ProcessorEventSource.Log.PartitionPumpInfo(this.host.Id, this.PartitionId, "Calling user-provided initial offset provider");
-                eventPosition = initialOffsetProvider(this.PartitionId);
+                eventPosition = this.host.EventProcessorOptions.InitialOffsetProvider(this.PartitionId);
                 ProcessorEventSource.Log.PartitionPumpInfo(this.host.Id, this.PartitionId, $"Initial Position Provider. Offset:{eventPosition.Offset}, SequenceNumber:{eventPosition.SequenceNumber}, DateTime:{eventPosition.EnqueuedTimeUtc}");
             }
             else
