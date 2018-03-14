@@ -195,9 +195,11 @@ namespace Microsoft.Azure.EventHubs.Processor
                 int ourLeaseCount = 0;
                 foreach (Task<Lease> getLeaseTask in gettingAllLeases)
                 {
+                    Lease possibleLease = null;
+
                     try
                     {
-                        Lease possibleLease = await getLeaseTask.ConfigureAwait(false);
+                        possibleLease = await getLeaseTask.ConfigureAwait(false);
                         allLeases[possibleLease.PartitionId] = possibleLease;
                         if (await possibleLease.IsExpired().ConfigureAwait(false))
                         {
@@ -237,7 +239,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                     catch (Exception e)
                     {
                         ProcessorEventSource.Log.EventProcessorHostWarning(this.host.Id, "Failure during getting/acquiring/renewing lease, skipping", e.ToString());
-                        this.host.EventProcessorOptions.NotifyOfException(this.host.HostName, "N/A", e, EventProcessorHostActionStrings.CheckingLeases);
+                        this.host.EventProcessorOptions.NotifyOfException(this.host.HostName, possibleLease?.PartitionId ?? "N/A", e, EventProcessorHostActionStrings.CheckingLeases);
                     }
                 }
 
