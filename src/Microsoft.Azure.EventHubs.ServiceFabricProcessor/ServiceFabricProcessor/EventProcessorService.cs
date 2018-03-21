@@ -1,0 +1,391 @@
+﻿// Copyright (c) Microsoft. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for full license information.using System;
+
+using System;
+using System.Collections.Generic;
+using System.Fabric;
+using System.Fabric.Description;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.ServiceFabric.Data;
+using Microsoft.ServiceFabric.Data.Collections;
+using Microsoft.ServiceFabric.Services.Client;
+using Microsoft.ServiceFabric.Services.Runtime;
+
+
+namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
+{
+    public class EventProcessorService<TEventProcessor> : StatefulService
+        where TEventProcessor : IEventProcessor, new()
+    {
+        private PartitionContext partitionContext = null;
+        private EventHubsConnectionStringBuilder ehConnectionString;
+        private string consumerGroupName;
+        private string partitionId = null;
+        private int servicePartitions = -1;
+        private int epoch;
+        private string initialOffset = null;
+
+        public EventProcessorService(StatefulServiceContext context)
+            : base(context)
+        {
+            this.Options = new EventProcessorOptions();
+            this.EventProcessorFactory = new DefaultEventProcessorFactory<TEventProcessor>();
+            this.CheckpointManager = new ReliableDictionaryCheckpointMananger(this.StateManager);
+            this.EventHubClientFactory = new EventHubWrappers.EventHubClientFactory();
+        }
+
+        protected EventProcessorOptions Options { get; set; }
+
+        protected IEventProcessorFactory EventProcessorFactory { get; set; }
+
+        protected ICheckpointMananger CheckpointManager { get; set; }
+
+        protected EventHubWrappers.IEventHubClientFactory EventHubClientFactory { get; set; }
+
+        sealed protected override async Task RunAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                await InnerRunAsync(cancellationToken);
+            }
+            catch (Exception e)
+            {
+                // If InnerRunAsync throws, that is intended to be a fatal exception for this instance.
+                // Catch it here just long enough to log it, then rethrow.
+
+                EventProcessorEventSource.Current.Message("THROWING OUT: {0}", e);
+                throw e;
+            }
+        }
+
+        private async Task InnerRunAsync(CancellationToken cancellationToken)
+        {
+            IEventProcessor processor = null;
+            EventHubWrappers.IEventHubClient ehclient = null;
+            EventHubWrappers.IPartitionReceiver receiver = null;
+
+            try
+            {
+                //
+                // General startup tasks.
+                //
+                await PartitionStartup(cancellationToken);
+
+                //
+                // Instantiate user's event processor class and call Open.
+                // If user's Open code fails, treat that as a fatal exception and let it throw out.
+                //
+                EventProcessorEventSource.Current.Message("Creating event processor");
+                processor = this.EventProcessorFactory.CreateEventProcessor(this.partitionContext);
+                await processor.OpenAsync(this.partitionContext);
+                EventProcessorEventSource.Current.Message("Event processor created and opened OK");
+
+                //
+                // Create EventHubClient and check partition count.
+                //
+                Exception lastException = null;
+                EventProcessorEventSource.Current.Message("Creating event hub client");
+                for (int i = 0; i < Constants.RetryCount; i++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    try
+                    {
+                        ehclient = this.EventHubClientFactory.CreateFromConnectionString(this.ehConnectionString.ToString());
+                        break;
+                    }
+                    catch (EventHubsException e)
+                    {
+                        if (!e.IsTransient)
+                        {
+                            // Nontransient exceptions when creating the client are fatal and throw out of RunAsync.
+                            throw e;
+                        }
+                        lastException = e;
+                    }
+                }
+                if (ehclient == null)
+                {
+                    EventProcessorEventSource.Current.Message("Out of retries event hub client");
+                    throw new Exception("Out of retries creating EventHubClient", lastException);
+                }
+                EventProcessorEventSource.Current.Message("Event hub client OK");
+                EventProcessorEventSource.Current.Message("Getting event hub info");
+                EventHubRuntimeInformation ehInfo = null;
+                for (int i = 0; i < Constants.RetryCount; i++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    try
+                    {
+                        ehInfo = await ehclient.GetRuntimeInformationAsync();
+                        break;
+                    }
+                    catch (EventHubsException e)
+                    {
+                        if (!e.IsTransient)
+                        {
+                            // Nontransient exceptions here are fatal and throw out of RunAsync.
+                            throw e;
+                        }
+                        lastException = e;
+                    }
+                }
+                if (ehInfo == null)
+                {
+                    EventProcessorEventSource.Current.Message("Out of retries getting event hub info");
+                    throw new Exception("Out of retries getting event hub runtime info", lastException);
+                }
+                if (ehInfo.PartitionCount != this.servicePartitions)
+                {
+                    EventProcessorEventSource.Current.Message("Service partition count {0} does not match event hub partition count {1}", this.servicePartitions, ehInfo.PartitionCount);
+                    throw new EventProcessorConfigurationException("Service partition count " + this.servicePartitions + " does not match event hub partition count " + ehInfo.PartitionCount);
+                }
+
+                //
+                // If there was a checkpoint, the offset is in this.initialOffset, so convert it to an EventPosition.
+                // If no checkpoint, get starting point from user-supplied provider.
+                //
+                EventPosition initialPosition = null;
+                if (this.initialOffset != null)
+                {
+                    EventProcessorEventSource.Current.Message("Initial position from checkpoint, offset {0}", this.initialOffset);
+                    initialPosition = EventPosition.FromOffset(this.initialOffset);
+                }
+                else
+                {
+                    initialPosition = this.Options.InitialOffsetProvider(this.partitionId);
+                    EventProcessorEventSource.Current.Message("Initial position from provider");
+                }
+
+                //
+                // Create receiver.
+                //
+                EventProcessorEventSource.Current.Message("Creating receiver");
+                for (int i = 0; i < Constants.RetryCount; i++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    try
+                    {
+                        receiver = ehclient.CreateEpochReceiver(this.consumerGroupName, this.partitionId, initialPosition, this.epoch, null); // FOO receiveroptions
+                        break;
+                    }
+                    catch (EventHubsException e)
+                    {
+                        if (!e.IsTransient)
+                        {
+                            throw e;
+                        }
+                        lastException = e;
+                    }
+                }
+                if (receiver == null)
+                {
+                    EventProcessorEventSource.Current.Message("Out of retries creating receiver");
+                    throw new Exception("Out of retries creating event hub receiver", lastException);
+                }
+
+                //
+                // Receive pump.
+                //
+                while (!cancellationToken.IsCancellationRequested)
+                {
+                    try
+                    {
+                        IEnumerable<EventHubWrappers.IEventData> events = await receiver.ReceiveAsync(Options.MaxBatchSize, Options.ReceiveTimeout);
+                        if ((events != null) || ((events == null) && Options.InvokeProcessorAfterReceiveTimeout))
+                        {
+                            IEnumerable<EventHubWrappers.IEventData> effectiveEvents = events;
+
+                            if (effectiveEvents != null)
+                            {
+                                // Save position of last event
+                                IEnumerator<EventHubWrappers.IEventData> scanner = effectiveEvents.GetEnumerator();
+                                EventHubWrappers.IEventData last = null;
+                                while (scanner.MoveNext())
+                                {
+                                    last = scanner.Current;
+                                }
+                                this.partitionContext.SetOffsetAndSequenceNumber(last);
+                            }
+                            else
+                            {
+                                // ReceiveAsync returns null on timeout, but processor expects empty enumerable.
+                                effectiveEvents = new List<EventHubWrappers.IEventData>();
+                            }
+
+                            await processor.ProcessEventsAsync(this.partitionContext, effectiveEvents);
+                        }
+                    }
+                    catch (EventHubsException e)
+                    {
+                        await processor.ProcessErrorAsync(this.partitionContext, e); // TODO: do we want to pass transient errors to user's error handler?
+                        if (!e.IsTransient)
+                        {
+                            throw e;
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                if (receiver != null)
+                {
+                    await receiver.CloseAsync();
+                }
+                if (ehclient != null)
+                {
+                    await ehclient.CloseAsync();
+                }
+                if (processor != null)
+                {
+                    // partitionContext is set up before processor is created, so it is available if processor is not null
+                    await processor.CloseAsync(this.partitionContext, cancellationToken.IsCancellationRequested ? CloseReason.Cancelled : CloseReason.Failure);
+                }
+            }
+        }
+
+        private async Task PartitionStartup(CancellationToken cancellationToken)
+        {
+            // What partition is this? What is the total count of partitions?
+            await GetServicePartitionId(cancellationToken);
+
+            // Get event hub connection string from configuration. This is mandatory, cannot proceed without.
+            string rawConnectionString = GetConfigurationValue(Constants.EventHubConnectionStringConfigName, null);
+            if (rawConnectionString == null)
+            {
+                throw new EventProcessorConfigurationException("Event hub connection string not supplied in configuration section " + Constants.EventProcessorConfigSectionName);
+            }
+            EventProcessorEventSource.Current.Message("Event hub connection string {0}", rawConnectionString);
+            this.ehConnectionString = new EventHubsConnectionStringBuilder(rawConnectionString);
+
+            // Get consumer group name. Many users will be using the default consumer group, so for convenience default to that if not supplied.
+            this.consumerGroupName = GetConfigurationValue(Constants.EventHubConsumerGroupConfigName, Constants.EventHubConsumerGroupConfigDefault);
+            EventProcessorEventSource.Current.Message("Consumer group {0}", this.consumerGroupName);
+
+            // Generate a PartitionContext now that the required info is available.
+            this.partitionContext = new PartitionContext(cancellationToken, this.partitionId, this.ehConnectionString.EntityPath, this.consumerGroupName, this.CheckpointManager);
+
+            // Create/retrieve the reliable dictionary and get raw values.
+            IReliableDictionary<string, object> epochDictionary = await this.StateManager.GetOrAddAsync<IReliableDictionary<string, object>>(Constants.EpochDictionaryName);
+            ConditionalValue<object> tryEpoch;
+            Exception lastException = null;
+            for (int i = 0; i < Constants.RetryCount; i++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                lastException = null;
+
+                try
+                {
+                    using (ITransaction tx = this.StateManager.CreateTransaction())
+                    {
+                        tryEpoch = await epochDictionary.TryGetValueAsync(tx, this.partitionId, Constants.ReliableDictionaryTimeout, cancellationToken);
+
+                        // Check and update the epoch while we are in the transaction.
+                        if (tryEpoch.HasValue)
+                        {
+                            // Epoch should always be stored as int. If cast fails that's a fatal error, let it throw.
+                            this.epoch = (int)tryEpoch.Value;
+                            EventProcessorEventSource.Current.Message("Pre-existing epoch {0}", this.epoch);
+                        }
+                        else
+                        {
+                            // No epoch stored, so start at 0.
+                            this.epoch = 0;
+                            EventProcessorEventSource.Current.Message("No epoch found, starting at 0");
+                        }
+                        await epochDictionary.SetAsync(tx, this.partitionId, (this.epoch + 1), Constants.ReliableDictionaryTimeout, cancellationToken);
+                        EventProcessorEventSource.Current.Message("Updated epoch OK");
+
+                        await tx.CommitAsync();
+
+                        // Success! Break out of the retry loop.
+                        break;
+                    }
+                }
+                catch (TimeoutException e)
+                {
+                    // On timeout, try again.
+                    lastException = e;
+                    EventProcessorEventSource.Current.Message("Dictionary timeout");
+                }
+            }
+            if (lastException != null)
+            {
+                // Out of retries reading from dictionary.
+                throw new Exception("Out of retries trying to get epoch", lastException);
+            }
+
+            // Set up store and get checkpoint, if any.
+            await this.CheckpointManager.CreateCheckpointStoreIfNotExistsAsync(cancellationToken);
+            Checkpoint checkpoint = await this.CheckpointManager.CreateCheckpointIfNotExistsAsync(this.partitionId, cancellationToken);
+            if (!checkpoint.Valid)
+            {
+                // Not actually any existing checkpoint.
+                this.initialOffset = null;
+                EventProcessorEventSource.Current.Message("No checkpoint");
+            }
+            else if (checkpoint.Version == 1)
+            {
+                this.initialOffset = checkpoint.Offset;
+                EventProcessorEventSource.Current.Message("Checkpoint says to start at {0}", this.initialOffset);
+            }
+            else
+            {
+                // It's actually a later-version checkpoint but we don't know the details.
+                // Access it via the V1 interface and hope it does something sensible.
+                this.initialOffset = checkpoint.Offset;
+                EventProcessorEventSource.Current.Message("Checkpoint version error");
+            }
+        }
+
+        private async Task GetServicePartitionId(CancellationToken cancellationToken)
+        {
+            if (this.partitionId == null)
+            {
+                Int64RangePartitionInformation thisPartition = (Int64RangePartitionInformation)this.Partition.PartitionInfo;
+
+                ServicePartitionResolver resolver = ServicePartitionResolver.GetDefault();
+                Int64RangePartitionInformation scanner = null;
+                long lowScan = long.MinValue;
+                int ordinal = 0;
+                int totalPartitions = 0;
+                do
+                {
+                    ServicePartitionKey resolveKey = new ServicePartitionKey(lowScan);
+                    ResolvedServicePartition partition = await resolver.ResolveAsync(this.Context.ServiceName, resolveKey, cancellationToken);
+                    scanner = (Int64RangePartitionInformation)partition.Info;
+                    lowScan = scanner.HighKey + 1;
+                    if (scanner.LowKey == thisPartition.LowKey)
+                    {
+                        ordinal = totalPartitions;
+                        EventProcessorEventSource.Current.Message("Found our partition, ordinal {0}", ordinal);
+                    }
+                    totalPartitions++;
+                } while (scanner.HighKey != long.MaxValue);
+
+                this.partitionId = ordinal.ToString();
+                this.servicePartitions = totalPartitions;
+                EventProcessorEventSource.Current.Message("Total partitions {0}", this.servicePartitions);
+            }
+        }
+
+        private string GetConfigurationValue(string configurationValueName, string defaultValue = null)
+        {
+            string value = defaultValue;
+            ConfigurationPackage configurationPackage = this.Context.CodePackageActivationContext.GetConfigurationPackageObject(Constants.ConfigurationPackageName);
+            try
+            {
+                ConfigurationSection configurationSection = configurationPackage.Settings.Sections[Constants.EventProcessorConfigSectionName];
+                ConfigurationProperty configurationProperty = configurationSection.Parameters[configurationValueName];
+                value = configurationProperty.Value;
+            }
+            catch (KeyNotFoundException)
+            {
+                // If the user has not specified a value in config, drop through and return the default value.
+                // If the caller cannot continue without a user-supplied value, it is up to the caller to detect and handle.
+            }
+            //catch (ArgumentNullException) if configurationValueName is null, that's a code bug, do not catch
+            return value;
+        }
+    }
+}
