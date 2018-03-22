@@ -1,6 +1,8 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
+using Microsoft.Azure.EventHubs.Processor.Options;
+
 namespace Microsoft.Azure.EventHubs.Processor
 {
     using System;
@@ -257,7 +259,7 @@ namespace Microsoft.Azure.EventHubs.Processor
     	    {
                 CloudBlockBlob leaseBlob = GetBlockBlobReference(partitionId);
                 returnLease = new AzureBlobLease(partitionId, leaseBlob);
-                string jsonLease = JsonConvert.SerializeObject(returnLease);
+                string jsonLease = JsonConvert.SerializeObject(returnLease, JsonConvertOptions.GetOptions());
 
                 ProcessorEventSource.Log.AzureStorageManagerInfo(
                     this.host.Id,
@@ -338,7 +340,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                 lease.Token = newToken;
                 lease.Owner = this.host.HostName;
                 lease.IncrementEpoch(); // Increment epoch each time lease is acquired or stolen by a new host
-                await leaseBlob.UploadTextAsync(JsonConvert.SerializeObject(lease), null, AccessCondition.GenerateLeaseCondition(lease.Token), null, null).ConfigureAwait(false);
+                await leaseBlob.UploadTextAsync(JsonConvert.SerializeObject(lease, JsonConvertOptions.GetOptions()), null, AccessCondition.GenerateLeaseCondition(lease.Token), null, null).ConfigureAwait(false);
             }
     	    catch (StorageException se)
             {
@@ -390,7 +392,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                     Token = string.Empty,
                     Owner = string.Empty
                 };
-                await leaseBlob.UploadTextAsync(JsonConvert.SerializeObject(releasedCopy), null, AccessCondition.GenerateLeaseCondition(leaseId), null, null).ConfigureAwait(false);
+                await leaseBlob.UploadTextAsync(JsonConvert.SerializeObject(releasedCopy, JsonConvertOptions.GetOptions()), null, AccessCondition.GenerateLeaseCondition(leaseId), null, null).ConfigureAwait(false);
                 await leaseBlob.ReleaseLeaseAsync(AccessCondition.GenerateLeaseCondition(leaseId)).ConfigureAwait(false);
             }
     	    catch (StorageException se)
@@ -428,7 +430,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             CloudBlockBlob leaseBlob = lease.Blob;
     	    try
             {
-                string jsonToUpload = JsonConvert.SerializeObject(lease);
+                string jsonToUpload = JsonConvert.SerializeObject(lease, JsonConvertOptions.GetOptions());
                 ProcessorEventSource.Log.AzureStorageManagerInfo(this.host.Id, lease.PartitionId, $"Raw JSON uploading: {jsonToUpload}");
                 await leaseBlob.UploadTextAsync(jsonToUpload, null, AccessCondition.GenerateLeaseCondition(token), null, null).ConfigureAwait(false);
             }
@@ -445,7 +447,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             string jsonLease = await blob.DownloadTextAsync().ConfigureAwait(false);
 
             ProcessorEventSource.Log.AzureStorageManagerInfo(this.host.Id, partitionId, "Raw JSON downloaded: " + jsonLease);
-            AzureBlobLease rehydrated = (AzureBlobLease)JsonConvert.DeserializeObject(jsonLease, typeof(AzureBlobLease));
+            AzureBlobLease rehydrated = (AzureBlobLease)JsonConvert.DeserializeObject(jsonLease, typeof(AzureBlobLease), JsonConvertOptions.GetOptions());
     	    AzureBlobLease blobLease = new AzureBlobLease(rehydrated, blob);
     	    return blobLease;
         }
