@@ -11,6 +11,8 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
 
         internal static int RetryCount = 5;
 
+        internal static TimeSpan MetricReportingInterval = TimeSpan.FromMinutes(1.0);
+
         internal static readonly string EventProcessorConfigSectionName = "EventProcessorConfig";
         internal static readonly string EventHubConnectionStringConfigName = "EventHubConnectionString";
         internal static readonly string EventHubConsumerGroupConfigName = "EventHubConsumerGroup";

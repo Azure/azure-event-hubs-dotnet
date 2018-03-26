@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
@@ -48,13 +49,17 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
 
         public class PartitionReceiverMock : EventHubWrappers.IPartitionReceiver
         {
-            private string partitionId;
+            private readonly string partitionId;
             private long sequenceNumber;
+            private EventHubWrappers.IPartitionReceiveHandler2 outerHandler;
+            private bool invokeWhenNoEvents;
+            private readonly CancellationToken token;
 
-            public PartitionReceiverMock(string partitionId, long sequenceNumber)
+            public PartitionReceiverMock(string partitionId, long sequenceNumber, CancellationToken token)
             {
                 this.partitionId = partitionId;
                 this.sequenceNumber = sequenceNumber;
+                this.token = token;
             }
 
             public Task<IEnumerable<EventHubWrappers.IEventData>> ReceiveAsync(int maxEventCount, TimeSpan waitTime)
@@ -70,22 +75,54 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 return Task.FromResult<IEnumerable<EventHubWrappers.IEventData>>(events);
             }
 
+            public void SetReceiveHandler(EventHubWrappers.IPartitionReceiveHandler2 receiveHandler, bool invokeWhenNoEvents = false)
+            {
+                EventProcessorEventSource.Current.Message("MOCK IPartitionReceiver.SetReceiveHandler");
+                this.outerHandler = receiveHandler;
+                this.invokeWhenNoEvents = invokeWhenNoEvents; // TODO mock does not emulate receive timeouts
+                if (this.outerHandler != null)
+                {
+                    Task.Run(() => GenerateMessages());
+                }
+            }
+
             public Task CloseAsync()
             {
                 EventProcessorEventSource.Current.Message("MOCK IPartitionReceiver.CloseAsync");
                 return Task.CompletedTask;
             }
+
+            private void GenerateMessages()
+            {
+                while ((!this.token.IsCancellationRequested) && (this.outerHandler != null))
+                {
+                    EventProcessorEventSource.Current.Message("MOCK Generating messages and sending to handler");
+                    IEnumerable<EventHubWrappers.IEventData> events = ReceiveAsync(10, TimeSpan.FromSeconds(10.0)).Result; // TODO get count from somewhere real
+                    EventHubWrappers.IPartitionReceiveHandler2 capturedHandler = this.outerHandler;
+                    if (capturedHandler != null)
+                    {
+                        capturedHandler.ProcessEventsAsync(events);
+                    }
+                }
+                EventProcessorEventSource.Current.Message("MOCK Message generation ending");
+            }
         }
 
         public class EventHubClientMock : EventHubWrappers.IEventHubClient
         {
-            private int partitionCount;
-            private EventHubsConnectionStringBuilder csb;
+            private readonly int partitionCount;
+            private readonly EventHubsConnectionStringBuilder csb;
+            private CancellationToken token = new CancellationToken();
 
             public EventHubClientMock(int partitionCount, EventHubsConnectionStringBuilder csb)
             {
                 this.partitionCount = partitionCount;
                 this.csb = csb;
+            }
+
+            internal void SetCancellationToken(CancellationToken t)
+            {
+                this.token = t;
             }
 
             public Task<EventHubRuntimeInformation> GetRuntimeInformationAsync()
@@ -105,7 +142,8 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             public EventHubWrappers.IPartitionReceiver CreateEpochReceiver(string consumerGroupName, string partitionId, EventPosition eventPosition, long epoch, ReceiverOptions receiverOptions)
             {
                 EventProcessorEventSource.Current.Message("MOCK CreateEpochReceiver(CG {0}, part {1}, epoch {3})", consumerGroupName, partitionId, eventPosition.SequenceNumber, epoch);
-                return new PartitionReceiverMock(partitionId, eventPosition.SequenceNumber ?? 0L);
+                // TODO Mock does not implement epoch semantics
+                return new PartitionReceiverMock(partitionId, eventPosition.SequenceNumber ?? 0L, this.token);
             }
 
             public Task CloseAsync()
@@ -117,7 +155,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
 
         public class EventHubClientFactoryMock : EventHubWrappers.IEventHubClientFactory
         {
-            private int partitionCount;
+            private readonly int partitionCount;
 
             public EventHubClientFactoryMock(int partitionCount)
             {

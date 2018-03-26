@@ -9,9 +9,18 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
 {
     public class EventHubWrappers
     {
+        public interface IPartitionReceiveHandler2
+        {
+            Task ProcessEventsAsync(IEnumerable<IEventData> events);
+
+            Task ProcessErrorAsync(Exception error);
+        }
+
         public interface IPartitionReceiver
         {
             Task<IEnumerable<IEventData>> ReceiveAsync(int maxEventCount, TimeSpan waitTime);
+
+            void SetReceiveHandler(IPartitionReceiveHandler2 receiveHandler, bool invokeWhenNoEvents = false);
 
             Task CloseAsync();
         }
@@ -55,7 +64,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
 
         internal class SystemPropertiesCollectionWrapper : ISystemPropertiesCollection
         {
-            private EventData.SystemPropertiesCollection inner;
+            private readonly EventData.SystemPropertiesCollection inner;
 
             internal SystemPropertiesCollectionWrapper(EventData.SystemPropertiesCollection spc)
             {
@@ -97,7 +106,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
 
         internal class EventDataWrapper : IEventData
         {
-            private EventData inner;
+            private readonly EventData inner;
 
             internal EventDataWrapper(EventData eventData)
             {
@@ -135,41 +144,67 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             }
         }
 
-        internal class PartitionReceiverWrapper : IPartitionReceiver
+        internal class PartitionReceiverWrapper : IPartitionReceiver, IPartitionReceiveHandler
         {
-            private PartitionReceiver inner;
+            private readonly PartitionReceiver inner;
+            private IPartitionReceiveHandler2 outerHandler = null;
 
             internal PartitionReceiverWrapper(PartitionReceiver receiver)
             {
                 this.inner = receiver;
+                this.MaxBatchSize = 10; // TODO get this from somewhere real
             }
 
             public async Task<IEnumerable<IEventData>> ReceiveAsync(int maxEventCount, TimeSpan waitTime)
             {
                 IEnumerable<EventData> rawEvents = await this.inner.ReceiveAsync(maxEventCount, waitTime);
-                IEnumerable<IEventData> processedEvents = null;
+                IEnumerable<IEventData> wrappedEvents = null;
                 if (rawEvents != null)
                 {
-                    List<IEventData> workingEvents = new List<IEventData>();
-                    IEnumerator<EventData> rawScanner = rawEvents.GetEnumerator();
-                    while (rawScanner.MoveNext())
-                    {
-                        workingEvents.Add(new EventDataWrapper(rawScanner.Current));
-                    }
-                    processedEvents = workingEvents;
+                    wrappedEvents = WrapRawEvents(rawEvents);
                 }
-                return processedEvents;
+                return wrappedEvents;
+            }
+
+            public void SetReceiveHandler(IPartitionReceiveHandler2 receiveHandler, bool invokeWhenNoEvents = false)
+            {
+                this.outerHandler = receiveHandler;
+                this.inner.SetReceiveHandler(this, invokeWhenNoEvents);
             }
 
             public Task CloseAsync()
             {
                 return this.inner.CloseAsync();
             }
+
+            public int MaxBatchSize { get; set; }
+
+            public Task ProcessEventsAsync(IEnumerable<EventData> rawEvents)
+            {
+                IEnumerable<IEventData> wrappedEvents = (rawEvents != null) ? WrapRawEvents(rawEvents) : new List<IEventData>();
+                return outerHandler.ProcessEventsAsync(wrappedEvents);
+            }
+
+            public Task ProcessErrorAsync(Exception error)
+            {
+                return outerHandler.ProcessErrorAsync(error);
+            }
+
+            IEnumerable<IEventData> WrapRawEvents(IEnumerable<EventData> rawEvents)
+            {
+                List<IEventData> wrappedEvents = new List<IEventData>();
+                IEnumerator<EventData> rawScanner = rawEvents.GetEnumerator();
+                while (rawScanner.MoveNext())
+                {
+                    wrappedEvents.Add(new EventDataWrapper(rawScanner.Current));
+                }
+                return wrappedEvents;
+            }
         }
 
         internal class EventHubClientWrapper : IEventHubClient
         {
-            private EventHubClient inner;
+            private readonly EventHubClient inner;
 
             internal EventHubClientWrapper(EventHubClient ehc)
             {

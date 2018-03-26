@@ -15,7 +15,7 @@ using Microsoft.ServiceFabric.Services.Runtime;
 
 namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
 {
-    public class EventProcessorService<TEventProcessor> : StatefulService
+    public class EventProcessorService<TEventProcessor> : StatefulService, EventHubWrappers.IPartitionReceiveHandler2
         where TEventProcessor : IEventProcessor, new()
     {
         private PartitionContext partitionContext = null;
@@ -25,6 +25,9 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         private int servicePartitions = -1;
         private int epoch;
         private string initialOffset = null;
+        private CancellationTokenSource internalCanceller;
+        private Exception internalFatalException = null;
+        private IEventProcessor userEventProcessor = null;
 
         public EventProcessorService(StatefulServiceContext context)
             : base(context)
@@ -33,6 +36,8 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             this.EventProcessorFactory = new DefaultEventProcessorFactory<TEventProcessor>();
             this.CheckpointManager = new ReliableDictionaryCheckpointMananger(this.StateManager);
             this.EventHubClientFactory = new EventHubWrappers.EventHubClientFactory();
+
+            this.internalCanceller = new CancellationTokenSource();
         }
 
         protected EventProcessorOptions Options { get; set; }
@@ -43,11 +48,14 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
 
         protected EventHubWrappers.IEventHubClientFactory EventHubClientFactory { get; set; }
 
-        sealed protected override async Task RunAsync(CancellationToken cancellationToken)
+        sealed protected override async Task RunAsync(CancellationToken fabricCancellationToken)
         {
             try
             {
-                await InnerRunAsync(cancellationToken);
+                using (CancellationTokenSource linkedCanceller = CancellationTokenSource.CreateLinkedTokenSource(fabricCancellationToken, this.internalCanceller.Token))
+                {
+                    await InnerRunAsync(linkedCanceller.Token);
+                }
             }
             catch (Exception e)
             {
@@ -59,9 +67,8 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             }
         }
 
-        private async Task InnerRunAsync(CancellationToken cancellationToken)
+        private async Task InnerRunAsync(CancellationToken linkedCancellationToken)
         {
-            IEventProcessor processor = null;
             EventHubWrappers.IEventHubClient ehclient = null;
             EventHubWrappers.IPartitionReceiver receiver = null;
 
@@ -70,15 +77,15 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 //
                 // General startup tasks.
                 //
-                await PartitionStartup(cancellationToken);
+                await PartitionStartup(linkedCancellationToken);
 
                 //
                 // Instantiate user's event processor class and call Open.
                 // If user's Open code fails, treat that as a fatal exception and let it throw out.
                 //
                 EventProcessorEventSource.Current.Message("Creating event processor");
-                processor = this.EventProcessorFactory.CreateEventProcessor(this.partitionContext);
-                await processor.OpenAsync(this.partitionContext);
+                this.userEventProcessor = this.EventProcessorFactory.CreateEventProcessor(this.partitionContext);
+                await this.userEventProcessor.OpenAsync(this.partitionContext);
                 EventProcessorEventSource.Current.Message("Event processor created and opened OK");
 
                 //
@@ -88,7 +95,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 EventProcessorEventSource.Current.Message("Creating event hub client");
                 for (int i = 0; i < Constants.RetryCount; i++)
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
+                    linkedCancellationToken.ThrowIfCancellationRequested();
                     try
                     {
                         ehclient = this.EventHubClientFactory.CreateFromConnectionString(this.ehConnectionString.ToString());
@@ -114,7 +121,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 EventHubRuntimeInformation ehInfo = null;
                 for (int i = 0; i < Constants.RetryCount; i++)
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
+                    linkedCancellationToken.ThrowIfCancellationRequested();
                     try
                     {
                         ehInfo = await ehclient.GetRuntimeInformationAsync();
@@ -163,7 +170,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 EventProcessorEventSource.Current.Message("Creating receiver");
                 for (int i = 0; i < Constants.RetryCount; i++)
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
+                    linkedCancellationToken.ThrowIfCancellationRequested();
                     try
                     {
                         receiver = ehclient.CreateEpochReceiver(this.consumerGroupName, this.partitionId, initialPosition, this.epoch, null); // FOO receiveroptions
@@ -187,61 +194,85 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 //
                 // Receive pump.
                 //
-                while (!cancellationToken.IsCancellationRequested)
-                {
-                    try
-                    {
-                        IEnumerable<EventHubWrappers.IEventData> events = await receiver.ReceiveAsync(Options.MaxBatchSize, Options.ReceiveTimeout);
-                        if ((events != null) || ((events == null) && Options.InvokeProcessorAfterReceiveTimeout))
-                        {
-                            IEnumerable<EventHubWrappers.IEventData> effectiveEvents = events;
+                EventProcessorEventSource.Current.Message("RunAsync setting handler and waiting");
+                receiver.SetReceiveHandler(this, Options.InvokeProcessorAfterReceiveTimeout);
+                linkedCancellationToken.WaitHandle.WaitOne();
 
-                            if (effectiveEvents != null)
-                            {
-                                // Save position of last event
-                                IEnumerator<EventHubWrappers.IEventData> scanner = effectiveEvents.GetEnumerator();
-                                EventHubWrappers.IEventData last = null;
-                                while (scanner.MoveNext())
-                                {
-                                    last = scanner.Current;
-                                }
-                                this.partitionContext.SetOffsetAndSequenceNumber(last);
-                            }
-                            else
-                            {
-                                // ReceiveAsync returns null on timeout, but processor expects empty enumerable.
-                                effectiveEvents = new List<EventHubWrappers.IEventData>();
-                            }
-
-                            await processor.ProcessEventsAsync(this.partitionContext, effectiveEvents);
-                        }
-                    }
-                    catch (EventHubsException e)
-                    {
-                        await processor.ProcessErrorAsync(this.partitionContext, e); // TODO: do we want to pass transient errors to user's error handler?
-                        if (!e.IsTransient)
-                        {
-                            throw e;
-                        }
-                    }
-                }
+                EventProcessorEventSource.Current.Message("RunAsync continuing, cleanup");
             }
             finally
             {
                 if (receiver != null)
                 {
+                    receiver.SetReceiveHandler(null);
                     await receiver.CloseAsync();
                 }
                 if (ehclient != null)
                 {
                     await ehclient.CloseAsync();
                 }
-                if (processor != null)
+                if (this.userEventProcessor != null)
                 {
                     // partitionContext is set up before processor is created, so it is available if processor is not null
-                    await processor.CloseAsync(this.partitionContext, cancellationToken.IsCancellationRequested ? CloseReason.Cancelled : CloseReason.Failure);
+                    await this.userEventProcessor.CloseAsync(this.partitionContext, linkedCancellationToken.IsCancellationRequested ? CloseReason.Cancelled : CloseReason.Failure);
+                }
+                if (this.internalFatalException != null)
+                {
+                    throw this.internalFatalException;
                 }
             }
+        }
+
+        public async Task ProcessEventsAsync(IEnumerable<EventHubWrappers.IEventData> events)
+        {
+            if ((events != null) || ((events == null) && Options.InvokeProcessorAfterReceiveTimeout))
+            {
+                IEnumerable<EventHubWrappers.IEventData> effectiveEvents = events;
+
+                if (effectiveEvents != null)
+                {
+                    // Save position of last event
+                    IEnumerator<EventHubWrappers.IEventData> scanner = effectiveEvents.GetEnumerator();
+                    EventHubWrappers.IEventData last = null;
+                    while (scanner.MoveNext())
+                    {
+                        last = scanner.Current;
+                    }
+                    this.partitionContext.SetOffsetAndSequenceNumber(last);
+                }
+                else
+                {
+                    // Client returns null on timeout, but processor expects empty enumerable.
+                    effectiveEvents = new List<EventHubWrappers.IEventData>();
+                }
+
+                IEventProcessor capturedEventProcessor = this.userEventProcessor;
+                if (capturedEventProcessor != null)
+                {
+                    await capturedEventProcessor.ProcessEventsAsync(this.partitionContext, effectiveEvents);
+                }
+            }
+        }
+
+        public Task ProcessErrorAsync(Exception error)
+        {
+            EventProcessorEventSource.Current.Message("RECEIVE EXCEPTION on {0}: {1}", this.partitionId, error);
+            this.userEventProcessor.ProcessErrorAsync(this.partitionContext, error);
+            if (error is EventHubsException)
+            {
+                if (!(error as EventHubsException).IsTransient)
+                {
+                    this.internalFatalException = error;
+                    this.internalCanceller.Cancel();
+                }
+                // else don't cancel on transient errors
+            }
+            else
+            {
+                // All other exceptions are assumed fatal.
+                this.internalCanceller.Cancel();
+            }
+            return Task.CompletedTask;
         }
 
         private async Task PartitionStartup(CancellationToken cancellationToken)
@@ -386,6 +417,20 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             }
             //catch (ArgumentNullException) if configurationValueName is null, that's a code bug, do not catch
             return value;
+        }
+
+        private void MetricsHandler(CancellationToken linkedCancellationToken)
+        {
+            IEventProcessor capturedProcessor = this.userEventProcessor;
+            while (!linkedCancellationToken.IsCancellationRequested)
+            {
+                int userMetric = capturedProcessor.GetLoadMetric(this.partitionContext);
+                EventProcessorEventSource.Current.Message("METRIC partition {0} is {1}", this.partitionContext.PartitionId, userMetric);
+
+                // TODO pass metric to fabric
+
+                Task.Delay(Constants.MetricReportingInterval, linkedCancellationToken);
+            }
         }
     }
 }
