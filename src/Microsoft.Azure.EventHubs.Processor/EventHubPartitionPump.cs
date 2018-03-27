@@ -164,8 +164,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                     // Trace as warning since ReceiverDisconnectedException is part of lease stealing logic.
                     ProcessorEventSource.Log.PartitionPumpWarning(
                         this.eventHubPartitionPump.Host.HostName, this.eventHubPartitionPump.PartitionContext.PartitionId,
-                        "EventHub client disconnected, probably another host took the partition");
-
+                        "EventHub client disconnected, probably another host took the partition", error.Message);
 
                     // Shutdown the message pump when receiver is disconnected.
                     faultPump = true;
