@@ -210,7 +210,6 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             }
         }
 
-        [Fact(Skip = "reason")]
         [DisplayTestMethodName]
         async Task CreateReceiverWithSequenceNumber()
         {
@@ -254,7 +253,6 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             }
         }
 
-        [Fact(Skip = "reason")]
         [DisplayTestMethodName]
         async Task CreateReceiverWithInclusiveSequenceNumber()
         {
