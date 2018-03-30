@@ -6,6 +6,7 @@ namespace Microsoft.Azure.EventHubs.Processor
     using System;
     using System.Collections.Concurrent;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.Linq;
     using System.Threading;
     using System.Threading.Tasks;
@@ -183,8 +184,13 @@ namespace Microsoft.Azure.EventHubs.Processor
 
         async Task RunLoopAsync(CancellationToken cancellationToken) // throws Exception, ExceptionWithAction
         {
-    	    while (!cancellationToken.IsCancellationRequested)
+            var loopStopwatch = new Stopwatch();
+
+            while (!cancellationToken.IsCancellationRequested)
             {
+                // Mark start time so we can use the duration taken to calculate renew interval.
+                loopStopwatch.Restart();
+
                 ILeaseManager leaseManager = this.host.LeaseManager;
                 Dictionary<string, Lease> allLeases = new Dictionary<string, Lease>();
 
@@ -312,7 +318,12 @@ namespace Microsoft.Azure.EventHubs.Processor
 
                 try
                 {
-                    await Task.Delay(leaseManager.LeaseRenewInterval, cancellationToken).ConfigureAwait(false);
+                    // Consider reducing the wait time with last lease-walkthrough's time taken.
+                    var elapsedTime = loopStopwatch.Elapsed;
+                    if (leaseManager.LeaseRenewInterval > elapsedTime)
+                    {
+                        await Task.Delay(leaseManager.LeaseRenewInterval.Subtract(elapsedTime), cancellationToken).ConfigureAwait(false);
+                    }
                 }
                 catch (TaskCanceledException)
                 {
