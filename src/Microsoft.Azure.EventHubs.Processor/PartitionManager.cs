@@ -193,54 +193,67 @@ namespace Microsoft.Azure.EventHubs.Processor
                 // Renew any leases that currently belong to us.
                 IEnumerable<Task<Lease>> gettingAllLeases = leaseManager.GetAllLeases();
                 List<Lease> leasesOwnedByOthers = new List<Lease>();
+                var renewLeaseTasks = new List<Task>();
                 int ourLeaseCount = 0;
+
+                // First thing is first, renew owned leases. Avoid loosing leases when trying to steal some more.
                 foreach (Task<Lease> getLeaseTask in gettingAllLeases)
                 {
-                    Lease possibleLease = null;
+                    try
+                    { 
+                        var lease = await getLeaseTask.ConfigureAwait(false);
+                        allLeases[lease.PartitionId] = lease;
+                        if (lease.Owner == this.host.HostName)
+                        {
+                            ourLeaseCount++;
+                            ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, lease.PartitionId, "Trying to renew lease.");
+                            renewLeaseTasks.Add(leaseManager.RenewLeaseAsync(lease).ContinueWith(renewResult =>
+                            {
+                                if (renewResult.IsFaulted || !renewResult.Result)
+                                {
+                                    // Might have failed due to intermittent error or lease-lost.
+                                    // Just log here, expired leases will be picked by same or another host anyway.
+                                    ProcessorEventSource.Log.PartitionPumpError(this.host.HostName, lease.PartitionId, "Failed to renew lease.", renewResult.Exception?.Message);
+                                    this.host.EventProcessorOptions.NotifyOfException(this.host.HostName, lease.PartitionId, renewResult.Exception, EventProcessorHostActionStrings.RenewingLease);
+                                }
+                            }));
+                        }
+                        else
+                        {
+                            leasesOwnedByOthers.Add(lease);
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        ProcessorEventSource.Log.EventProcessorHostError(this.host.HostName, "Failure during checking lease.", e.ToString());
+                        this.host.EventProcessorOptions.NotifyOfException(this.host.HostName, "N/A", e, EventProcessorHostActionStrings.CheckingLeases);
+                    }
+                }
 
+                // Wait until we are done with renewing our own leases here.
+                // In theory, this should never throw, error are logged and notified in the renew tasks.
+                await Task.WhenAll(renewLeaseTasks.ToArray()).ConfigureAwait(false);
+                ProcessorEventSource.Log.EventProcessorHostInfo(this.host.HostName, "Lease renewal is finished.");
+
+                // Check any expired leases that we can grab here.
+                foreach (var possibleLease in allLeases.Values)
+                { 
                     try
                     {
-                        possibleLease = await getLeaseTask.ConfigureAwait(false);
-                        allLeases[possibleLease.PartitionId] = possibleLease;
                         if (await possibleLease.IsExpired().ConfigureAwait(false))
                         {
                             ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, possibleLease.PartitionId, "Trying to acquire lease.");
                             if (await leaseManager.AcquireLeaseAsync(possibleLease).ConfigureAwait(false))
                             {
                                 ourLeaseCount++;
+                                ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, possibleLease.PartitionId, "Acquired lease.");
                             }
-                            else
-                            {
-                                // Probably failed because another host stole it between get and acquire  
-                                leasesOwnedByOthers.Add(possibleLease);
-                            }
-                        }
-                        else if (possibleLease.Owner == this.host.HostName)
-                        {
-                            ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, possibleLease.PartitionId, "Trying to renew lease.");
-
-                            // Try to renew the lease. If successful then this lease belongs to us,
-                            // if throws LeaseLostException then we don't own it anymore.
-                            try
-                            {
-                                await leaseManager.RenewLeaseAsync(possibleLease).ConfigureAwait(false);
-                                ourLeaseCount++;
-                            }
-                            catch (LeaseLostException)
-                            {
-                                // Probably failed because another host stole it between get and renew 
-                                leasesOwnedByOthers.Add(possibleLease);
-                            }
-                        }
-                        else
-                        {
-                            leasesOwnedByOthers.Add(possibleLease);
                         }
                     }
                     catch (Exception e)
                     {
-                        ProcessorEventSource.Log.EventProcessorHostWarning(this.host.HostName, "Failure during getting/acquiring/renewing lease, skipping", e.ToString());
-                        this.host.EventProcessorOptions.NotifyOfException(this.host.HostName, possibleLease?.PartitionId ?? "N/A", e, EventProcessorHostActionStrings.CheckingLeases);
+                        ProcessorEventSource.Log.PartitionPumpError(this.host.HostName, possibleLease.PartitionId, "Failure during acquiring lease", e.ToString());
+                        this.host.EventProcessorOptions.NotifyOfException(this.host.HostName, possibleLease.PartitionId, e, EventProcessorHostActionStrings.CheckingLeases);
                     }
                 }
 
