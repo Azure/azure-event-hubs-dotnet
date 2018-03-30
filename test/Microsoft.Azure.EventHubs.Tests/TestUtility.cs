@@ -37,7 +37,7 @@ namespace Microsoft.Azure.EventHubs.Tests
             }
 
             // Update operation timeout on ConnectionStringBuilder.
-            ehCsb.OperationTimeout = TimeSpan.FromSeconds(15);
+            ehCsb.OperationTimeout = TimeSpan.FromSeconds(30);
             EventHubsConnectionString = ehCsb.ToString();
         }
 
