@@ -132,9 +132,8 @@ namespace Microsoft.Azure.EventHubs.Processor
             this.EventHubConnectionString = csb.ToString();
             this.CheckpointManager = checkpointManager;
             this.LeaseManager = leaseManager;
-            this.Id = $"EventProcessorHost({hostName.Substring(0, Math.Min(hostName.Length, 20))}...)";
             this.PartitionManager = new PartitionManager(this);
-            ProcessorEventSource.Log.EventProcessorHostCreated(this.Id, this.EventHubPath);
+            ProcessorEventSource.Log.EventProcessorHostCreated(this.HostName, this.EventHubPath);
         }
 
         // Using this intermediate constructor to create single combined manager to be used as 
@@ -188,8 +187,6 @@ namespace Microsoft.Azure.EventHubs.Processor
         internal IEventProcessorFactory ProcessorFactory { get; private set; }
 
         internal PartitionManager PartitionManager { get; private set; }
-
-        internal string Id { get; }
 
         /// <summary>
         /// This registers <see cref="IEventProcessor"/> implementation with the host using <see cref="DefaultEventProcessorFactory{T}"/>.  
@@ -253,7 +250,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                 this.PartitionManagerOptions = new PartitionManagerOptions();
             }
 
-            ProcessorEventSource.Log.EventProcessorHostOpenStart(this.Id, factory.GetType().ToString());
+            ProcessorEventSource.Log.EventProcessorHostOpenStart(this.HostName, factory.GetType().ToString());
             try
             {
                 // Override operation timeout by receive timeout?
@@ -275,12 +272,12 @@ namespace Microsoft.Azure.EventHubs.Processor
             }
             catch (Exception e)
             {
-                ProcessorEventSource.Log.EventProcessorHostOpenError(this.Id, e.ToString());
+                ProcessorEventSource.Log.EventProcessorHostOpenError(this.HostName, e.ToString());
                 throw;
             }
             finally
             {
-                ProcessorEventSource.Log.EventProcessorHostOpenStop(this.Id);
+                ProcessorEventSource.Log.EventProcessorHostOpenStop(this.HostName);
             }
         }
 
@@ -290,7 +287,7 @@ namespace Microsoft.Azure.EventHubs.Processor
         /// <returns></returns>
         public async Task UnregisterEventProcessorAsync() // throws InterruptedException, ExecutionException
         {
-            ProcessorEventSource.Log.EventProcessorHostCloseStart(this.Id);    	
+            ProcessorEventSource.Log.EventProcessorHostCloseStart(this.HostName);    	
             try
             {
                 await this.PartitionManager.StopAsync().ConfigureAwait(false);
@@ -298,12 +295,12 @@ namespace Microsoft.Azure.EventHubs.Processor
             catch (Exception e)
             {
                 // Log the failure but nothing really to do about it.
-                ProcessorEventSource.Log.EventProcessorHostCloseError(this.Id, e.ToString());
+                ProcessorEventSource.Log.EventProcessorHostCloseError(this.HostName, e.ToString());
                 throw;
             }
             finally
             {
-                ProcessorEventSource.Log.EventProcessorHostCloseStop(this.Id);
+                ProcessorEventSource.Log.EventProcessorHostCloseStop(this.HostName);
             }
         }
 
