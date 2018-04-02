@@ -99,15 +99,15 @@ namespace Microsoft.Azure.EventHubs.Processor
             if (startingCheckpoint == null)
             {
                 // No checkpoint was ever stored. Use the initialOffsetProvider instead.
-                ProcessorEventSource.Log.PartitionPumpInfo(this.host.Id, this.PartitionId, "Calling user-provided initial offset provider");
+                ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, this.PartitionId, "Calling user-provided initial offset provider");
                 eventPosition = this.host.EventProcessorOptions.InitialOffsetProvider(this.PartitionId);
-                ProcessorEventSource.Log.PartitionPumpInfo(this.host.Id, this.PartitionId, $"Initial Position Provider. Offset:{eventPosition.Offset}, SequenceNumber:{eventPosition.SequenceNumber}, DateTime:{eventPosition.EnqueuedTimeUtc}");
+                ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, this.PartitionId, $"Initial Position Provider. Offset:{eventPosition.Offset}, SequenceNumber:{eventPosition.SequenceNumber}, DateTime:{eventPosition.EnqueuedTimeUtc}");
             }
             else
             {
                 this.Offset = startingCheckpoint.Offset;
                 this.SequenceNumber = startingCheckpoint.SequenceNumber;
-                ProcessorEventSource.Log.PartitionPumpInfo(this.host.Id, this.PartitionId, $"Retrieved starting offset/sequenceNumber: {this.Offset}/{this.SequenceNumber}");
+                ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, this.PartitionId, $"Retrieved starting offset/sequenceNumber: {this.Offset}/{this.SequenceNumber}");
                 eventPosition = EventPosition.FromOffset(this.Offset);
             }
 
@@ -166,7 +166,7 @@ namespace Microsoft.Azure.EventHubs.Processor
 
         async Task PersistCheckpointAsync(Checkpoint checkpoint)
         {
-            ProcessorEventSource.Log.PartitionPumpCheckpointStart(this.host.Id, checkpoint.PartitionId, checkpoint.Offset, checkpoint.SequenceNumber);
+            ProcessorEventSource.Log.PartitionPumpCheckpointStart(this.host.HostName, checkpoint.PartitionId, checkpoint.Offset, checkpoint.SequenceNumber);
             try
             {
                 Checkpoint inStoreCheckpoint = await this.host.CheckpointManager.GetCheckpointAsync(checkpoint.PartitionId).ConfigureAwait(false);
@@ -187,18 +187,18 @@ namespace Microsoft.Azure.EventHubs.Processor
                 {
                     string msg = $"Ignoring out of date checkpoint with offset {checkpoint.Offset}/sequence number {checkpoint.SequenceNumber}" +
                             $" because current persisted checkpoint has higher offset {inStoreCheckpoint.Offset}/sequence number {inStoreCheckpoint.SequenceNumber}";
-                    ProcessorEventSource.Log.PartitionPumpError(this.host.Id, checkpoint.PartitionId, msg);
+                    ProcessorEventSource.Log.PartitionPumpError(this.host.HostName, checkpoint.PartitionId, msg);
                     throw new ArgumentOutOfRangeException("offset/sequenceNumber", msg);
                 }
             }
             catch (Exception e)
             {
-                ProcessorEventSource.Log.PartitionPumpCheckpointError(this.host.Id, checkpoint.PartitionId, e.ToString());
+                ProcessorEventSource.Log.PartitionPumpCheckpointError(this.host.HostName, checkpoint.PartitionId, e.ToString());
                 throw;
             }
             finally
             {
-                ProcessorEventSource.Log.PartitionPumpCheckpointStop(this.host.Id, checkpoint.PartitionId);
+                ProcessorEventSource.Log.PartitionPumpCheckpointStop(this.host.HostName, checkpoint.PartitionId);
             }
         }
     }
