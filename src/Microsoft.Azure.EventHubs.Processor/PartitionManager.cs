@@ -202,7 +202,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                 var renewLeaseTasks = new List<Task>();
                 int ourLeaseCount = 0;
 
-                // First thing is first, renew owned leases. Avoid loosing leases when trying to steal some more.
+                // First thing is first, renew owned leases.
                 foreach (Task<Lease> getLeaseTask in gettingAllLeases)
                 {
                     try
