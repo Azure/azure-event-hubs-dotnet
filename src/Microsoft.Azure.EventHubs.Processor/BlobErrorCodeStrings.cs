@@ -11,6 +11,7 @@ namespace Microsoft.Azure.EventHubs.Processor
         public static readonly string BlobAlreadyExists = "BlobAlreadyExists";
         public static readonly string LeaseIdMissing = "LeaseIdMissing";
         public static readonly string LeaseLost = "LeaseLost";
+        public static readonly string LeaseAlreadyPresent = "LeaseAlreadyPresent";
         public static readonly string LeaseIdMismatchWithLeaseOperation = "LeaseIdMismatchWithLeaseOperation";
         public static readonly string LeaseIdMismatchWithBlobOperation = "LeaseIdMismatchWithBlobOperation";
     }
