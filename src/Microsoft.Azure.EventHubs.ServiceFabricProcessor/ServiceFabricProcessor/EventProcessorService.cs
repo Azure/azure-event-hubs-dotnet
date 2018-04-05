@@ -19,6 +19,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         private PartitionContext partitionContext = null;
         private EventHubsConnectionStringBuilder ehConnectionString;
         private string consumerGroupName;
+        private int partitionOrdinal = -1;
         private string partitionId = null;
         private int servicePartitions = -1;
         private string initialOffset = null;
@@ -146,6 +147,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                     EventProcessorEventSource.Current.Message("Service partition count {0} does not match event hub partition count {1}", this.servicePartitions, ehInfo.PartitionCount);
                     throw new EventProcessorConfigurationException("Service partition count " + this.servicePartitions + " does not match event hub partition count " + ehInfo.PartitionCount);
                 }
+                this.partitionId = ehInfo.PartitionIds[this.partitionOrdinal];
 
                 //
                 // If there was a checkpoint, the offset is in this.initialOffset, so convert it to an EventPosition.
@@ -331,15 +333,14 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
 
         private async Task GetServicePartitionId(CancellationToken cancellationToken)
         {
-            if (this.partitionId == null)
+            if (this.partitionOrdinal == -1)
             {
                 Int64RangePartitionInformation thisPartition = (Int64RangePartitionInformation)this.Partition.PartitionInfo;
 
                 ServicePartitionResolver resolver = ServicePartitionResolver.GetDefault();
                 Int64RangePartitionInformation scanner = null;
                 long lowScan = long.MinValue;
-                int ordinal = 0;
-                int totalPartitions = 0;
+                this.servicePartitions = 0;
                 do
                 {
                     ServicePartitionKey resolveKey = new ServicePartitionKey(lowScan);
@@ -348,14 +349,12 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                     lowScan = scanner.HighKey + 1;
                     if (scanner.LowKey == thisPartition.LowKey)
                     {
-                        ordinal = totalPartitions;
-                        EventProcessorEventSource.Current.Message("Found our partition, ordinal {0}", ordinal);
+                        this.partitionOrdinal = this.servicePartitions;
+                        EventProcessorEventSource.Current.Message("Found our partition, ordinal {0}", this.partitionOrdinal);
                     }
-                    totalPartitions++;
+                    this.servicePartitions++;
                 } while (scanner.HighKey != long.MaxValue);
 
-                this.partitionId = ordinal.ToString();
-                this.servicePartitions = totalPartitions;
                 EventProcessorEventSource.Current.Message("Total partitions {0}", this.servicePartitions);
             }
         }
