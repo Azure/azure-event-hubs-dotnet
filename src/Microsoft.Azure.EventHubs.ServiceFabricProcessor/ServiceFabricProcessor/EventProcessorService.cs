@@ -80,15 +80,6 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 await PartitionStartup(this.linkedCancellationToken);
 
                 //
-                // Instantiate user's event processor class and call Open.
-                // If user's Open code fails, treat that as a fatal exception and let it throw out.
-                //
-                EventProcessorEventSource.Current.Message("Creating event processor");
-                this.userEventProcessor = this.EventProcessorFactory.CreateEventProcessor(this.linkedCancellationToken, this.partitionContext);
-                await this.userEventProcessor.OpenAsync(this.linkedCancellationToken, this.partitionContext);
-                EventProcessorEventSource.Current.Message("Event processor created and opened OK");
-
-                //
                 // Create EventHubClient and check partition count.
                 //
                 Exception lastException = null;
@@ -150,6 +141,11 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 this.partitionId = ehInfo.PartitionIds[this.partitionOrdinal];
 
                 //
+                // Generate a PartitionContext now that the required info is available.
+                //
+                this.partitionContext = new PartitionContext(this.linkedCancellationToken, this.partitionId, this.ehConnectionString.EntityPath, this.consumerGroupName, this.CheckpointManager);
+
+                //
                 // If there was a checkpoint, the offset is in this.initialOffset, so convert it to an EventPosition.
                 // If no checkpoint, get starting point from user-supplied provider.
                 //
@@ -193,6 +189,15 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 }
 
                 //
+                // Instantiate user's event processor class and call Open.
+                // If user's Open code fails, treat that as a fatal exception and let it throw out.
+                //
+                EventProcessorEventSource.Current.Message("Creating event processor");
+                this.userEventProcessor = this.EventProcessorFactory.CreateEventProcessor(this.linkedCancellationToken, this.partitionContext);
+                await this.userEventProcessor.OpenAsync(this.linkedCancellationToken, this.partitionContext);
+                EventProcessorEventSource.Current.Message("Event processor created and opened OK");
+
+                //
                 // Start metrics reporting.
                 //
                 Task.Run(() => MetricsHandler());
@@ -208,6 +213,11 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             }
             finally
             {
+                if (this.userEventProcessor != null)
+                {
+                    // partitionContext is set up before processor is created, so it is available if processor is not null
+                    await this.userEventProcessor.CloseAsync(this.partitionContext, this.linkedCancellationToken.IsCancellationRequested ? CloseReason.Cancelled : CloseReason.Failure);
+                }
                 if (receiver != null)
                 {
                     receiver.SetReceiveHandler(null);
@@ -216,11 +226,6 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 if (ehclient != null)
                 {
                     await ehclient.CloseAsync();
-                }
-                if (this.userEventProcessor != null)
-                {
-                    // partitionContext is set up before processor is created, so it is available if processor is not null
-                    await this.userEventProcessor.CloseAsync(this.partitionContext, this.linkedCancellationToken.IsCancellationRequested ? CloseReason.Cancelled : CloseReason.Failure);
                 }
                 if (this.internalFatalException != null)
                 {
@@ -304,9 +309,6 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             // Get consumer group name. Many users will be using the default consumer group, so for convenience default to that if not supplied.
             this.consumerGroupName = GetConfigurationValue(Constants.EventHubConsumerGroupConfigName, Constants.EventHubConsumerGroupConfigDefault);
             EventProcessorEventSource.Current.Message("Consumer group {0}", this.consumerGroupName);
-
-            // Generate a PartitionContext now that the required info is available.
-            this.partitionContext = new PartitionContext(cancellationToken, this.partitionId, this.ehConnectionString.EntityPath, this.consumerGroupName, this.CheckpointManager);
 
             // Set up store and get checkpoint, if any.
             await this.CheckpointManager.CreateCheckpointStoreIfNotExistsAsync(cancellationToken);
