@@ -7,8 +7,6 @@ using System.Fabric;
 using System.Fabric.Description;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.ServiceFabric.Data;
-using Microsoft.ServiceFabric.Data.Collections;
 using Microsoft.ServiceFabric.Services.Client;
 using Microsoft.ServiceFabric.Services.Runtime;
 
@@ -27,6 +25,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         private CancellationTokenSource internalCanceller;
         private Exception internalFatalException = null;
         private IEventProcessor userEventProcessor = null;
+        private CancellationToken linkedCancellationToken;
 
         public EventProcessorService(StatefulServiceContext context)
             : base(context)
@@ -53,7 +52,8 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             {
                 using (CancellationTokenSource linkedCanceller = CancellationTokenSource.CreateLinkedTokenSource(fabricCancellationToken, this.internalCanceller.Token))
                 {
-                    await InnerRunAsync(linkedCanceller.Token);
+                    this.linkedCancellationToken = linkedCanceller.Token;
+                    await InnerRunAsync();
                 }
             }
             catch (Exception e)
@@ -66,7 +66,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             }
         }
 
-        private async Task InnerRunAsync(CancellationToken linkedCancellationToken)
+        private async Task InnerRunAsync()
         {
             EventHubWrappers.IEventHubClient ehclient = null;
             EventHubWrappers.IPartitionReceiver receiver = null;
@@ -76,15 +76,15 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 //
                 // General startup tasks.
                 //
-                await PartitionStartup(linkedCancellationToken);
+                await PartitionStartup(this.linkedCancellationToken);
 
                 //
                 // Instantiate user's event processor class and call Open.
                 // If user's Open code fails, treat that as a fatal exception and let it throw out.
                 //
                 EventProcessorEventSource.Current.Message("Creating event processor");
-                this.userEventProcessor = this.EventProcessorFactory.CreateEventProcessor(this.partitionContext);
-                await this.userEventProcessor.OpenAsync(this.partitionContext);
+                this.userEventProcessor = this.EventProcessorFactory.CreateEventProcessor(this.linkedCancellationToken, this.partitionContext);
+                await this.userEventProcessor.OpenAsync(this.linkedCancellationToken, this.partitionContext);
                 EventProcessorEventSource.Current.Message("Event processor created and opened OK");
 
                 //
@@ -94,7 +94,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 EventProcessorEventSource.Current.Message("Creating event hub client");
                 for (int i = 0; i < Constants.RetryCount; i++)
                 {
-                    linkedCancellationToken.ThrowIfCancellationRequested();
+                    this.linkedCancellationToken.ThrowIfCancellationRequested();
                     try
                     {
                         ehclient = this.EventHubClientFactory.CreateFromConnectionString(this.ehConnectionString.ToString());
@@ -120,7 +120,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 EventHubRuntimeInformation ehInfo = null;
                 for (int i = 0; i < Constants.RetryCount; i++)
                 {
-                    linkedCancellationToken.ThrowIfCancellationRequested();
+                    this.linkedCancellationToken.ThrowIfCancellationRequested();
                     try
                     {
                         ehInfo = await ehclient.GetRuntimeInformationAsync();
@@ -169,7 +169,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 EventProcessorEventSource.Current.Message("Creating receiver");
                 for (int i = 0; i < Constants.RetryCount; i++)
                 {
-                    linkedCancellationToken.ThrowIfCancellationRequested();
+                    this.linkedCancellationToken.ThrowIfCancellationRequested();
                     try
                     {
                         receiver = ehclient.CreateEpochReceiver(this.consumerGroupName, this.partitionId, initialPosition, Constants.FixedReceiverEpoch, null); // FOO receiveroptions
@@ -193,14 +193,14 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 //
                 // Start metrics reporting.
                 //
-                Task.Run(() => MetricsHandler(linkedCancellationToken));
+                Task.Run(() => MetricsHandler());
 
                 //
                 // Receive pump.
                 //
                 EventProcessorEventSource.Current.Message("RunAsync setting handler and waiting");
                 receiver.SetReceiveHandler(this, Options.InvokeProcessorAfterReceiveTimeout);
-                linkedCancellationToken.WaitHandle.WaitOne();
+                this.linkedCancellationToken.WaitHandle.WaitOne();
 
                 EventProcessorEventSource.Current.Message("RunAsync continuing, cleanup");
             }
@@ -218,7 +218,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 if (this.userEventProcessor != null)
                 {
                     // partitionContext is set up before processor is created, so it is available if processor is not null
-                    await this.userEventProcessor.CloseAsync(this.partitionContext, linkedCancellationToken.IsCancellationRequested ? CloseReason.Cancelled : CloseReason.Failure);
+                    await this.userEventProcessor.CloseAsync(this.partitionContext, this.linkedCancellationToken.IsCancellationRequested ? CloseReason.Cancelled : CloseReason.Failure);
                 }
                 if (this.internalFatalException != null)
                 {
@@ -253,7 +253,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 IEventProcessor capturedEventProcessor = this.userEventProcessor;
                 if (capturedEventProcessor != null)
                 {
-                    await capturedEventProcessor.ProcessEventsAsync(this.partitionContext, effectiveEvents);
+                    await capturedEventProcessor.ProcessEventsAsync(this.linkedCancellationToken, this.partitionContext, effectiveEvents);
                 }
             }
         }
@@ -422,20 +422,20 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             }
         }
 
-        private void MetricsHandler(CancellationToken linkedCancellationToken)
+        private void MetricsHandler()
         {
             EventProcessorEventSource.Current.Message("METRIC reporter starting");
 
             IEventProcessor capturedProcessor = this.userEventProcessor;
-            while (!linkedCancellationToken.IsCancellationRequested)
+            while (!this.linkedCancellationToken.IsCancellationRequested)
             {
-                int userMetric = capturedProcessor.GetLoadMetric(this.partitionContext);
+                int userMetric = capturedProcessor.GetLoadMetric(this.linkedCancellationToken, this.partitionContext);
                 EventProcessorEventSource.Current.Message("METRIC partition {0} is {1}", this.partitionContext.PartitionId, userMetric);
 
                 try
                 {
                     this.Partition.ReportLoad(new List<LoadMetric>() { new LoadMetric(Constants.UserLoadMetricName, userMetric) });
-                    Task.Delay(Constants.MetricReportingInterval, linkedCancellationToken).Wait(); // throws on cancel
+                    Task.Delay(Constants.MetricReportingInterval, this.linkedCancellationToken).Wait(); // throws on cancel
                 }
                 catch (Exception e)
                 {
