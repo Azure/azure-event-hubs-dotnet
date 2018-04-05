@@ -11,6 +11,8 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
 
         internal static readonly int RetryCount = 5;
 
+        internal static readonly int FixedReceiverEpoch = 0;
+
         internal static readonly TimeSpan MetricReportingInterval = TimeSpan.FromMinutes(1.0);
         internal static readonly string UserLoadMetricName = "UserMetric";
 
@@ -27,6 +29,5 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         internal static readonly string CheckpointPropertyValid = "valid";
         internal static readonly string CheckpointPropertyOffsetV1 = "offsetV1";
         internal static readonly string CheckpointPropertySequenceNumberV1 = "sequenceNumberV1";
-        internal static readonly string EpochDictionaryName = "EventProcessorEpochDictionary";
     }
 }

@@ -23,7 +23,6 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         private string consumerGroupName;
         private string partitionId = null;
         private int servicePartitions = -1;
-        private int epoch;
         private string initialOffset = null;
         private CancellationTokenSource internalCanceller;
         private Exception internalFatalException = null;
@@ -173,7 +172,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                     linkedCancellationToken.ThrowIfCancellationRequested();
                     try
                     {
-                        receiver = ehclient.CreateEpochReceiver(this.consumerGroupName, this.partitionId, initialPosition, this.epoch, null); // FOO receiveroptions
+                        receiver = ehclient.CreateEpochReceiver(this.consumerGroupName, this.partitionId, initialPosition, Constants.FixedReceiverEpoch, null); // FOO receiveroptions
                         break;
                     }
                     catch (EventHubsException e)
@@ -306,56 +305,6 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
 
             // Generate a PartitionContext now that the required info is available.
             this.partitionContext = new PartitionContext(cancellationToken, this.partitionId, this.ehConnectionString.EntityPath, this.consumerGroupName, this.CheckpointManager);
-
-            // Create/retrieve the reliable dictionary and get raw values.
-            IReliableDictionary<string, object> epochDictionary = await this.StateManager.GetOrAddAsync<IReliableDictionary<string, object>>(Constants.EpochDictionaryName);
-            ConditionalValue<object> tryEpoch;
-            Exception lastException = null;
-            for (int i = 0; i < Constants.RetryCount; i++)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                lastException = null;
-
-                try
-                {
-                    using (ITransaction tx = this.StateManager.CreateTransaction())
-                    {
-                        tryEpoch = await epochDictionary.TryGetValueAsync(tx, this.partitionId, Constants.ReliableDictionaryTimeout, cancellationToken);
-
-                        // Check and update the epoch while we are in the transaction.
-                        if (tryEpoch.HasValue)
-                        {
-                            // Epoch should always be stored as int. If cast fails that's a fatal error, let it throw.
-                            this.epoch = (int)tryEpoch.Value;
-                            EventProcessorEventSource.Current.Message("Pre-existing epoch {0}", this.epoch);
-                        }
-                        else
-                        {
-                            // No epoch stored, so start at 0.
-                            this.epoch = 0;
-                            EventProcessorEventSource.Current.Message("No epoch found, starting at 0");
-                        }
-                        await epochDictionary.SetAsync(tx, this.partitionId, (this.epoch + 1), Constants.ReliableDictionaryTimeout, cancellationToken);
-                        EventProcessorEventSource.Current.Message("Updated epoch OK");
-
-                        await tx.CommitAsync();
-
-                        // Success! Break out of the retry loop.
-                        break;
-                    }
-                }
-                catch (TimeoutException e)
-                {
-                    // On timeout, try again.
-                    lastException = e;
-                    EventProcessorEventSource.Current.Message("Dictionary timeout");
-                }
-            }
-            if (lastException != null)
-            {
-                // Out of retries reading from dictionary.
-                throw new Exception("Out of retries trying to get epoch", lastException);
-            }
 
             // Set up store and get checkpoint, if any.
             await this.CheckpointManager.CreateCheckpointStoreIfNotExistsAsync(cancellationToken);
