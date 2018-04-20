@@ -104,7 +104,14 @@ namespace Microsoft.Azure.EventHubs.Processor
 
         internal void NotifyOfException(string hostname, string partitionId, Exception exception, string action)
         {
-            this.exceptionHandler?.Invoke(new ExceptionReceivedEventArgs(hostname, partitionId, exception, action));
+            try
+            {
+                this.exceptionHandler?.Invoke(new ExceptionReceivedEventArgs(hostname, partitionId, exception, action));
+            }
+            catch
+            {
+                // NOOP, Ignore exception from notify callback. Let's avoid chain of exception notification.
+            }
         }
     }
 }
