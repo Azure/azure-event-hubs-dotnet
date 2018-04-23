@@ -22,6 +22,17 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
         }
 
         /// <summary>
+        /// Utilizes EventDataBatch to send small messages.
+        /// WE try to catch any overhead miscalculation here.
+        /// </summary>
+        [Fact]
+        [DisplayTestMethodName]
+        async Task BatchSenderSmallMessages()
+        {
+            await SendWithEventDataBatch(maxPayloadSize: 8, minimumNumberOfMessagesToSend: 50000);
+        }
+
+        /// <summary>
         /// Utilizes EventDataBatch to send messages as the messages are batched up to max batch size.
         /// This unit test sends with partition key.
         /// </summary>
@@ -75,10 +86,11 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             });
         }
 
-        protected async Task SendWithEventDataBatch(string partitionKey = null)
+        protected async Task SendWithEventDataBatch(
+            string partitionKey = null,
+            int maxPayloadSize = 1024,
+            int minimumNumberOfMessagesToSend = 1000)
         {
-            const int MinimumNumberOfMessagesToSend = 1000;
-
             var receivers = new List<PartitionReceiver>();
 
             // Create partition receivers starting from the end of the stream.
@@ -121,7 +133,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
                 do
                 {
                     // Send random body size.
-                    var ed = new EventData(new byte[rnd.Next(0, 1024)]);
+                    var ed = new EventData(new byte[rnd.Next(0, maxPayloadSize)]);
                     if (!batcher.TryAdd(ed))
                     {
                         await this.EventHubClient.SendAsync(batcher);
@@ -136,7 +148,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
                             PartitionKey = partitionKey
                         });
                     }
-                } while (totalSent < MinimumNumberOfMessagesToSend);
+                } while (totalSent < minimumNumberOfMessagesToSend);
 
                 // Send the rest of the batch if any.
                 if (batcher.Count > 0)

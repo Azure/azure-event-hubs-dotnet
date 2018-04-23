@@ -29,7 +29,6 @@ namespace Microsoft.Azure.EventHubs
             this.PartitionKey = partitionKey;
             this.maxSize = Math.Min(maxSizeInBytes, MaxSizeLimit);
             this.eventDataList = new List<EventData>();
-            this.currentSize = (maxSizeInBytes / 65536) * 1024;    // reserve 1KB for every 64KB
         }
 
         /// <summary>Gets the current event count in the batch.</summary>
@@ -82,7 +81,9 @@ namespace Microsoft.Azure.EventHubs
             var amqpMessage = AmqpMessageConverter.EventDataToAmqpMessage(eventData);
             AmqpMessageConverter.UpdateAmqpMessagePartitionKey(amqpMessage, this.PartitionKey);
             eventData.AmqpMessage = amqpMessage;
-            return eventData.AmqpMessage.SerializedMessageSize;
+
+            // +5 for data section overhead
+            return eventData.AmqpMessage.SerializedMessageSize + 5;
         }
 
         /// <summary>
