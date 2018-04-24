@@ -23,13 +23,22 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
 
         /// <summary>
         /// Utilizes EventDataBatch to send small messages.
-        /// WE try to catch any overhead miscalculation here.
         /// </summary>
         [Fact]
         [DisplayTestMethodName]
         async Task BatchSenderSmallMessages()
         {
             await SendWithEventDataBatch(maxPayloadSize: 8, minimumNumberOfMessagesToSend: 50000);
+        }
+
+        /// <summary>
+        /// Utilizes EventDataBatch to send large messages.
+        /// </summary>
+        [Fact]
+        [DisplayTestMethodName]
+        async Task BatchSenderLargeMessages()
+        {
+            await SendWithEventDataBatch(maxPayloadSize: 262000, minimumNumberOfMessagesToSend: 100);
         }
 
         /// <summary>
@@ -64,7 +73,6 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
                 throw new InvalidOperationException("SendAsync call should have failed");
             });
         }
-
 
         /// <summary>
         /// PartitionSender should not allow to create a batch with partition key defined.

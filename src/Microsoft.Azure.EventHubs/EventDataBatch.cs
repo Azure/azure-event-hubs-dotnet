@@ -82,8 +82,19 @@ namespace Microsoft.Azure.EventHubs
             AmqpMessageConverter.UpdateAmqpMessagePartitionKey(amqpMessage, this.PartitionKey);
             eventData.AmqpMessage = amqpMessage;
 
-            // +5 for data section overhead
-            return eventData.AmqpMessage.SerializedMessageSize + 5;
+            // Calculate overhead depending on the message size. 
+            var amqpMessageSize = eventData.AmqpMessage.SerializedMessageSize;
+            if (amqpMessageSize < 256)
+            {
+                // Overhead is smaller for messages smaller than 256 bytes.
+                amqpMessageSize += 5;
+            }
+            else
+            {
+                amqpMessageSize += 8;
+            }
+
+            return amqpMessageSize;
         }
 
         /// <summary>
