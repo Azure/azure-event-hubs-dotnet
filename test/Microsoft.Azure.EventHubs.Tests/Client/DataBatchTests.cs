@@ -16,7 +16,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
         /// </summary>
         [Fact]
         [DisplayTestMethodName]
-        async Task BatchSender()
+        async Task Basic()
         {
             await SendWithEventDataBatch();
         }
@@ -26,7 +26,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
         /// </summary>
         [Fact]
         [DisplayTestMethodName]
-        async Task BatchSenderSmallMessages()
+        async Task SendSmallMessages()
         {
             await SendWithEventDataBatch(maxPayloadSize: 8, minimumNumberOfMessagesToSend: 50000);
         }
@@ -36,7 +36,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
         /// </summary>
         [Fact]
         [DisplayTestMethodName]
-        async Task BatchSenderLargeMessages()
+        async Task SendLargeMessages()
         {
             await SendWithEventDataBatch(maxPayloadSize: 262000, minimumNumberOfMessagesToSend: 100);
         }
@@ -47,7 +47,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
         /// </summary>
         [Fact]
         [DisplayTestMethodName]
-        async Task BatchSenderWithPartitionKey()
+        async Task SendWithPartitionKey()
         {
             await SendWithEventDataBatch(Guid.NewGuid().ToString());
         }
