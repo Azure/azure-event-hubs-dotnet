@@ -83,18 +83,15 @@ namespace Microsoft.Azure.EventHubs
             eventData.AmqpMessage = amqpMessage;
 
             // Calculate overhead depending on the message size. 
-            var amqpMessageSize = eventData.AmqpMessage.SerializedMessageSize;
-            if (amqpMessageSize < 256)
+            if (eventData.AmqpMessage.SerializedMessageSize < 256)
             {
                 // Overhead is smaller for messages smaller than 256 bytes.
-                amqpMessageSize += 5;
+                return eventData.AmqpMessage.SerializedMessageSize + 5;
             }
             else
             {
-                amqpMessageSize += 8;
+                return eventData.AmqpMessage.SerializedMessageSize + 8;
             }
-
-            return amqpMessageSize;
         }
 
         /// <summary>
