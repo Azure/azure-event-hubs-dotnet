@@ -497,7 +497,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
                     foreach (var partitionId in PartitionIds)
                     {
                         var receivedEvent = partitionReceiveEvents[consumerGroupName + "-" + partitionId];
-                        bool partitionReceivedMessage = await receivedEvent.WaitAsync(TimeSpan.FromSeconds(30));
+                        bool partitionReceivedMessage = await receivedEvent.WaitAsync(TimeSpan.FromSeconds(60));
                         Assert.True(partitionReceivedMessage, $"ConsumerGroup {consumerGroupName} > Partition {partitionId} didn't receive any message!");
                     }
                 }
