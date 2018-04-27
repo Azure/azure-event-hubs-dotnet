@@ -405,113 +405,19 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
         /// <returns></returns>
         [Fact]
         [DisplayTestMethodName]
-        async Task MultipleConsumerGroups()
+        async Task NonDefaultConsumerGroup()
         {
-            var customConsumerGroupName = "cgroup1";
+            var epo = await GetOptionsAsync();
 
-            var ehClient = EventHubClient.CreateFromConnectionString(TestUtility.EventHubsConnectionString);
+            // Run on non-default consumer group
+            var eventProcessorHost = new EventProcessorHost(
+                null,
+                "cgroup1",
+                TestUtility.EventHubsConnectionString,
+                TestUtility.StorageConnectionString,
+                Guid.NewGuid().ToString());
 
-            // Generate a new lease container name that will be used through out the test.
-            string leaseContainerName = Guid.NewGuid().ToString();
-
-            var consumerGroupNames = new[]  { PartitionReceiver.DefaultConsumerGroupName, customConsumerGroupName };
-            var processorOptions = new EventProcessorOptions
-            {
-                ReceiveTimeout = TimeSpan.FromSeconds(15),
-                InitialOffsetProvider = pId => EventPosition.FromEnd()
-            };
-            var processorFactory = new TestEventProcessorFactory();
-            var partitionReceiveEvents = new ConcurrentDictionary<string, AsyncAutoResetEvent>();
-            var hosts = new List<EventProcessorHost>();
-
-            // Confirm that custom consumer group exists before starting hosts.
-            try
-            {
-                // Create a receiver on the consumer group and try to receive.
-                // Receive call will fail if consumer group is missing.
-                var receiver = ehClient.CreateReceiver(customConsumerGroupName, this.PartitionIds.First(), EventPosition.FromStart());
-                await receiver.ReceiveAsync(1, TimeSpan.FromSeconds(5));
-            }
-            catch (MessagingEntityNotFoundException)
-            {
-                throw new Exception($"Cunsumer group {customConsumerGroupName} cannot be found. MultipleConsumerGroups unit test requires consumer group '{customConsumerGroupName}' to be created before running the test.");
-            }
-
-            processorFactory.OnCreateProcessor += (f, createArgs) =>
-            {
-                var processor = createArgs.Item2;
-                string partitionId = createArgs.Item1.PartitionId;
-                string hostName = createArgs.Item1.Owner;
-                string consumerGroupName = createArgs.Item1.ConsumerGroupName;
-                processor.OnOpen += (_, partitionContext) => TestUtility.Log($"{hostName} > {consumerGroupName} > Partition {partitionId} TestEventProcessor opened");
-                processor.OnClose += (_, closeArgs) => TestUtility.Log($"{hostName} > {consumerGroupName} > Partition {partitionId} TestEventProcessor closing: {closeArgs.Item2}");
-                processor.OnProcessError += (_, errorArgs) => TestUtility.Log($"{hostName} > {consumerGroupName} > Partition {partitionId} TestEventProcessor process error {errorArgs.Item2.Message}");
-                processor.OnProcessEvents += (_, eventsArgs) =>
-                {
-                    int eventCount = eventsArgs.Item2.events != null ? eventsArgs.Item2.events.Count() : 0;
-                    TestUtility.Log($"{hostName} > {consumerGroupName} > Partition {partitionId} TestEventProcessor processing {eventCount} event(s)");
-                    if (eventCount > 0)
-                    {
-                        var receivedEvent = partitionReceiveEvents[consumerGroupName + "-" + partitionId];
-                        receivedEvent.Set();
-                    }
-                };
-            };
-
-            try
-            {
-                // Register a new host for each consumer group.
-                foreach (var consumerGroupName in consumerGroupNames)
-                {
-                    var eventProcessorHost = new EventProcessorHost(
-                        string.Empty,
-                        consumerGroupName,
-                        TestUtility.EventHubsConnectionString,
-                        TestUtility.StorageConnectionString,
-                        leaseContainerName);
-
-                    TestUtility.Log($"Calling RegisterEventProcessorAsync on consumer group {consumerGroupName}");
-
-                    foreach (var partitionId in PartitionIds)
-                    {
-                        partitionReceiveEvents[consumerGroupName + "-" + partitionId] = new AsyncAutoResetEvent(false);
-                    }
-
-                    await eventProcessorHost.RegisterEventProcessorFactoryAsync(processorFactory, processorOptions);
-                    hosts.Add(eventProcessorHost);
-                }
-
-                await Task.Delay(10000);
-                TestUtility.Log("Sending an event to each partition");
-                var sendTasks = new List<Task>();
-                foreach (var partitionId in PartitionIds)
-                {
-                    sendTasks.Add(TestUtility.SendToPartitionAsync(ehClient, partitionId, $"{partitionId} event."));
-                }
-
-                await Task.WhenAll(sendTasks);
-
-                TestUtility.Log("Verifying an event was received by each partition for each consumer group");
-                foreach (var consumerGroupName in consumerGroupNames)
-                {
-                    foreach (var partitionId in PartitionIds)
-                    {
-                        var receivedEvent = partitionReceiveEvents[consumerGroupName + "-" + partitionId];
-                        bool partitionReceivedMessage = await receivedEvent.WaitAsync(TimeSpan.FromSeconds(60));
-                        Assert.True(partitionReceivedMessage, $"ConsumerGroup {consumerGroupName} > Partition {partitionId} didn't receive any message!");
-                    }
-                }
-
-                TestUtility.Log("Success");
-            }
-            finally
-            {
-                TestUtility.Log("Calling UnregisterEventProcessorAsync on both hosts.");
-                foreach (var eph in hosts)
-                {
-                    await eph.UnregisterEventProcessorAsync();
-                }
-            }
+            await RunGenericScenario(eventProcessorHost, epo);
         }
 
         [Fact]
