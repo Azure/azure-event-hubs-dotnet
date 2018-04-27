@@ -4,8 +4,8 @@
 namespace Microsoft.Azure.EventHubs
 {
     using System;
-    using System.Collections;
     using System.Collections.Generic;
+    using Microsoft.Azure.Amqp;
     using Microsoft.Azure.EventHubs.Amqp;
 
     /// <summary>A helper class for creating an IEnumerable&lt;<see cref="Microsoft.Azure.EventHubs.EventData"/>&gt; taking into account the max size limit, so that the IEnumerable&lt;<see cref="Microsoft.Azure.EventHubs.EventData"/>&gt; can be passed to the Send or SendAsync method of an <see cref="Microsoft.Azure.EventHubs.EventHubClient"/> to send the <see cref="Microsoft.Azure.EventHubs.EventData"/> objects as a batch.</summary>
@@ -29,6 +29,14 @@ namespace Microsoft.Azure.EventHubs
             this.PartitionKey = partitionKey;
             this.maxSize = Math.Min(maxSizeInBytes, MaxSizeLimit);
             this.eventDataList = new List<EventData>();
+
+            // Reserve for wrapper message.
+            using (var batchMessage = AmqpMessage.Create())
+            {
+                batchMessage.MessageFormat = AmqpConstants.AmqpBatchedMessageFormat;
+                AmqpMessageConverter.UpdateAmqpMessagePartitionKey(batchMessage, partitionKey);
+                this.currentSize = batchMessage.SerializedMessageSize;
+            }
         }
 
         /// <summary>Gets the current event count in the batch.</summary>
