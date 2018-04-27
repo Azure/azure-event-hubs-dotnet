@@ -58,7 +58,7 @@ namespace Microsoft.Azure.EventHubs
             }
 
             this.ThrowIfDisposed();
-            long size = GetSize(eventData);
+            long size = GetEventSizeForBatch(eventData);
             if (this.currentSize + size > this.maxSize)
             {
                 return false;
@@ -75,7 +75,7 @@ namespace Microsoft.Azure.EventHubs
             get; set;
         }
 
-        long GetSize(EventData eventData)
+        long GetEventSizeForBatch(EventData eventData)
         {
             // Create AMQP message here. We will use the same message while sending to save compute time.
             var amqpMessage = AmqpMessageConverter.EventDataToAmqpMessage(eventData);
