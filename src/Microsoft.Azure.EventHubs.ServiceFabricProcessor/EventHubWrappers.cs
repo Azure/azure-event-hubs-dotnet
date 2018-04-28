@@ -7,60 +7,135 @@ using System.Threading.Tasks;
 
 namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
 {
+    /// <summary>
+    /// Wrappers for the underlying Event Hub client which allow mocking.
+    /// The interfaces include only the client functionality used by the Service Fabric Processor.
+    /// </summary>
     public class EventHubWrappers
     {
+        /// <summary>
+        /// Interface for a receive handler.
+        /// </summary>
         public interface IPartitionReceiveHandler2
         {
+            /// <summary>
+            /// </summary>
+            /// <param name="events"></param>
+            /// <returns></returns>
             Task ProcessEventsAsync(IEnumerable<IEventData> events);
 
+            /// <summary>
+            /// </summary>
+            /// <param name="error"></param>
+            /// <returns></returns>
             Task ProcessErrorAsync(Exception error);
         }
 
+        /// <summary>
+        /// Interface for a partition receiver.
+        /// </summary>
         public interface IPartitionReceiver
         {
+            /// <summary>
+            /// </summary>
+            /// <param name="maxEventCount"></param>
+            /// <param name="waitTime"></param>
+            /// <returns></returns>
             Task<IEnumerable<IEventData>> ReceiveAsync(int maxEventCount, TimeSpan waitTime);
 
+            /// <summary>
+            /// </summary>
+            /// <param name="receiveHandler"></param>
+            /// <param name="invokeWhenNoEvents"></param>
             void SetReceiveHandler(IPartitionReceiveHandler2 receiveHandler, bool invokeWhenNoEvents = false);
 
+            /// <summary>
+            /// </summary>
+            /// <returns></returns>
             Task CloseAsync();
         }
 
+        /// <summary>
+        /// Interface representing system properties on an event.
+        /// </summary>
         public interface ISystemPropertiesCollection
         {
+            /// <summary>
+            /// </summary>
             long SequenceNumber { get; }
 
+            /// <summary>
+            /// </summary>
             DateTime EnqueuedTimeUtc { get;  }
 
+            /// <summary>
+            /// </summary>
             string Offset { get; }
 
+            /// <summary>
+            /// </summary>
             string PartitionKey { get; }
         }
 
+        /// <summary>
+        /// Interface representing an event.
+        /// </summary>
         public interface IEventData
         {
+            /// <summary>
+            /// </summary>
             ArraySegment<byte> Body { get; }
 
+            /// <summary>
+            /// </summary>
             IDictionary<string, object> Properties { get; }
 
+            /// <summary>
+            /// </summary>
             ISystemPropertiesCollection SystemProperties { get;  }
 
+            /// <summary>
+            /// </summary>
             void Dispose();
         }
 
+        /// <summary>
+        /// Interface representing EVentHubClient
+        /// </summary>
         public interface IEventHubClient
         {
+            /// <summary>
+            /// </summary>
+            /// <returns></returns>
             Task<EventHubRuntimeInformation> GetRuntimeInformationAsync();
 
+            /// <summary>
+            /// </summary>
+            /// <param name="consumerGroupName"></param>
+            /// <param name="partitionId"></param>
+            /// <param name="eventPosition"></param>
+            /// <param name="epoch"></param>
+            /// <param name="receiverOptions"></param>
+            /// <returns></returns>
             IPartitionReceiver CreateEpochReceiver(string consumerGroupName, string partitionId, EventPosition eventPosition, long epoch, ReceiverOptions receiverOptions);
 
+            /// <summary>
+            /// </summary>
+            /// <returns></returns>
             Task CloseAsync();
         }
 
+        /// <summary>
+        /// Interface for an EventHubClient factory so that we can have factories which dispense different implementations of IEventHubClient.
+        /// </summary>
         public interface IEventHubClientFactory
         {
+            /// <summary>
+            /// </summary>
+            /// <param name="connectionString"></param>
+            /// <returns></returns>
             IEventHubClient CreateFromConnectionString(string connectionString);
         }
-
 
         internal class SystemPropertiesCollectionWrapper : ISystemPropertiesCollection
         {

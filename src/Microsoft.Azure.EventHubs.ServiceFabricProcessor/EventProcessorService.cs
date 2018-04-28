@@ -13,6 +13,10 @@ using Microsoft.ServiceFabric.Services.Runtime;
 
 namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
 {
+    /// <summary>
+    /// Base class that implements event processor functionality.
+    /// </summary>
+    /// <typeparam name="TEventProcessor">The type of the user's implementation of IEventProcessor</typeparam>
     public class EventProcessorService<TEventProcessor> : StatefulService, EventHubWrappers.IPartitionReceiveHandler2
         where TEventProcessor : IEventProcessor, new()
     {
@@ -28,6 +32,10 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         private IEventProcessor userEventProcessor = null;
         private CancellationToken linkedCancellationToken;
 
+        /// <summary>
+        /// Constructor required by Service Fabric.
+        /// </summary>
+        /// <param name="context"></param>
         public EventProcessorService(StatefulServiceContext context)
             : base(context)
         {
@@ -39,14 +47,31 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             this.internalCanceller = new CancellationTokenSource();
         }
 
+        /// <summary>
+        /// User's derived type can set processing options in the constructor.
+        /// </summary>
         protected EventProcessorOptions Options { get; set; }
 
+        /// <summary>
+        /// User's derived type can provide a user implementation of the event processor factory.
+        /// </summary>
         protected IEventProcessorFactory EventProcessorFactory { get; set; }
 
+        /// <summary>
+        /// User's derived type can provide a user implementation of the checkpoint manager.
+        /// </summary>
         protected ICheckpointMananger CheckpointManager { get; set; }
 
+        /// <summary>
+        /// 
+        /// </summary>
         protected EventHubWrappers.IEventHubClientFactory EventHubClientFactory { get; set; }
 
+        /// <summary>
+        /// Called by Service Fabric.
+        /// </summary>
+        /// <param name="fabricCancellationToken"></param>
+        /// <returns></returns>
         sealed protected override async Task RunAsync(CancellationToken fabricCancellationToken)
         {
             try
@@ -198,9 +223,9 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 EventProcessorEventSource.Current.Message("Event processor created and opened OK");
 
                 //
-                // Start metrics reporting.
+                // Start metrics reporting. This runs as a separate background thread.
                 //
-                Task.Run(() => MetricsHandler());
+                Task.Run(() => MetricsHandler()).Start();
 
                 //
                 // Receive pump.
@@ -234,6 +259,11 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             }
         }
 
+        /// <summary>
+        /// Called by Event Hub client.
+        /// </summary>
+        /// <param name="events"></param>
+        /// <returns></returns>
         public async Task ProcessEventsAsync(IEnumerable<EventHubWrappers.IEventData> events)
         {
             if ((events != null) || ((events == null) && Options.InvokeProcessorAfterReceiveTimeout))
@@ -265,6 +295,11 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             }
         }
 
+        /// <summary>
+        /// Called by Event Hub client.
+        /// </summary>
+        /// <param name="error"></param>
+        /// <returns></returns>
         public Task ProcessErrorAsync(Exception error)
         {
             EventProcessorEventSource.Current.Message("RECEIVE EXCEPTION on {0}: {1}", this.partitionId, error);

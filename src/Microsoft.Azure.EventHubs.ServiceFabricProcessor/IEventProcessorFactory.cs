@@ -5,8 +5,17 @@ using System.Threading;
 
 namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
 {
+    /// <summary>
+    /// Interface for factories that dispense IEventProcessor instances.
+    /// </summary>
     public interface IEventProcessorFactory
     {
+        /// <summary>
+        /// Dispense an IEventProcessor instance for the partition described by the PartitionContext.
+        /// </summary>
+        /// <param name="cancellationToken"></param>
+        /// <param name="context"></param>
+        /// <returns></returns>
         IEventProcessor CreateEventProcessor(CancellationToken cancellationToken, PartitionContext context);
     }
 }
