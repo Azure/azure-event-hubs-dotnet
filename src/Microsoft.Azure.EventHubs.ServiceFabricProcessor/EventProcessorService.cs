@@ -326,12 +326,6 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             // What partition is this? What is the total count of partitions?
             await GetServicePartitionId(cancellationToken);
 
-            // Metrics settings are service-wide. There will always be a partition 0, so let 0 do it and other partitions can skip.
-            if (this.partitionId.CompareTo("0") == 0)
-            {
-                await SetupMetrics(cancellationToken);
-            }
-
             // Get event hub connection string from configuration. This is mandatory, cannot proceed without.
             string rawConnectionString = GetConfigurationValue(Constants.EventHubConnectionStringConfigName, null);
             if (rawConnectionString == null)
@@ -415,49 +409,6 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             return value;
         }
 
-        private async Task SetupMetrics(CancellationToken cancellationToken)
-        {
-            FabricClient fc = new FabricClient();
-
-            ServiceDescription sd = await fc.ServiceManager.GetServiceDescriptionAsync(this.Context.ServiceName, Constants.UpdateServiceDescriptionTimeout, cancellationToken);
-
-            bool addMetric = true;
-            if (sd.Metrics.Count > 0)
-            {
-                foreach (ServiceLoadMetricDescription metric in sd.Metrics)
-                {
-                    if (metric.Name.CompareTo(Constants.UserLoadMetricName) == 0)
-                    {
-                        // Metric already added -- this is probably a restart of partition 0.
-                        addMetric = false;
-                        break;
-                    }
-                }
-            }
-
-            if (addMetric)
-            {
-                StatefulServiceUpdateDescription ssud = new StatefulServiceUpdateDescription();
-
-                StatefulServiceLoadMetricDescription userLoadMetric = new StatefulServiceLoadMetricDescription();
-                userLoadMetric.Name = Constants.UserLoadMetricName;
-                userLoadMetric.PrimaryDefaultLoad = 1;
-                userLoadMetric.SecondaryDefaultLoad = 0;
-                userLoadMetric.Weight = ServiceLoadMetricWeight.High;
-
-                ssud.Metrics = sd.Metrics;
-                ssud.Metrics.Add(userLoadMetric);
-
-                await fc.ServiceManager.UpdateServiceAsync(this.Context.ServiceName, ssud, Constants.UpdateServiceDescriptionTimeout, cancellationToken);
-
-                EventProcessorEventSource.Current.Message("METRIC added");
-            }
-            else
-            {
-                EventProcessorEventSource.Current.Message("METRIC already present");
-            }
-        }
-
         private void MetricsHandler()
         {
             EventProcessorEventSource.Current.Message("METRIC reporter starting");
@@ -465,12 +416,17 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             IEventProcessor capturedProcessor = this.userEventProcessor;
             while (!this.linkedCancellationToken.IsCancellationRequested)
             {
-                int userMetric = capturedProcessor.GetLoadMetric(this.linkedCancellationToken, this.partitionContext);
-                EventProcessorEventSource.Current.Message("METRIC partition {0} is {1}", this.partitionContext.PartitionId, userMetric);
+                Dictionary<string, int> userMetrics = capturedProcessor.GetLoadMetric(this.linkedCancellationToken, this.partitionContext);
 
                 try
                 {
-                    this.Partition.ReportLoad(new List<LoadMetric>() { new LoadMetric(Constants.UserLoadMetricName, userMetric) });
+                    List<LoadMetric> reportableMetrics = new List<LoadMetric>();
+                    foreach (KeyValuePair<string, int> metric in userMetrics)
+                    {
+                        EventProcessorEventSource.Current.Message("METRIC {0} for partition {1} is {2}", metric.Key, this.partitionContext.PartitionId, metric.Value);
+                        reportableMetrics.Add(new LoadMetric(metric.Key, metric.Value));
+                    }
+                    this.Partition.ReportLoad(reportableMetrics);
                     Task.Delay(Constants.MetricReportingInterval, this.linkedCancellationToken).Wait(); // throws on cancel
                 }
                 catch (Exception e)

@@ -14,7 +14,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         internal static readonly int FixedReceiverEpoch = 0;
 
         internal static readonly TimeSpan MetricReportingInterval = TimeSpan.FromMinutes(1.0);
-        internal static readonly string UserLoadMetricName = "UserMetric";
+        internal static readonly string DefaultUserLoadMetricName = "CountOfPartitions";
 
         internal static readonly TimeSpan UpdateServiceDescriptionTimeout = TimeSpan.FromSeconds(30.0);
 
