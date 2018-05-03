@@ -66,7 +66,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
 
             /// <summary>
             /// </summary>
-            DateTime EnqueuedTimeUtc { get;  }
+            DateTime EnqueuedTimeUtc { get; }
 
             /// <summary>
             /// </summary>
@@ -92,7 +92,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
 
             /// <summary>
             /// </summary>
-            ISystemPropertiesCollection SystemProperties { get;  }
+            ISystemPropertiesCollection SystemProperties { get; }
 
             /// <summary>
             /// </summary>
@@ -203,7 +203,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 {
                     return this.inner.Properties;
                 }
-                    
+
             }
 
             public ISystemPropertiesCollection SystemProperties
@@ -310,4 +310,5 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 return new EventHubClientWrapper(EventHubClient.CreateFromConnectionString(connectionString));
             }
         }
+    }
 }
