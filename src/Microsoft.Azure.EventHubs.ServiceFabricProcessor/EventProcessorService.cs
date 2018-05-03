@@ -171,6 +171,11 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 this.partitionContext = new PartitionContext(this.linkedCancellationToken, this.partitionId, this.ehConnectionString.EntityPath, this.consumerGroupName, this.CheckpointManager);
 
                 //
+                // Start up checkpoint manager.
+                //
+                await CheckpointStartup(this.linkedCancellationToken);
+
+                //
                 // If there was a checkpoint, the offset is in this.initialOffset, so convert it to an EventPosition.
                 // If no checkpoint, get starting point from user-supplied provider.
                 //
@@ -182,7 +187,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 }
                 else
                 {
-                    initialPosition = this.Options.InitialOffsetProvider(this.partitionId);
+                    initialPosition = this.Options.InitialPositionProvider(this.partitionId);
                     EventProcessorEventSource.Current.Message("Initial position from provider");
                 }
 
@@ -195,7 +200,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                     this.linkedCancellationToken.ThrowIfCancellationRequested();
                     try
                     {
-                        receiver = ehclient.CreateEpochReceiver(this.consumerGroupName, this.partitionId, initialPosition, Constants.FixedReceiverEpoch, null); // FOO receiveroptions
+                        receiver = ehclient.CreateEpochReceiver(this.consumerGroupName, this.partitionId, initialPosition, this.initialOffset, Constants.FixedReceiverEpoch, null); // FOO receiveroptions
                         break;
                     }
                     catch (EventHubsException e)
@@ -225,7 +230,8 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 //
                 // Start metrics reporting. This runs as a separate background thread.
                 //
-                Task.Run(() => MetricsHandler()).Start();
+                Thread t = new Thread(this.MetricsHandler);
+                t.Start();
 
                 //
                 // Receive pump.
@@ -338,7 +344,10 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             // Get consumer group name. Many users will be using the default consumer group, so for convenience default to that if not supplied.
             this.consumerGroupName = GetConfigurationValue(Constants.EventHubConsumerGroupConfigName, Constants.EventHubConsumerGroupConfigDefault);
             EventProcessorEventSource.Current.Message("Consumer group {0}", this.consumerGroupName);
+        }
 
+        private async Task CheckpointStartup(CancellationToken cancellationToken)
+        {
             // Set up store and get checkpoint, if any.
             await this.CheckpointManager.CreateCheckpointStoreIfNotExistsAsync(cancellationToken);
             Checkpoint checkpoint = await this.CheckpointManager.CreateCheckpointIfNotExistsAsync(this.partitionId, cancellationToken);

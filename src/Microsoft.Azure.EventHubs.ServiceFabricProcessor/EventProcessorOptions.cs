@@ -18,7 +18,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             this.MaxBatchSize = 10;
             this.PrefetchCount = 300;
             this.ReceiveTimeout = TimeSpan.FromMinutes(1);
-            this.InitialOffsetProvider = partitionId => EventPosition.FromStart();
+            this.InitialPositionProvider = partitionId => EventPosition.FromStart();
         }
 
         /// <summary>
@@ -52,6 +52,6 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         /// If there is no checkpoint, the user can provide a position for the Event Hubs receiver to start at.
         /// Defaults to first event available in the stream.
         /// </summary>
-        public Func<string, EventPosition> InitialOffsetProvider { get; set; }
+        public Func<string, EventPosition> InitialPositionProvider { get; set; }
     }
 }
