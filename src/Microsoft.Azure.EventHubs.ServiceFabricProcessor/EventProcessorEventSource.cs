@@ -7,7 +7,7 @@ using System.Fabric;
 
 namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
 {
-    [EventSource(Name = "Microsoft-EventHubs-EventProcessorFramework")]
+    [EventSource(Name = "Microsoft-Azure-EventHubs-ServiceFabricProcessor")]
     internal sealed class EventProcessorEventSource : EventSource
     {
         public static readonly EventProcessorEventSource Current = new EventProcessorEventSource();
