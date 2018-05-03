@@ -69,6 +69,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             public EventDataMock(long sequenceNumber, DateTime enqueuedTimeUtc, string offset, string partitionKey)
             {
                 this.SystemProperties = new SystemPropertiesCollectionMock(sequenceNumber, enqueuedTimeUtc, offset, partitionKey);
+                this.Properties = new Dictionary<string, object>();
             }
 
             /// <summary>
@@ -130,7 +131,11 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 for (int i = 0; i < maxEventCount; i++)
                 {
                     this.sequenceNumber++;
-                    events.Add(new EventDataMock(this.sequenceNumber, DateTime.UtcNow, this.sequenceNumber.ToString(), this.partitionId));
+                    EventDataMock e = new EventDataMock(this.sequenceNumber, DateTime.UtcNow, (this.sequenceNumber * 100).ToString(), this.partitionId);
+                    e.Properties.Add("userkey", "uservalue");
+                    byte[] body = new byte[] { 0x4D, 0x4F, 0x43, 0x4B, 0x42, 0x4F, 0x44, 0x59 };
+                    e.Body = new ArraySegment<byte>(body);
+                    events.Add(e);
                 }
                 System.Threading.Thread.Sleep(5000);
                 EventProcessorEventSource.Current.Message("MOCK ReceiveAsync returning {0} events for partition {1} ending at {2}", maxEventCount, this.partitionId, this.sequenceNumber);
@@ -163,7 +168,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 return Task.CompletedTask;
             }
 
-            private void GenerateMessages()
+            private async void GenerateMessages()
             {
                 while ((!this.token.IsCancellationRequested) && (this.outerHandler != null))
                 {
@@ -172,7 +177,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                     EventHubWrappers.IPartitionReceiveHandler2 capturedHandler = this.outerHandler;
                     if (capturedHandler != null)
                     {
-                        capturedHandler.ProcessEventsAsync(events);
+                        await capturedHandler.ProcessEventsAsync(events);
                     }
                 }
                 EventProcessorEventSource.Current.Message("MOCK Message generation ending");
@@ -228,14 +233,16 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             /// <param name="consumerGroupName"></param>
             /// <param name="partitionId"></param>
             /// <param name="eventPosition"></param>
+            /// <param name="offset"></param>
             /// <param name="epoch"></param>
             /// <param name="receiverOptions"></param>
             /// <returns></returns>
-            public EventHubWrappers.IPartitionReceiver CreateEpochReceiver(string consumerGroupName, string partitionId, EventPosition eventPosition, long epoch, ReceiverOptions receiverOptions)
+            public EventHubWrappers.IPartitionReceiver CreateEpochReceiver(string consumerGroupName, string partitionId, EventPosition eventPosition, string offset, long epoch, ReceiverOptions receiverOptions)
             {
-                EventProcessorEventSource.Current.Message("MOCK CreateEpochReceiver(CG {0}, part {1}, epoch {3})", consumerGroupName, partitionId, eventPosition.SequenceNumber, epoch);
+                EventProcessorEventSource.Current.Message("MOCK CreateEpochReceiver(CG {0}, part {1}, offset {2} epoch {3})", consumerGroupName, partitionId, offset, epoch);
                 // TODO Mock does not implement epoch semantics
-                return new PartitionReceiverMock(partitionId, eventPosition.SequenceNumber ?? 0L, this.token);
+                long startSeq = (offset != null) ? (long.Parse(offset) / 100L) : 0L;
+                return new PartitionReceiverMock(partitionId, startSeq, this.token);
             }
 
             /// <summary>

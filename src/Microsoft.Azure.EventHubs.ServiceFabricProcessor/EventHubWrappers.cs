@@ -114,10 +114,11 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             /// <param name="consumerGroupName"></param>
             /// <param name="partitionId"></param>
             /// <param name="eventPosition"></param>
+            /// <param name="offset">Only used by mocks</param>
             /// <param name="epoch"></param>
             /// <param name="receiverOptions"></param>
             /// <returns></returns>
-            IPartitionReceiver CreateEpochReceiver(string consumerGroupName, string partitionId, EventPosition eventPosition, long epoch, ReceiverOptions receiverOptions);
+            IPartitionReceiver CreateEpochReceiver(string consumerGroupName, string partitionId, EventPosition eventPosition, string offset, long epoch, ReceiverOptions receiverOptions);
 
             /// <summary>
             /// </summary>
@@ -291,7 +292,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 return this.inner.GetRuntimeInformationAsync();
             }
 
-            public IPartitionReceiver CreateEpochReceiver(string consumerGroupName, string partitionId, EventPosition eventPosition, long epoch, ReceiverOptions receiverOptions)
+            public IPartitionReceiver CreateEpochReceiver(string consumerGroupName, string partitionId, EventPosition eventPosition, string offset, long epoch, ReceiverOptions receiverOptions)
             {
                 return new PartitionReceiverWrapper(this.inner.CreateEpochReceiver(consumerGroupName, partitionId, eventPosition, epoch, receiverOptions));
             }
@@ -309,5 +310,4 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 return new EventHubClientWrapper(EventHubClient.CreateFromConnectionString(connectionString));
             }
         }
-    }
 }
