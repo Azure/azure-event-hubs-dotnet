@@ -62,7 +62,11 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 {
                     try
                     {
-                        ReceivingAmqpLink receiveLink = await this.ReceiveLinkManager.GetOrCreateAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
+                        // Always use default timeout for AMQP sesssion.
+                        ReceivingAmqpLink receiveLink =
+                            await this.ReceiveLinkManager.GetOrCreateAsync(
+                                TimeSpan.FromSeconds(AmqpClientConstants.AmqpSessionTimeoutInSeconds)).ConfigureAwait(false);
+
                         IEnumerable<AmqpMessage> amqpMessages = null;
                         bool hasMessages = await Task.Factory.FromAsync(
                             (c, s) => receiveLink.BeginReceiveMessages(maxMessageCount, timeoutHelper.RemainingTime(), c, s),
@@ -173,8 +177,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
             // We won't use remaining timeout during create session call.
             // For large or small operation timeout values using remaining time won't make any sense.
-            var timeoutHelper = new TimeoutHelper(TimeSpan.FromSeconds(AmqpClientConstants.AmqpSessionTimeoutInSeconds));
-
+            var timeoutHelper = new TimeoutHelper(timeout);
             AmqpConnection connection = await amqpEventHubClient.ConnectionManager.GetOrCreateAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
 
             // Authenticate over CBS
