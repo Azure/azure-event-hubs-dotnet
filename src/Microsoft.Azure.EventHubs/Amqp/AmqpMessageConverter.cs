@@ -57,12 +57,12 @@ namespace Microsoft.Azure.EventHubs.Amqp
                         firstEvent = data;
                     }
 
-                    // Create AMQP message if not created yet.
+                    // Create AMQP message if not created yet. We might have created AmqpMessage while building the EventDataBatch. 
                     AmqpMessage amqpMessage = data.AmqpMessage;
+                    data.AmqpMessage = null; // Retry on the same message should create a new AmqpMessage
                     if (amqpMessage == null)
                     {
                         amqpMessage = EventDataToAmqpMessage(data);
-                        data.AmqpMessage = null;
                     }
 
                     UpdateAmqpMessagePartitionKey(amqpMessage, partitionKey);
@@ -85,12 +85,12 @@ namespace Microsoft.Azure.EventHubs.Amqp
             {
                 var data = eventDatas.First();
 
-                // Create AMQP message if not created yet.
+                // Create AMQP message if not created yet. We might have created AmqpMessage while building the EventDataBatch. 
                 returnMessage = data.AmqpMessage;
+                data.AmqpMessage = null; // Retry on the same message should create a new AmqpMessage
                 if (returnMessage == null)
                 {
                     returnMessage = EventDataToAmqpMessage(data);
-                    data.AmqpMessage = null;
                 }
 
                 if ((returnMessage.Sections & ClientAmqpPropsSetOnSendToEventHub) == 0 && data.Body.Array == null)
