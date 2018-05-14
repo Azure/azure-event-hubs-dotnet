@@ -62,6 +62,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     if (amqpMessage == null)
                     {
                         amqpMessage = EventDataToAmqpMessage(data);
+                        data.AmqpMessage = null;
                     }
 
                     UpdateAmqpMessagePartitionKey(amqpMessage, partitionKey);
@@ -89,6 +90,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 if (returnMessage == null)
                 {
                     returnMessage = EventDataToAmqpMessage(data);
+                    data.AmqpMessage = null;
                 }
 
                 if ((returnMessage.Sections & ClientAmqpPropsSetOnSendToEventHub) == 0 && data.Body.Array == null)
