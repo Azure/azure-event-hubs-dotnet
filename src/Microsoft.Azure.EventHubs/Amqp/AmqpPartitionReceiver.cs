@@ -175,8 +175,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
         {
             var amqpEventHubClient = ((AmqpEventHubClient)this.EventHubClient);
 
-            // We won't use remaining timeout during create session call.
-            // For large or small operation timeout values using remaining time won't make any sense.
             var timeoutHelper = new TimeoutHelper(timeout);
             AmqpConnection connection = await amqpEventHubClient.ConnectionManager.GetOrCreateAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
 

@@ -58,7 +58,9 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     {
                         try
                         {
-                            var amqpLink = await this.SendLinkManager.GetOrCreateAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
+                            // Always use default timeout for AMQP sesssion.
+                            var amqpLink = await this.SendLinkManager.GetOrCreateAsync(
+                                TimeSpan.FromSeconds(AmqpClientConstants.AmqpSessionTimeoutInSeconds)).ConfigureAwait(false);
                             if (amqpLink.Settings.MaxMessageSize.HasValue)
                             {
                                 ulong size = (ulong)amqpMessage.SerializedMessageSize;
@@ -111,10 +113,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
         {
             var amqpEventHubClient = ((AmqpEventHubClient)this.EventHubClient);
 
-            // We won't use remaining timeout during create session call.
-            // For large or small operation timeout values using remaining time won't make any sense.
-            var timeoutHelper = new TimeoutHelper(TimeSpan.FromSeconds(AmqpClientConstants.AmqpSessionTimeoutInSeconds));
-
+            var timeoutHelper = new TimeoutHelper(timeout);
             AmqpConnection connection = await amqpEventHubClient.ConnectionManager.GetOrCreateAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
 
             // Authenticate over CBS
