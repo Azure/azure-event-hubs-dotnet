@@ -920,9 +920,9 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
         [DisplayTestMethodName]
         async Task SingleProcessorHostWithAadTokenProvider()
         {
-            var tenantId = "72f988bf-86f1-41af-91ab-2d7cd011db47";
-            var aadAppId = "82b22ca4-a5af-47fa-81c8-173e334cc63d";
-            var aadAppSecret = "CxUKoQKJdGESp746qZh2DJRY1NAXXw5v+jy6a+Gn98k=";
+            var tenantId = "";
+            var aadAppId = "";
+            var aadAppSecret = "";
 
             if (string.IsNullOrEmpty(tenantId))
             {
