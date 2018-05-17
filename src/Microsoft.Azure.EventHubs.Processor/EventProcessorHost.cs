@@ -194,7 +194,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             TimeSpan? operationTimeout = null,
             TransportType transportType = TransportType.Amqp)
         {
-            if (string.IsNullOrEmpty(hostName))
+            if (string.IsNullOrWhiteSpace(hostName))
             {
                 throw new ArgumentNullException(nameof(hostName));
             }
@@ -204,12 +204,12 @@ namespace Microsoft.Azure.EventHubs.Processor
                 throw new ArgumentNullException(nameof(endpointAddress));
             }
 
-            if (string.IsNullOrEmpty(eventHubPath))
+            if (string.IsNullOrWhiteSpace(eventHubPath))
             {
                 throw new ArgumentNullException(nameof(eventHubPath));
             }
 
-            if (string.IsNullOrEmpty(consumerGroupName))
+            if (string.IsNullOrWhiteSpace(consumerGroupName))
             {
                 throw new ArgumentNullException(nameof(consumerGroupName));
             }
@@ -219,12 +219,12 @@ namespace Microsoft.Azure.EventHubs.Processor
                 throw new ArgumentNullException(nameof(tokenProvider));
             }
 
-            if (string.IsNullOrEmpty(storageConnectionString))
+            if (string.IsNullOrWhiteSpace(storageConnectionString))
             {
                 throw new ArgumentNullException(nameof(storageConnectionString));
             }
 
-            if (string.IsNullOrEmpty(leaseContainerName))
+            if (string.IsNullOrWhiteSpace(leaseContainerName))
             {
                 throw new ArgumentNullException(nameof(leaseContainerName));
             }
@@ -237,7 +237,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             this.TransportType = TransportType;
             this.tokenProvider = tokenProvider;
 
-            // Create default checkoint-lease manager.
+            // Create default checkpoint-lease manager.
             this.CheckpointManager = new AzureStorageCheckpointLeaseManager(storageConnectionString, leaseContainerName, storageBlobPrefix);
             this.LeaseManager = (ILeaseManager)this.CheckpointManager;
             this.PartitionManager = new PartitionManager(this);
