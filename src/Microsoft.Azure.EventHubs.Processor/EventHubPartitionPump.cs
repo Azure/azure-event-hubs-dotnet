@@ -75,7 +75,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             long epoch = this.Lease.Epoch;
             ProcessorEventSource.Log.PartitionPumpCreateClientsStart(this.Host.HostName, this.PartitionContext.PartitionId, epoch,
                 $"Offset:{eventPosition.Offset}, SequenceNumber:{eventPosition.SequenceNumber}, DateTime:{eventPosition.EnqueuedTimeUtc}");
-            this.eventHubClient = EventHubClient.CreateFromConnectionString(this.Host.EventHubConnectionString);
+            this.eventHubClient = this.Host.CreateEventHubClient();
             this.eventHubClient.WebProxy = this.Host.EventProcessorOptions.WebProxy;
 
             var receiverOptions = new ReceiverOptions()

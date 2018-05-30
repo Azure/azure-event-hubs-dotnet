@@ -107,7 +107,6 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
         /// <summary>
         /// This test is for manual only purpose. Fill in the tenant-id, app-id and app-secret before running.
         /// </summary>
-        /// <returns></returns>
         [Fact]
         [DisplayTestMethodName]
         async Task UseITokenProviderWithAad()
@@ -150,7 +149,6 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
                 await ehReceiver?.CloseAsync();
             }
         }
-
 
         /// <summary>
         /// This test is for manual only purpose. Fill in the tenant-id, app-id and app-secret before running.

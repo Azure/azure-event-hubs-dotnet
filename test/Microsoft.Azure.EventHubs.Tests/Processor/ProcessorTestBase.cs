@@ -11,6 +11,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
     using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Azure.EventHubs.Processor;
+    using Microsoft.IdentityModel.Clients.ActiveDirectory;
     using Xunit;
 
     public class ProcessorTestBase
@@ -122,7 +123,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
             var epo = await GetOptionsAsync();
 
             var eventProcessorHost = new EventProcessorHost(
-                null,
+                null, // Entity path will be picked from connection string.
                 PartitionReceiver.DefaultConsumerGroupName,
                 TestUtility.EventHubsConnectionString,
                 TestUtility.StorageConnectionString,
@@ -411,7 +412,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
 
             // Run on non-default consumer group
             var eventProcessorHost = new EventProcessorHost(
-                null,
+                null, // Entity path will be picked from connection string.
                 "cgroup1",
                 TestUtility.EventHubsConnectionString,
                 TestUtility.StorageConnectionString,
@@ -755,7 +756,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
             var epo = await GetOptionsAsync();
 
             var eventProcessorHost = new EventProcessorHost(
-                null,
+                null, // Entity path will be picked from connection string.
                 PartitionReceiver.DefaultConsumerGroupName,
                 TestUtility.EventHubsConnectionString,
                 TestUtility.StorageConnectionString,
@@ -767,7 +768,6 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
             // Validate there were not failures.
             Assert.True(runResult.NumberOfFailures == 0, $"RunResult returned with {runResult.NumberOfFailures} failures!");
         }
-
 
         /// <summary>
         /// While processing events one event causes a failure. Host should be able to recover any error.
@@ -785,7 +785,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
             var receivedEventCounts = new ConcurrentDictionary<string, int>();
 
             var eventProcessorHost = new EventProcessorHost(
-                null,
+                null, // Entity path will be picked from connection string.
                 PartitionReceiver.DefaultConsumerGroupName,
                 TestUtility.EventHubsConnectionString,
                 TestUtility.StorageConnectionString,
@@ -911,6 +911,40 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
                 TestUtility.Log("Calling UnregisterEventProcessorAsync.");
                 await eventProcessorHost.UnregisterEventProcessorAsync();
             }
+        }
+
+        /// <summary>
+        /// This test is for manual only purpose. Fill in the tenant-id, app-id and app-secret before running.
+        /// </summary>
+        [Fact]
+        [DisplayTestMethodName]
+        async Task SingleProcessorHostWithAadTokenProvider()
+        {
+            var tenantId = "";
+            var aadAppId = "";
+            var aadAppSecret = "";
+
+            if (string.IsNullOrEmpty(tenantId))
+            {
+                TestUtility.Log($"Skipping test during scheduled runs.");
+                return;
+            }
+
+            var authContext = new AuthenticationContext($"https://login.windows.net/{tenantId}");
+            var clientCrendential = new ClientCredential(aadAppId, aadAppSecret);
+            var tokenProvider = TokenProvider.CreateAadTokenProvider(authContext, clientCrendential);
+            var epo = await GetOptionsAsync();
+            var csb = new EventHubsConnectionStringBuilder(TestUtility.EventHubsConnectionString);
+
+            var eventProcessorHost = new EventProcessorHost(
+                csb.Endpoint,
+                csb.EntityPath,
+                PartitionReceiver.DefaultConsumerGroupName,
+                tokenProvider,
+                TestUtility.StorageConnectionString,
+                Guid.NewGuid().ToString());
+
+            await RunGenericScenario(eventProcessorHost, epo);
         }
 
         async Task<Dictionary<string, Tuple<string, DateTime>>> DiscoverEndOfStream()
