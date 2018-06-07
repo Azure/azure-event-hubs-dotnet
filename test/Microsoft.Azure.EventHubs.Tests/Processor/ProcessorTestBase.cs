@@ -12,6 +12,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
     using System.Threading.Tasks;
     using Microsoft.Azure.EventHubs.Processor;
     using Microsoft.IdentityModel.Clients.ActiveDirectory;
+    using Microsoft.WindowsAzure.Storage;
     using Xunit;
 
     public class ProcessorTestBase
@@ -941,7 +942,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
                 csb.EntityPath,
                 PartitionReceiver.DefaultConsumerGroupName,
                 tokenProvider,
-                TestUtility.StorageConnectionString,
+                CloudStorageAccount.Parse(TestUtility.StorageConnectionString),
                 Guid.NewGuid().ToString());
 
             await RunGenericScenario(eventProcessorHost, epo);
