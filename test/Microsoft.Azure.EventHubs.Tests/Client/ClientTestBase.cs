@@ -26,11 +26,18 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
         }
         
         // Send and receive given event on given partition.
-        protected async Task<EventData> SendAndReceiveEvent(string partitionId, EventData sendEvent)
+        protected async Task<EventData> SendAndReceiveEventAsync(string partitionId, EventData sendEvent, EventHubClient ehClient = null)
         {
+            // Use default EH client if not provided one.
+            if (ehClient == null)
+            {
+                ehClient = this.EventHubClient;
+            }
+
+            PartitionSender partitionSender = ehClient.CreatePartitionSender(partitionId);
+            PartitionReceiver partitionReceiver = ehClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, EventPosition.FromEnqueuedTime(DateTime.UtcNow.AddMinutes(-10)));
+
             EventData receivedEvent = null;
-            PartitionSender partitionSender = this.EventHubClient.CreatePartitionSender(partitionId);
-            PartitionReceiver partitionReceiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, partitionId, EventPosition.FromEnqueuedTime(DateTime.UtcNow.AddMinutes(-10)));
 
             try
             {

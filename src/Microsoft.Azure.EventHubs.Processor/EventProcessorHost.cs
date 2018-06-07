@@ -5,12 +5,17 @@ namespace Microsoft.Azure.EventHubs.Processor
 {
     using System;
     using System.Threading.Tasks;
+    using Microsoft.WindowsAzure.Storage;
 
     /// <summary>
     /// Represents a host for processing Event Hubs event data.
     /// </summary>
     public sealed class EventProcessorHost
     {
+        // A processor host will work on either the token provider or the connection string.
+        ITokenProvider tokenProvider;
+        string eventHubConnectionString;
+
         /// <summary>
         /// Create a new host to process events from an Event Hub.
         /// 
@@ -129,12 +134,115 @@ namespace Microsoft.Azure.EventHubs.Processor
             this.HostName = hostName;
             this.EventHubPath = csb.EntityPath;
             this.ConsumerGroupName = consumerGroupName;
-            this.EventHubConnectionString = csb.ToString();
+            this.eventHubConnectionString = csb.ToString();
             this.CheckpointManager = checkpointManager;
             this.LeaseManager = leaseManager;
-            this.Id = $"EventProcessorHost({hostName.Substring(0, Math.Min(hostName.Length, 20))}...)";
+            this.TransportType = csb.TransportType;
+            this.OperationTimeout = csb.OperationTimeout;
+            this.EndpointAddress = csb.Endpoint;
             this.PartitionManager = new PartitionManager(this);
-            ProcessorEventSource.Log.EventProcessorHostCreated(this.Id, this.EventHubPath);
+            ProcessorEventSource.Log.EventProcessorHostCreated(this.HostName, this.EventHubPath);
+        }
+
+        /// <summary>
+        /// Create a new host to process events from an Event Hub with provided <see cref="TokenProvider"/>
+        /// </summary>
+        /// <param name="endpointAddress">Fully qualified domain name for Event Hubs. Most likely, {yournamespace}.servicebus.windows.net</param>
+        /// <param name="eventHubPath">The name of the EventHub.</param>
+        /// <param name="consumerGroupName">The name of the consumer group within the Event Hub.</param>
+        /// <param name="tokenProvider">Token provider which will generate security tokens for authorization.</param>
+        /// <param name="cloudStorageAccount">Azure Storage account used for leases and checkpointing.</param>
+        /// <param name="leaseContainerName">Azure Storage container name for use by built-in lease and checkpoint manager.</param>
+        public EventProcessorHost(
+            Uri endpointAddress,
+            string eventHubPath,
+            string consumerGroupName,
+            ITokenProvider tokenProvider,
+            CloudStorageAccount cloudStorageAccount,
+            string leaseContainerName)
+            : this(EventProcessorHost.CreateHostName(null),
+                  endpointAddress,
+                  eventHubPath,
+                  consumerGroupName,
+                  tokenProvider,
+                  cloudStorageAccount,
+                  leaseContainerName)
+        {
+        }
+
+        /// <summary>
+        /// Create a new host to process events from an Event Hub with provided <see cref="TokenProvider"/>
+        /// </summary>
+        /// <param name="hostName">Name of the processor host. MUST BE UNIQUE. Strongly recommend including a Guid to ensure uniqueness.</param>
+        /// <param name="endpointAddress">Fully qualified domain name for Event Hubs. Most likely, {yournamespace}.servicebus.windows.net</param>
+        /// <param name="eventHubPath">The name of the EventHub.</param>
+        /// <param name="consumerGroupName">The name of the consumer group within the Event Hub.</param>
+        /// <param name="tokenProvider">Token provider which will generate security tokens for authorization.</param>
+        /// <param name="cloudStorageAccount">Azure Storage account used for leases and checkpointing.</param>
+        /// <param name="leaseContainerName">Azure Storage container name for use by built-in lease and checkpoint manager.</param>
+        /// <param name="storageBlobPrefix">Prefix used when naming blobs within the storage container.</param>
+        /// <param name="operationTimeout">Operation timeout for Event Hubs operations.</param>
+        /// <param name="transportType">Transport type on connection.</param>
+        public EventProcessorHost(
+            string hostName,
+            Uri endpointAddress,
+            string eventHubPath,
+            string consumerGroupName,
+            ITokenProvider tokenProvider,
+            CloudStorageAccount cloudStorageAccount,
+            string leaseContainerName,
+            string storageBlobPrefix = null,
+            TimeSpan? operationTimeout = null,
+            TransportType transportType = TransportType.Amqp)
+        {
+            if (string.IsNullOrWhiteSpace(hostName))
+            {
+                throw new ArgumentNullException(nameof(hostName));
+            }
+
+            if (endpointAddress == null)
+            {
+                throw new ArgumentNullException(nameof(endpointAddress));
+            }
+
+            if (string.IsNullOrWhiteSpace(eventHubPath))
+            {
+                throw new ArgumentNullException(nameof(eventHubPath));
+            }
+
+            if (string.IsNullOrWhiteSpace(consumerGroupName))
+            {
+                throw new ArgumentNullException(nameof(consumerGroupName));
+            }
+
+            if (tokenProvider == null)
+            {
+                throw new ArgumentNullException(nameof(tokenProvider));
+            }
+
+            if (cloudStorageAccount == null)
+            {
+                throw new ArgumentNullException(nameof(cloudStorageAccount));
+            }
+
+            if (string.IsNullOrWhiteSpace(leaseContainerName))
+            {
+                throw new ArgumentNullException(nameof(leaseContainerName));
+            }
+
+            this.HostName = hostName;
+            this.EndpointAddress = endpointAddress;
+            this.EventHubPath = eventHubPath;
+            this.ConsumerGroupName = consumerGroupName;
+            this.OperationTimeout = operationTimeout ?? ClientConstants.DefaultOperationTimeout;
+            this.TransportType = TransportType;
+            this.tokenProvider = tokenProvider;
+
+            // Create default checkpoint-lease manager.
+            this.CheckpointManager = new AzureStorageCheckpointLeaseManager(cloudStorageAccount, leaseContainerName, storageBlobPrefix);
+            this.LeaseManager = (ILeaseManager)this.CheckpointManager;
+            this.PartitionManager = new PartitionManager(this);
+            ProcessorEventSource.Log.EventProcessorHostCreated(this.HostName, this.EventHubPath);
         }
 
         // Using this intermediate constructor to create single combined manager to be used as 
@@ -153,7 +261,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                   combinedManager)
         {
         }
-        
+
         /// <summary>
         /// Returns processor host name.
         /// If the processor host name was automatically generated, this is the only way to get it.
@@ -170,6 +278,21 @@ namespace Microsoft.Azure.EventHubs.Processor
         /// </summary>
         public string ConsumerGroupName { get; }
 
+        /// <summary>
+        /// Gets the event endpoint URI.
+        /// </summary>
+        public Uri EndpointAddress { get; }
+
+        /// <summary>
+        /// Gets the transport type.
+        /// </summary>
+        public TransportType TransportType { get; }
+
+        /// <summary>
+        /// Gets the operation timeout.
+        /// </summary>
+        public TimeSpan OperationTimeout { get; internal set; }
+
         /// <summary>Gets or sets the 
         /// <see cref="PartitionManagerOptions" /> instance used by the 
         /// <see cref="EventProcessorHost" /> object.</summary> 
@@ -177,8 +300,6 @@ namespace Microsoft.Azure.EventHubs.Processor
         public PartitionManagerOptions PartitionManagerOptions { get; set; }
         
         // All of these accessors are for internal use only.
-        internal string EventHubConnectionString { get; private set; }
-
         internal ICheckpointManager CheckpointManager { get; }
 
         internal EventProcessorOptions EventProcessorOptions { get; private set; }
@@ -188,8 +309,6 @@ namespace Microsoft.Azure.EventHubs.Processor
         internal IEventProcessorFactory ProcessorFactory { get; private set; }
 
         internal PartitionManager PartitionManager { get; private set; }
-
-        internal string Id { get; }
 
         /// <summary>
         /// This registers <see cref="IEventProcessor"/> implementation with the host using <see cref="DefaultEventProcessorFactory{T}"/>.  
@@ -253,17 +372,23 @@ namespace Microsoft.Azure.EventHubs.Processor
                 this.PartitionManagerOptions = new PartitionManagerOptions();
             }
 
-            ProcessorEventSource.Log.EventProcessorHostOpenStart(this.Id, factory.GetType().ToString());
+            ProcessorEventSource.Log.EventProcessorHostOpenStart(this.HostName, factory.GetType().ToString());
+
             try
             {
                 // Override operation timeout by receive timeout?
                 if (processorOptions.ReceiveTimeout > TimeSpan.MinValue)
                 {
-                    var cbs = new EventHubsConnectionStringBuilder(this.EventHubConnectionString)
+                    this.OperationTimeout = processorOptions.ReceiveTimeout;
+
+                    if (this.eventHubConnectionString != null)
                     {
-                        OperationTimeout = processorOptions.ReceiveTimeout
-                    };
-                    this.EventHubConnectionString = cbs.ToString();
+                        var cbs = new EventHubsConnectionStringBuilder(this.eventHubConnectionString)
+                        {
+                            OperationTimeout = processorOptions.ReceiveTimeout
+                        };
+                        this.eventHubConnectionString = cbs.ToString();
+                    }
                 }
 
                 // Initialize lease manager if this is an AzureStorageCheckpointLeaseManager
@@ -275,12 +400,12 @@ namespace Microsoft.Azure.EventHubs.Processor
             }
             catch (Exception e)
             {
-                ProcessorEventSource.Log.EventProcessorHostOpenError(this.Id, e.ToString());
+                ProcessorEventSource.Log.EventProcessorHostOpenError(this.HostName, e.ToString());
                 throw;
             }
             finally
             {
-                ProcessorEventSource.Log.EventProcessorHostOpenStop(this.Id);
+                ProcessorEventSource.Log.EventProcessorHostOpenStop(this.HostName);
             }
         }
 
@@ -290,7 +415,7 @@ namespace Microsoft.Azure.EventHubs.Processor
         /// <returns></returns>
         public async Task UnregisterEventProcessorAsync() // throws InterruptedException, ExecutionException
         {
-            ProcessorEventSource.Log.EventProcessorHostCloseStart(this.Id);    	
+            ProcessorEventSource.Log.EventProcessorHostCloseStart(this.HostName);    	
             try
             {
                 await this.PartitionManager.StopAsync().ConfigureAwait(false);
@@ -298,12 +423,12 @@ namespace Microsoft.Azure.EventHubs.Processor
             catch (Exception e)
             {
                 // Log the failure but nothing really to do about it.
-                ProcessorEventSource.Log.EventProcessorHostCloseError(this.Id, e.ToString());
+                ProcessorEventSource.Log.EventProcessorHostCloseError(this.HostName, e.ToString());
                 throw;
             }
             finally
             {
-                ProcessorEventSource.Log.EventProcessorHostCloseStop(this.Id);
+                ProcessorEventSource.Log.EventProcessorHostCloseStop(this.HostName);
             }
         }
 
@@ -325,6 +450,24 @@ namespace Microsoft.Azure.EventHubs.Processor
             }
 
             return prefix + "-" + Guid.NewGuid().ToString();
+        }
+
+        internal EventHubClient CreateEventHubClient()
+        {
+            // Token provider already provided?
+            if (this.tokenProvider == null)
+            {
+                return EventHubClient.CreateFromConnectionString(this.eventHubConnectionString);
+            }
+            else
+            {
+                return EventHubClient.Create(
+                    this.EndpointAddress, 
+                    this.EventHubPath, 
+                    this.tokenProvider, 
+                    this.OperationTimeout, 
+                    this.TransportType);
+            }
         }
     }
 }

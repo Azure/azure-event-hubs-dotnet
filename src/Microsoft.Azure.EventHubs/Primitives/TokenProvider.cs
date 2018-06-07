@@ -79,7 +79,7 @@ namespace Microsoft.Azure.EventHubs
         /// <param name="authContext">AuthenticationContext for AAD.</param>
         /// <param name="clientCredential">The app credential.</param>
         /// <returns>The <see cref="TokenProvider" /> for returning Json web token.</returns>
-        internal static TokenProvider CreateAadTokenProvider(AuthenticationContext authContext, ClientCredential clientCredential)
+        public static TokenProvider CreateAadTokenProvider(AuthenticationContext authContext, ClientCredential clientCredential)
         {
             if (authContext == null)
             {
@@ -101,7 +101,7 @@ namespace Microsoft.Azure.EventHubs
         /// <param name="platformParameters">Platform parameters</param>
         /// <param name="userIdentifier">User Identifier</param>
         /// <returns>The <see cref="TokenProvider" /> for returning Json web token.</returns>
-        internal static TokenProvider CreateAadTokenProvider(
+        public static TokenProvider CreateAadTokenProvider(
             AuthenticationContext authContext, 
             string clientId, 
             Uri redirectUri, 
@@ -136,7 +136,7 @@ namespace Microsoft.Azure.EventHubs
         /// <param name="authContext">AuthenticationContext for AAD.</param>
         /// <param name="clientAssertionCertificate">The client assertion certificate credential.</param>
         /// <returns>The <see cref="TokenProvider" /> for returning Json web token.</returns>
-        internal static TokenProvider CreateAadTokenProvider(AuthenticationContext authContext, ClientAssertionCertificate clientAssertionCertificate)
+        public static TokenProvider CreateAadTokenProvider(AuthenticationContext authContext, ClientAssertionCertificate clientAssertionCertificate)
         {
             if (authContext == null)
             {
@@ -154,7 +154,7 @@ namespace Microsoft.Azure.EventHubs
 
         /// <summary>Creates Azure Managed Service Identity token provider.</summary>
         /// <returns>The <see cref="TokenProvider" /> for returning Json web token.</returns>
-        internal static TokenProvider CreateManagedServiceIdentityTokenProvider()
+        public static TokenProvider CreateManagedServiceIdentityTokenProvider()
         {
             return new ManagedServiceIdentityTokenProvider();
         }

@@ -6,6 +6,7 @@ namespace Microsoft.Azure.EventHubs.Processor
     using System;
     using System.Collections.Concurrent;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.Linq;
     using System.Threading;
     using System.Threading.Tasks;
@@ -32,7 +33,8 @@ namespace Microsoft.Azure.EventHubs.Processor
                 EventHubClient eventHubClient = null;
                 try
                 {
-                    eventHubClient = EventHubClient.CreateFromConnectionString(this.host.EventHubConnectionString);
+                    eventHubClient = this.host.CreateEventHubClient();
+                    eventHubClient.WebProxy = this.host.EventProcessorOptions.WebProxy;
                     var runtimeInfo = await eventHubClient.GetRuntimeInformationAsync().ConfigureAwait(false);
                     this.partitionIds = runtimeInfo.PartitionIds.ToList();
                 }
@@ -48,7 +50,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                     }
                 }
 
-                ProcessorEventSource.Log.EventProcessorHostInfo(this.host.Id, $"PartitionCount: {this.partitionIds.Count}");
+                ProcessorEventSource.Log.EventProcessorHostInfo(this.host.HostName, $"PartitionCount: {this.partitionIds.Count}");
             }
 
             return this.partitionIds;
@@ -84,19 +86,19 @@ namespace Microsoft.Azure.EventHubs.Processor
             }
             catch (Exception e)
             {
-                ProcessorEventSource.Log.EventProcessorHostError(this.host.Id, "Exception from partition manager main loop, shutting down", e.ToString());
+                ProcessorEventSource.Log.EventProcessorHostError(this.host.HostName, "Exception from partition manager main loop, shutting down", e.ToString());
                 this.host.EventProcessorOptions.NotifyOfException(this.host.HostName, "N/A", e, EventProcessorHostActionStrings.PartitionManagerMainLoop);
             }
 
             try
             {
                 // Cleanup
-                ProcessorEventSource.Log.EventProcessorHostInfo(this.host.Id, "Shutting down all pumps");
+                ProcessorEventSource.Log.EventProcessorHostInfo(this.host.HostName, "Shutting down all pumps");
                 await this.RemoveAllPumpsAsync(CloseReason.Shutdown).ConfigureAwait(false);
             }
             catch (Exception e)
 	    	{
-                ProcessorEventSource.Log.EventProcessorHostError(this.host.Id, "Failure during shutdown", e.ToString());
+                ProcessorEventSource.Log.EventProcessorHostError(this.host.HostName, "Failure during shutdown", e.ToString());
                 this.host.EventProcessorOptions.NotifyOfException(this.host.HostName, "N/A", e, EventProcessorHostActionStrings.PartitionManagerCleanup);
             }
         }
@@ -154,11 +156,11 @@ namespace Microsoft.Azure.EventHubs.Processor
                 {
                     if (partitionId != null)
                     {
-                        ProcessorEventSource.Log.PartitionPumpWarning(this.host.Id, partitionId, retryMessage, e.ToString());
+                        ProcessorEventSource.Log.PartitionPumpWarning(this.host.HostName, partitionId, retryMessage, e.ToString());
                     }
                     else
                     {
-                        ProcessorEventSource.Log.EventProcessorHostWarning(this.host.Id, retryMessage, e.ToString());
+                        ProcessorEventSource.Log.EventProcessorHostWarning(this.host.HostName, retryMessage, e.ToString());
                     }
                     retryCount++;
                 }
@@ -169,11 +171,11 @@ namespace Microsoft.Azure.EventHubs.Processor
             {
                 if (partitionId != null)
                 {
-                    ProcessorEventSource.Log.PartitionPumpError(this.host.Id, partitionId, finalFailureMessage);
+                    ProcessorEventSource.Log.PartitionPumpError(this.host.HostName, partitionId, finalFailureMessage);
                 }
                 else
                 {
-                    ProcessorEventSource.Log.EventProcessorHostError(this.host.Id, finalFailureMessage, null);
+                    ProcessorEventSource.Log.EventProcessorHostError(this.host.HostName, finalFailureMessage, null);
                 }
 
                 throw new EventProcessorRuntimeException(finalFailureMessage, action);
@@ -182,8 +184,13 @@ namespace Microsoft.Azure.EventHubs.Processor
 
         async Task RunLoopAsync(CancellationToken cancellationToken) // throws Exception, ExceptionWithAction
         {
-    	    while (!cancellationToken.IsCancellationRequested)
+            var loopStopwatch = new Stopwatch();
+
+            while (!cancellationToken.IsCancellationRequested)
             {
+                // Mark start time so we can use the duration taken to calculate renew interval.
+                loopStopwatch.Restart();
+
                 ILeaseManager leaseManager = this.host.LeaseManager;
                 Dictionary<string, Lease> allLeases = new Dictionary<string, Lease>();
 
@@ -192,52 +199,67 @@ namespace Microsoft.Azure.EventHubs.Processor
                 // Renew any leases that currently belong to us.
                 IEnumerable<Task<Lease>> gettingAllLeases = leaseManager.GetAllLeases();
                 List<Lease> leasesOwnedByOthers = new List<Lease>();
+                var renewLeaseTasks = new List<Task>();
                 int ourLeaseCount = 0;
+
+                // First thing is first, renew owned leases.
                 foreach (Task<Lease> getLeaseTask in gettingAllLeases)
                 {
                     try
-                    {
-                        Lease possibleLease = await getLeaseTask.ConfigureAwait(false);
-                        allLeases[possibleLease.PartitionId] = possibleLease;
-                        if (await possibleLease.IsExpired().ConfigureAwait(false))
+                    { 
+                        var lease = await getLeaseTask.ConfigureAwait(false);
+                        allLeases[lease.PartitionId] = lease;
+                        if (lease.Owner == this.host.HostName)
                         {
-                            ProcessorEventSource.Log.PartitionPumpInfo(this.host.Id, possibleLease.PartitionId, "Trying to acquire lease.");
-                            if (await leaseManager.AcquireLeaseAsync(possibleLease).ConfigureAwait(false))
+                            ourLeaseCount++;
+                            ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, lease.PartitionId, "Trying to renew lease.");
+                            renewLeaseTasks.Add(leaseManager.RenewLeaseAsync(lease).ContinueWith(renewResult =>
                             {
-                                ourLeaseCount++;
-                            }
-                            else
-                            {
-                                // Probably failed because another host stole it between get and acquire  
-                                leasesOwnedByOthers.Add(possibleLease);
-                            }
-                        }
-                        else if (possibleLease.Owner == this.host.HostName)
-                        {
-                            ProcessorEventSource.Log.PartitionPumpInfo(this.host.Id, possibleLease.PartitionId, "Trying to renew lease.");
-
-                            // Try to renew the lease. If successful then this lease belongs to us,
-                            // if throws LeaseLostException then we don't own it anymore.
-                            try
-                            {
-                                await leaseManager.RenewLeaseAsync(possibleLease).ConfigureAwait(false);
-                                ourLeaseCount++;
-                            }
-                            catch (LeaseLostException)
-                            {
-                                // Probably failed because another host stole it between get and renew 
-                                leasesOwnedByOthers.Add(possibleLease);
-                            }
+                                if (renewResult.IsFaulted || !renewResult.Result)
+                                {
+                                    // Might have failed due to intermittent error or lease-lost.
+                                    // Just log here, expired leases will be picked by same or another host anyway.
+                                    ProcessorEventSource.Log.PartitionPumpError(this.host.HostName, lease.PartitionId, "Failed to renew lease.", renewResult.Exception?.Message);
+                                    this.host.EventProcessorOptions.NotifyOfException(this.host.HostName, lease.PartitionId, renewResult.Exception, EventProcessorHostActionStrings.RenewingLease);
+                                }
+                            }));
                         }
                         else
                         {
-                            leasesOwnedByOthers.Add(possibleLease);
+                            leasesOwnedByOthers.Add(lease);
                         }
                     }
                     catch (Exception e)
                     {
-                        ProcessorEventSource.Log.EventProcessorHostWarning(this.host.Id, "Failure during getting/acquiring/renewing lease, skipping", e.ToString());
+                        ProcessorEventSource.Log.EventProcessorHostError(this.host.HostName, "Failure during checking lease.", e.ToString());
                         this.host.EventProcessorOptions.NotifyOfException(this.host.HostName, "N/A", e, EventProcessorHostActionStrings.CheckingLeases);
+                    }
+                }
+
+                // Wait until we are done with renewing our own leases here.
+                // In theory, this should never throw, error are logged and notified in the renew tasks.
+                await Task.WhenAll(renewLeaseTasks.ToArray()).ConfigureAwait(false);
+                ProcessorEventSource.Log.EventProcessorHostInfo(this.host.HostName, "Lease renewal is finished.");
+
+                // Check any expired leases that we can grab here.
+                foreach (var possibleLease in allLeases.Values)
+                { 
+                    try
+                    {
+                        if (await possibleLease.IsExpired().ConfigureAwait(false))
+                        {
+                            ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, possibleLease.PartitionId, "Trying to acquire lease.");
+                            if (await leaseManager.AcquireLeaseAsync(possibleLease).ConfigureAwait(false))
+                            {
+                                ourLeaseCount++;
+                                ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, possibleLease.PartitionId, "Acquired lease.");
+                            }
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        ProcessorEventSource.Log.PartitionPumpError(this.host.HostName, possibleLease.PartitionId, "Failure during acquiring lease", e.ToString());
+                        this.host.EventProcessorOptions.NotifyOfException(this.host.HostName, possibleLease.PartitionId, e, EventProcessorHostActionStrings.CheckingLeases);
                     }
                 }
 
@@ -249,21 +271,21 @@ namespace Microsoft.Azure.EventHubs.Processor
                     {
                         try
                         {
-                            ProcessorEventSource.Log.PartitionPumpStealLeaseStart(this.host.Id, stealThisLease.PartitionId);
+                            ProcessorEventSource.Log.PartitionPumpStealLeaseStart(this.host.HostName, stealThisLease.PartitionId);
                             if (await leaseManager.AcquireLeaseAsync(stealThisLease).ConfigureAwait(false))
                             {
                                 // Succeeded in stealing lease
-                                ProcessorEventSource.Log.PartitionPumpStealLeaseStop(this.host.Id, stealThisLease.PartitionId);
+                                ProcessorEventSource.Log.PartitionPumpStealLeaseStop(this.host.HostName, stealThisLease.PartitionId);
                             }
                             else
                             {
-                                ProcessorEventSource.Log.EventProcessorHostWarning(this.host.Id,
+                                ProcessorEventSource.Log.EventProcessorHostWarning(this.host.HostName,
                                     "Failed to steal lease for partition " + stealThisLease.PartitionId, null);
                             }
                         }
                         catch (Exception e)
                         {
-                            ProcessorEventSource.Log.EventProcessorHostError(this.host.Id,
+                            ProcessorEventSource.Log.EventProcessorHostError(this.host.HostName,
                                 "Exception during stealing lease for partition " + stealThisLease.PartitionId, e.ToString());
                             this.host.EventProcessorOptions.NotifyOfException(this.host.HostName,
                                 stealThisLease.PartitionId, e, EventProcessorHostActionStrings.StealingLease);
@@ -277,7 +299,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                     try
                     {
                         Lease updatedLease = allLeases[partitionId];
-                        ProcessorEventSource.Log.EventProcessorHostInfo(this.host.Id, $"Lease on partition {updatedLease.PartitionId} owned by {updatedLease.Owner}");
+                        ProcessorEventSource.Log.EventProcessorHostInfo(this.host.HostName, $"Lease on partition {updatedLease.PartitionId} owned by {updatedLease.Owner}");
                         if (updatedLease.Owner == this.host.HostName)
                         {
                             await this.CheckAndAddPumpAsync(partitionId, updatedLease).ConfigureAwait(false);
@@ -289,14 +311,19 @@ namespace Microsoft.Azure.EventHubs.Processor
                     }
                     catch (Exception e)
                     {
-                        ProcessorEventSource.Log.EventProcessorHostError(this.host.Id, $"Exception during add/remove pump on partition {partitionId}", e.Message);
+                        ProcessorEventSource.Log.EventProcessorHostError(this.host.HostName, $"Exception during add/remove pump on partition {partitionId}", e.Message);
                         this.host.EventProcessorOptions.NotifyOfException(this.host.HostName, partitionId, e, EventProcessorHostActionStrings.PartitionPumpManagement);
                     }
                 }
 
                 try
                 {
-                    await Task.Delay(leaseManager.LeaseRenewInterval, cancellationToken).ConfigureAwait(false);
+                    // Consider reducing the wait time with last lease-walkthrough's time taken.
+                    var elapsedTime = loopStopwatch.Elapsed;
+                    if (leaseManager.LeaseRenewInterval > elapsedTime)
+                    {
+                        await Task.Delay(leaseManager.LeaseRenewInterval.Subtract(elapsedTime), cancellationToken).ConfigureAwait(false);
+                    }
                 }
                 catch (TaskCanceledException)
                 {
@@ -319,7 +346,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                 else
                 {
                     // Pump is working, just replace the lease.
-                    ProcessorEventSource.Log.PartitionPumpInfo(this.host.Id, partitionId, "Updating lease for pump");
+                    ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, partitionId, "Updating lease for pump");
                     capturedPump.SetLease(lease);
                 }
             }
@@ -335,7 +362,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             PartitionPump newPartitionPump = new EventHubPartitionPump(this.host, lease);
             await newPartitionPump.OpenAsync().ConfigureAwait(false);
             this.partitionPumps.TryAdd(partitionId, newPartitionPump); // do the put after start, if the start fails then put doesn't happen
-            ProcessorEventSource.Log.PartitionPumpInfo(this.host.Id, partitionId, "Created new PartitionPump");
+            ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, partitionId, "Created new PartitionPump");
         }
 
         async Task RemovePumpAsync(string partitionId, CloseReason reason)
@@ -353,7 +380,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             {
                 // PartitionManager main loop tries to remove pump for every partition that the host does not own, just to be sure.
                 // Not finding a pump for a partition is normal and expected most of the time.
-                ProcessorEventSource.Log.PartitionPumpInfo(this.host.Id, partitionId, "No pump found to remove for this partition");
+                ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, partitionId, "No pump found to remove for this partition");
             }
         }
 
@@ -397,7 +424,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             if ((biggestOwner.Value - haveLeaseCount) >= 2)
             {
                 stealThisLease = stealableLeases.Where(l => l.Owner == biggestOwner.Key).First();
-                ProcessorEventSource.Log.EventProcessorHostInfo(this.host.Id, $"Proposed to steal lease for partition {stealThisLease.PartitionId} from {biggestOwner.Key}");
+                ProcessorEventSource.Log.EventProcessorHostInfo(this.host.HostName, $"Proposed to steal lease for partition {stealThisLease.PartitionId} from {biggestOwner.Key}");
             }
 
             return stealThisLease;
@@ -413,10 +440,10 @@ namespace Microsoft.Azure.EventHubs.Processor
             // Log ownership mapping.
             foreach (var owner in counts)
             {
-                ProcessorEventSource.Log.EventProcessorHostInfo(this.host.Id, $"Host {owner.Owner} owns {owner.Count} leases");
+                ProcessorEventSource.Log.EventProcessorHostInfo(this.host.HostName, $"Host {owner.Owner} owns {owner.Count} leases");
             }
 
-            ProcessorEventSource.Log.EventProcessorHostInfo(this.host.Id, $"Total hosts in list: {counts.Count()}");
+            ProcessorEventSource.Log.EventProcessorHostInfo(this.host.HostName, $"Total hosts in list: {counts.Count()}");
 
             return counts.ToDictionary(e => e.Owner, e => e.Count);
         }

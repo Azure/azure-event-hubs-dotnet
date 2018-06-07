@@ -40,18 +40,30 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             // Prepare partition key to partition map while receiving.
             // Validation: All messages of a partition key should be received from a single partition.
             TestUtility.Log("Starting to receive all messages from each partition.");
-            var partitionMap = new Dictionary<string, string>();
-            int totalReceived = 0;
+            var receiveTasks = new Dictionary<string, Task<List<EventData>>>();
+            var receivers = new List<PartitionReceiver>();
             foreach (var partitionId in this.PartitionIds)
             {
-                PartitionReceiver receiver = null;
-                try
+                var receiver = this.EventHubClient.CreateReceiver(
+                    PartitionReceiver.DefaultConsumerGroupName,
+                    partitionId,
+                    EventPosition.FromOffset(partitionOffsets[partitionId]));
+
+                receivers.Add(receiver);
+                receiveTasks.Add(partitionId, ReceiveAllMessages(receiver));
+            }
+
+            int totalReceived = 0;
+            var partitionMap = new Dictionary<string, string>();
+
+            try
+            {
+                foreach (var receiveTask in receiveTasks)
                 {
-                    receiver = this.EventHubClient.CreateReceiver(
-                        PartitionReceiver.DefaultConsumerGroupName,
-                        partitionId,
-                        EventPosition.FromOffset(partitionOffsets[partitionId]));
-                    var messagesFromPartition = await ReceiveAllMessages(receiver);
+                    var partitionId = receiveTask.Key;
+                    var messagesFromPartition = await receiveTask.Value;
+                    totalReceived += messagesFromPartition.Count;
+
                     TestUtility.Log($"Received {messagesFromPartition.Count} messages from partition {partitionId}.");
                     foreach (var ed in messagesFromPartition)
                     {
@@ -63,10 +75,11 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
 
                         partitionMap[pk] = partitionId;
                     }
-
-                    totalReceived += messagesFromPartition.Count;
                 }
-                finally
+            }
+            finally
+            {
+                foreach (var receiver in receivers)
                 {
                     await receiver.CloseAsync();
                 }
@@ -86,7 +99,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             var edToSend = new EventData(new byte[bodySize]);
 
             TestUtility.Log($"Sending one message with body size {bodySize} bytes.");
-            var edReceived = await SendAndReceiveEvent(targetPartition, edToSend);
+            var edReceived = await SendAndReceiveEventAsync(targetPartition, edToSend);
 
             // Validate body size.
             Assert.True(edReceived.Body.Count == bodySize, $"Sent {bodySize} bytes and received {edReceived.Body.Count}");
