@@ -16,9 +16,29 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
         /// </summary>
         [Fact]
         [DisplayTestMethodName]
-        async Task BatchSender()
+        async Task Basic()
         {
             await SendWithEventDataBatch();
+        }
+
+        /// <summary>
+        /// Utilizes EventDataBatch to send small messages.
+        /// </summary>
+        [Fact]
+        [DisplayTestMethodName]
+        async Task SendSmallMessages()
+        {
+            await SendWithEventDataBatch(maxPayloadSize: 8, minimumNumberOfMessagesToSend: 50000);
+        }
+
+        /// <summary>
+        /// Utilizes EventDataBatch to send large messages.
+        /// </summary>
+        [Fact]
+        [DisplayTestMethodName]
+        async Task SendLargeMessages()
+        {
+            await SendWithEventDataBatch(maxPayloadSize: 262000, minimumNumberOfMessagesToSend: 100);
         }
 
         /// <summary>
@@ -27,7 +47,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
         /// </summary>
         [Fact]
         [DisplayTestMethodName]
-        async Task BatchSenderWithPartitionKey()
+        async Task SendWithPartitionKey()
         {
             await SendWithEventDataBatch(Guid.NewGuid().ToString());
         }
@@ -54,7 +74,6 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             });
         }
 
-
         /// <summary>
         /// PartitionSender should not allow to create a batch with partition key defined.
         /// </summary>
@@ -75,10 +94,11 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             });
         }
 
-        protected async Task SendWithEventDataBatch(string partitionKey = null)
+        protected async Task SendWithEventDataBatch(
+            string partitionKey = null,
+            int maxPayloadSize = 1024,
+            int minimumNumberOfMessagesToSend = 1000)
         {
-            const int MinimumNumberOfMessagesToSend = 1000;
-
             var receivers = new List<PartitionReceiver>();
 
             // Create partition receivers starting from the end of the stream.
@@ -121,7 +141,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
                 do
                 {
                     // Send random body size.
-                    var ed = new EventData(new byte[rnd.Next(0, 1024)]);
+                    var ed = new EventData(new byte[rnd.Next(0, maxPayloadSize)]);
                     if (!batcher.TryAdd(ed))
                     {
                         await this.EventHubClient.SendAsync(batcher);
@@ -136,7 +156,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
                             PartitionKey = partitionKey
                         });
                     }
-                } while (totalSent < MinimumNumberOfMessagesToSend);
+                } while (totalSent < minimumNumberOfMessagesToSend);
 
                 // Send the rest of the batch if any.
                 if (batcher.Count > 0)

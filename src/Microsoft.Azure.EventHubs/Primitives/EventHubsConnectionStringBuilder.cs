@@ -258,7 +258,7 @@ namespace Microsoft.Azure.EventHubs
 
             if (this.TransportType != ClientConstants.DefaultTransportType)
             {
-                connectionStringBuilder.Append($"{TransportTypeConfigName}{KeyValueSeparator}{TransportType}{KeyValuePairDelimiter}");
+                connectionStringBuilder.Append($"{TransportTypeConfigName}{KeyValueSeparator}{this.TransportType}{KeyValuePairDelimiter}");
             }
 
             return connectionStringBuilder.ToString();

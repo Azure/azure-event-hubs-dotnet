@@ -13,7 +13,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
     {
         [Fact]
         [DisplayTestMethodName]
-        void SmokeTest()
+        void ParseAndBuild()
         {
             var csb = new EventHubsConnectionStringBuilder(TestUtility.EventHubsConnectionString);
 
