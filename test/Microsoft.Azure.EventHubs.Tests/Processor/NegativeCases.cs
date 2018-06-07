@@ -79,7 +79,6 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
             Assert.IsType<MessagingEntityNotFoundException>(ex.InnerException);
         }
 
-
         [Fact]
         [DisplayTestMethodName]
         void InvalidPartitionManagerOptions()

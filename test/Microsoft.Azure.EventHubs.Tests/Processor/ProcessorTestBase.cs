@@ -410,7 +410,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
             // Generate a new lease container name that will be used through out the test.
             string leaseContainerName = Guid.NewGuid().ToString();
 
-            var consumerGroupNames = new[]  { PartitionReceiver.DefaultConsumerGroupName, customConsumerGroupName };
+            var consumerGroupNames = new[] { PartitionReceiver.DefaultConsumerGroupName, customConsumerGroupName };
             var processorOptions = new EventProcessorOptions
             {
                 ReceiveTimeout = TimeSpan.FromSeconds(15),
@@ -466,7 +466,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
                         TestUtility.StorageConnectionString,
                         leaseContainerName);
 
-                TestUtility.Log($"Calling RegisterEventProcessorAsync on consumer group {consumerGroupName}");
+                    TestUtility.Log($"Calling RegisterEventProcessorAsync on consumer group {consumerGroupName}");
 
                     foreach (var partitionId in PartitionIds)
                     {
@@ -477,7 +477,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
                     hosts.Add(eventProcessorHost);
                 }
 
-            TestUtility.Log("Sending an event to each partition");
+                TestUtility.Log("Sending an event to each partition");
                 var sendTasks = new List<Task>();
                 foreach (var partitionId in PartitionIds)
                 {
@@ -486,7 +486,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
 
                 await Task.WhenAll(sendTasks);
 
-            TestUtility.Log("Verifying an event was received by each partition for each consumer group");
+                TestUtility.Log("Verifying an event was received by each partition for each consumer group");
                 foreach (var consumerGroupName in consumerGroupNames)
                 {
                     foreach (var partitionId in PartitionIds)
@@ -497,7 +497,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
                     }
                 }
 
-            TestUtility.Log("Success");
+                TestUtility.Log("Success");
             }
             finally
             {
@@ -728,29 +728,29 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
                     string partitionId = createArgs.Item1.PartitionId;
                     string hostName = createArgs.Item1.Owner;
                     processor.OnOpen += (_, partitionContext) =>
+                    {
+                        TestUtility.Log($"{hostName} > Partition {partitionId} TestEventProcessor opened");
+                        if (partitionId == targetPartition)
                         {
-                            TestUtility.Log($"{hostName} > Partition {partitionId} TestEventProcessor opened");
-                            if (partitionId == targetPartition)
-                            {
-                                Interlocked.Increment(ref targetPartitionOpens);
-                            }
-                        };
+                            Interlocked.Increment(ref targetPartitionOpens);
+                        }
+                    };
                     processor.OnClose += (_, closeArgs) =>
+                    {
+                        TestUtility.Log($"{hostName} > Partition {partitionId} TestEventProcessor closing: {closeArgs.Item2}");
+                        if (partitionId == targetPartition && closeArgs.Item2 == CloseReason.Shutdown)
                         {
-                            TestUtility.Log($"{hostName} > Partition {partitionId} TestEventProcessor closing: {closeArgs.Item2}");
-                            if (partitionId == targetPartition && closeArgs.Item2 == CloseReason.Shutdown)
-                            {
-                                Interlocked.Increment(ref targetPartitionCloses);
-                            }
-                        };
+                            Interlocked.Increment(ref targetPartitionCloses);
+                        }
+                    };
                     processor.OnProcessError += (_, errorArgs) =>
+                    {
+                        TestUtility.Log($"{hostName} > Partition {partitionId} TestEventProcessor process error {errorArgs.Item2.Message}");
+                        if (partitionId == targetPartition && errorArgs.Item2 is ReceiverDisconnectedException)
                         {
-                            TestUtility.Log($"{hostName} > Partition {partitionId} TestEventProcessor process error {errorArgs.Item2.Message}");
-                            if (partitionId == targetPartition && errorArgs.Item2 is ReceiverDisconnectedException)
-                            {
-                                Interlocked.Increment(ref targetPartitionErrors);
-                            }
-                        };
+                            Interlocked.Increment(ref targetPartitionErrors);
+                        }
+                    };
                 };
 
                 await eventProcessorHost.RegisterEventProcessorFactoryAsync(processorFactory);
@@ -874,7 +874,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
                 epo = new EventProcessorOptions
                 {
                     ReceiveTimeout = TimeSpan.FromSeconds(15),
-                    MaxBatchSize = 100                    
+                    MaxBatchSize = 100
                 };
 
                 epo.SetExceptionHandler(TestEventProcessorFactory.ErrorNotificationHandler);
@@ -893,10 +893,10 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
                     processor.OnOpen += (_, partitionContext) => TestUtility.Log($"{hostName} > Partition {partitionId} TestEventProcessor opened");
                     processor.OnClose += (_, closeArgs) => TestUtility.Log($"{hostName} > Partition {partitionId} TestEventProcessor closing: {closeArgs.Item2}");
                     processor.OnProcessError += (_, errorArgs) =>
-                        {
-                            TestUtility.Log($"{hostName} > Partition {partitionId} TestEventProcessor process error {errorArgs.Item2.Message}");
-                            Interlocked.Increment(ref runResult.NumberOfFailures);
-                        };
+                    {
+                        TestUtility.Log($"{hostName} > Partition {partitionId} TestEventProcessor process error {errorArgs.Item2.Message}");
+                        Interlocked.Increment(ref runResult.NumberOfFailures);
+                    };
                     processor.OnProcessEvents += (_, eventsArgs) =>
                     {
                         int eventCount = eventsArgs.Item2.events != null ? eventsArgs.Item2.events.Count() : 0;

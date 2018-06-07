@@ -125,7 +125,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
             string sslHostName = null,
             bool useWebSockets = false,
             bool sslStreamUpgrade = false,
-            System.Net.NetworkCredential networkCredential = null,
+            NetworkCredential networkCredential = null,
             bool forceTokenProvider = true)
         {
             var settings = new AmqpSettings();
