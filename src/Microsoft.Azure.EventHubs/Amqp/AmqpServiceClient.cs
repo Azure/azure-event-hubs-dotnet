@@ -57,13 +57,14 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
 
         public async Task<EventHubRuntimeInformation> GetRuntimeInformationAsync()
         {
-            RequestResponseAmqpLink requestLink = await this.link.GetOrCreateAsync(TimeSpan.FromMinutes(1)).ConfigureAwait(false);
+            RequestResponseAmqpLink requestLink = await this.link.GetOrCreateAsync(
+                TimeSpan.FromSeconds(AmqpClientConstants.AmqpSessionTimeoutInSeconds)).ConfigureAwait(false);
 
             // Create request and attach token.
             var request = this.CreateGetRuntimeInformationRequest();
             request.ApplicationProperties.Map[AmqpClientConstants.ManagementSecurityTokenKey] = await GetTokenString().ConfigureAwait(false);
 
-            var response = await requestLink.RequestAsync(request, TimeSpan.FromMinutes(1)).ConfigureAwait(false);
+            var response = await requestLink.RequestAsync(request, eventHubClient.ConnectionStringBuilder.OperationTimeout).ConfigureAwait(false);
             int statusCode = (int)response.ApplicationProperties.Map[AmqpClientConstants.ResponseStatusCode];
             string statusDescription = (string)response.ApplicationProperties.Map[AmqpClientConstants.ResponseStatusDescription];
             if (statusCode != (int)AmqpResponseStatusCode.Accepted && statusCode != (int)AmqpResponseStatusCode.OK)
@@ -96,13 +97,14 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
 
         public async Task<EventHubPartitionRuntimeInformation> GetPartitionRuntimeInformationAsync(string partitionId)
         {
-            RequestResponseAmqpLink requestLink = await this.link.GetOrCreateAsync(TimeSpan.FromMinutes(1)).ConfigureAwait(false);
+            RequestResponseAmqpLink requestLink = await this.link.GetOrCreateAsync(
+                TimeSpan.FromSeconds(AmqpClientConstants.AmqpSessionTimeoutInSeconds)).ConfigureAwait(false);
 
             // Create request and attach token.
             var request = this.CreateGetPartitionRuntimeInformationRequest(partitionId);
             request.ApplicationProperties.Map[AmqpClientConstants.ManagementSecurityTokenKey] = await GetTokenString().ConfigureAwait(false);
 
-            var response = await requestLink.RequestAsync(request, TimeSpan.FromMinutes(1)).ConfigureAwait(false);
+            var response = await requestLink.RequestAsync(request, eventHubClient.ConnectionStringBuilder.OperationTimeout).ConfigureAwait(false);
             int statusCode = (int)response.ApplicationProperties.Map[AmqpClientConstants.ResponseStatusCode];
             string statusDescription = (string)response.ApplicationProperties.Map[AmqpClientConstants.ResponseStatusDescription];
             if (statusCode != (int)AmqpResponseStatusCode.Accepted && statusCode != (int)AmqpResponseStatusCode.OK)

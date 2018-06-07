@@ -10,7 +10,7 @@ namespace Microsoft.Azure.EventHubs
     /// <summary>
     /// Represents the Azure Active Directory token provider for Azure Managed Service Identity integration.
     /// </summary>
-    internal class ManagedServiceIdentityTokenProvider : TokenProvider
+    public class ManagedServiceIdentityTokenProvider : TokenProvider
     {
         static AzureServiceTokenProvider azureServiceTokenProvider = new AzureServiceTokenProvider();
 

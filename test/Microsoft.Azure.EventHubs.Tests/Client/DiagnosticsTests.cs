@@ -13,7 +13,8 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
     using System.Threading.Tasks;
     using Xunit;
 
-   public class DiagnosticsTests : ClientTestBase
+    #pragma warning disable xUnit2002
+    public class DiagnosticsTests : ClientTestBase
     {
         protected ConcurrentQueue<(string eventName, object payload, Activity activity)> events;
         protected FakeDiagnosticListener listener;
@@ -371,7 +372,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             Assert.Null(activity.Id);
 
             var baggage = activity.Baggage.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-            Assert.Equal(0, baggage.Count);
+            Assert.Empty(baggage);
         }
 
         [Fact]
@@ -390,7 +391,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             Assert.Null(activity.Id);
 
             var baggage = activity.Baggage.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-            Assert.Equal(1, baggage.Count);
+            Assert.Single(baggage);
             Assert.Contains("k1", baggage.Keys);
             Assert.Equal("v1", baggage["k1"]);
         }
@@ -451,7 +452,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             Assert.Null(activity.Id);
 
             var baggage = activity.Baggage.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-            Assert.Equal(0, baggage.Count);
+            Assert.Empty(baggage);
         }
 
         [Theory]
@@ -472,7 +473,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
 
             var baggage = activity.Baggage.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
             // baggage is ignored in absence of Id
-            Assert.Equal(0, baggage.Count);
+            Assert.Empty(baggage);
         }
 
         #endregion Extract Activity
@@ -573,7 +574,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
                 var relatedToTag = activity.Tags.FirstOrDefault(tag => tag.Key == EventHubsDiagnosticSource.RelatedToTagName);
                 Assert.NotNull(relatedToTag);
                 Assert.NotNull(relatedToTag.Value);
-                Assert.True(relatedToTag.Value.Contains(relatedId));
+                Assert.Contains(relatedToTag.Value, relatedId);
             }
         }
 

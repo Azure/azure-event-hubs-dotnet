@@ -22,7 +22,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
 
             TestUtility.Log("Receiving Events via PartitionReceiver.ReceiveAsync");
             var sendEvent = new EventData(Encoding.UTF8.GetBytes(payloadString));
-            var receivedEvent = await SendAndReceiveEvent(partitionId, sendEvent);
+            var receivedEvent = await SendAndReceiveEventAsync(partitionId, sendEvent);
             Assert.True(Encoding.UTF8.GetString(receivedEvent.Body.Array) == payloadString, "Received payload string isn't the same as sent payload string.");
         }
 
@@ -210,7 +210,6 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             }
         }
 
-        [Fact(Skip = "reason")]
         [DisplayTestMethodName]
         async Task CreateReceiverWithSequenceNumber()
         {
@@ -254,7 +253,6 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             }
         }
 
-        [Fact(Skip = "reason")]
         [DisplayTestMethodName]
         async Task CreateReceiverWithInclusiveSequenceNumber()
         {

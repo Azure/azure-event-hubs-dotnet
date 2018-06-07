@@ -6,6 +6,7 @@ namespace Microsoft.Azure.EventHubs
     using System;
     using System.Collections.Generic;
     using System.Diagnostics;
+    using System.Net;
     using System.Threading.Tasks;
     using Microsoft.Azure.EventHubs.Amqp;
     using Microsoft.IdentityModel.Clients.ActiveDirectory;
@@ -80,7 +81,7 @@ namespace Microsoft.Azure.EventHubs
         /// <param name="operationTimeout">Operation timeout for Event Hubs operations.</param>
         /// <param name="transportType">Transport type on connection.</param>
         /// <returns></returns>
-        internal static EventHubClient Create(
+        public static EventHubClient Create(
             Uri endpointAddress, 
             string entityPath, 
             ITokenProvider tokenProvider, 
@@ -123,7 +124,7 @@ namespace Microsoft.Azure.EventHubs
         /// <param name="operationTimeout">Operation timeout for Event Hubs operations.</param>
         /// <param name="transportType">Transport type on connection.</param>
         /// <returns></returns>
-        internal static EventHubClient Create(
+        public static EventHubClient Create(
             Uri endpointAddress, 
             string entityPath, 
             AuthenticationContext authContext,
@@ -152,7 +153,7 @@ namespace Microsoft.Azure.EventHubs
         /// <param name="operationTimeout">Operation timeout for Event Hubs operations.</param>
         /// <param name="transportType">Transport type on connection.</param>
         /// <returns></returns>
-        internal static EventHubClient Create(
+        public static EventHubClient Create(
             Uri endpointAddress,
             string entityPath,
             AuthenticationContext authContext,
@@ -182,7 +183,7 @@ namespace Microsoft.Azure.EventHubs
         /// <param name="operationTimeout">Operation timeout for Event Hubs operations.</param>
         /// <param name="transportType">Transport type on connection.</param>
         /// <returns></returns>
-        internal static EventHubClient Create(
+        public static EventHubClient Create(
             Uri endpointAddress,
             string entityPath,
             AuthenticationContext authContext,
@@ -207,7 +208,7 @@ namespace Microsoft.Azure.EventHubs
         /// <param name="operationTimeout">Operation timeout for Event Hubs operations.</param>
         /// <param name="transportType">Transport type on connection.</param>
         /// <returns></returns>
-        internal static EventHubClient CreateWithManagedServiceIdentity(
+        public static EventHubClient CreateWithManagedServiceIdentity(
             Uri endpointAddress,
             string entityPath,
             TimeSpan? operationTimeout = null,
@@ -543,6 +544,17 @@ namespace Microsoft.Azure.EventHubs
         /// <summary> Gets or sets a value indicating whether the runtime metric of a receiver is enabled. </summary>
         /// <value> true if a client wants to access <see cref="ReceiverRuntimeInformation"/> using <see cref="PartitionReceiver"/>. </value>
         public bool EnableReceiverRuntimeMetric
+        {
+            get;
+            set;
+        }
+
+        /// <summary>
+        /// Gets or sets the web proxy.
+        /// A proxy is applicable only when transport type is set to AmqpWebSockets.
+        /// If not set, systemwide proxy settings will be honored.
+        /// </summary>
+        public IWebProxy WebProxy
         {
             get;
             set;
