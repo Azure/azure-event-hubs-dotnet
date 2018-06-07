@@ -11,7 +11,7 @@ namespace Microsoft.Azure.EventHubs
     /// <summary>
     /// Extends SecurityToken for JWT specific properties
     /// </summary>
-    internal class JsonSecurityToken : SecurityToken
+    public class JsonSecurityToken : SecurityToken
     {
         /// <summary>
         /// Creates a new instance of the <see cref="JsonSecurityToken"/> class.

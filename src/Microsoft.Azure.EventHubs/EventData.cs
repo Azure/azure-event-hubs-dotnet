@@ -189,7 +189,7 @@ namespace Microsoft.Azure.EventHubs
                     }
                     else
                     {
-                        throw new ArgumentException(Resources.MissingSystemProperty.FormatForUser(ClientConstants.PartitionKeyName));
+                        return null;
                     }
                 }
             }

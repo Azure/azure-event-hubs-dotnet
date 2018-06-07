@@ -4,6 +4,7 @@
 namespace Microsoft.Azure.EventHubs.Processor
 {
     using System;
+    using System.Net;
 
     /// <summary>
     /// Defines the runtime options when registering an <see cref="IEventProcessor"/> interface with an EventHubConsumerGroup. This is also the mechanism for catching exceptions from an IEventProcessor instance used by an <see cref="EventProcessorHost"/> object.
@@ -91,9 +92,26 @@ namespace Microsoft.Azure.EventHubs.Processor
         /// </summary>
         public bool InvokeProcessorAfterReceiveTimeout { get; set; }
 
+        /// <summary>
+        /// Gets or sets the web proxy.
+        /// A proxy is applicable only when transport type is set to AmqpWebSockets.
+        /// </summary>
+        public IWebProxy WebProxy
+        {
+            get;
+            set;
+        }
+
         internal void NotifyOfException(string hostname, string partitionId, Exception exception, string action)
         {
-            this.exceptionHandler?.Invoke(new ExceptionReceivedEventArgs(hostname, partitionId, exception, action));
+            try
+            {
+                this.exceptionHandler?.Invoke(new ExceptionReceivedEventArgs(hostname, partitionId, exception, action));
+            }
+            catch
+            {
+                // NOOP, Ignore exception from notify callback. Let's avoid chain of exception notification.
+            }
         }
     }
 }

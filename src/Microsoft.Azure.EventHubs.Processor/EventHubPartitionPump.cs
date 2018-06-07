@@ -34,7 +34,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                 {
                     lastException = e;
                     ProcessorEventSource.Log.PartitionPumpWarning(
-                        this.Host.Id, this.PartitionContext.PartitionId, "Failure creating client or receiver, retrying", e.ToString());
+                        this.Host.HostName, this.PartitionContext.PartitionId, "Failure creating client or receiver, retrying", e.ToString());
                     retryCount++;
                 }
             }
@@ -73,9 +73,10 @@ namespace Microsoft.Azure.EventHubs.Processor
             // Create new clients
             EventPosition eventPosition = await this.PartitionContext.GetInitialOffsetAsync().ConfigureAwait(false);
             long epoch = this.Lease.Epoch;
-            ProcessorEventSource.Log.PartitionPumpCreateClientsStart(this.Host.Id, this.PartitionContext.PartitionId, epoch,
+            ProcessorEventSource.Log.PartitionPumpCreateClientsStart(this.Host.HostName, this.PartitionContext.PartitionId, epoch,
                 $"Offset:{eventPosition.Offset}, SequenceNumber:{eventPosition.SequenceNumber}, DateTime:{eventPosition.EnqueuedTimeUtc}");
-            this.eventHubClient = EventHubClient.CreateFromConnectionString(this.Host.EventHubConnectionString);
+            this.eventHubClient = this.Host.CreateEventHubClient();
+            this.eventHubClient.WebProxy = this.Host.EventProcessorOptions.WebProxy;
 
             var receiverOptions = new ReceiverOptions()
             {
@@ -93,7 +94,7 @@ namespace Microsoft.Azure.EventHubs.Processor
 
             this.partitionReceiver.PrefetchCount = this.Host.EventProcessorOptions.PrefetchCount;
             
-            ProcessorEventSource.Log.PartitionPumpCreateClientsStop(this.Host.Id, this.PartitionContext.PartitionId);
+            ProcessorEventSource.Log.PartitionPumpCreateClientsStop(this.Host.HostName, this.PartitionContext.PartitionId);
         }
 
         async Task CleanUpClientsAsync() // swallows all exceptions
@@ -105,7 +106,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                 using (await this.ProcessingAsyncLock.LockAsync().ConfigureAwait(false))
                 {
                     // Calling PartitionReceiver.CloseAsync will gracefully close the IPartitionReceiveHandler we have installed.
-                    ProcessorEventSource.Log.PartitionPumpInfo(this.Host.Id, this.PartitionContext.PartitionId, "Closing PartitionReceiver");
+                    ProcessorEventSource.Log.PartitionPumpInfo(this.Host.HostName, this.PartitionContext.PartitionId, "Closing PartitionReceiver");
                     closeTask = this.partitionReceiver.CloseAsync();
                 }
 
@@ -115,7 +116,7 @@ namespace Microsoft.Azure.EventHubs.Processor
 
             if (this.eventHubClient != null)
             {
-                ProcessorEventSource.Log.PartitionPumpInfo(this.Host.Id, this.PartitionContext.PartitionId, "Closing EventHubClient");
+                ProcessorEventSource.Log.PartitionPumpInfo(this.Host.HostName, this.PartitionContext.PartitionId, "Closing EventHubClient");
                 await this.eventHubClient.CloseAsync().ConfigureAwait(false);
                 this.eventHubClient = null;
             }
@@ -162,9 +163,8 @@ namespace Microsoft.Azure.EventHubs.Processor
                 {
                     // Trace as warning since ReceiverDisconnectedException is part of lease stealing logic.
                     ProcessorEventSource.Log.PartitionPumpWarning(
-                        this.eventHubPartitionPump.Host.Id, this.eventHubPartitionPump.PartitionContext.PartitionId,
-                        "EventHub client disconnected, probably another host took the partition");
-
+                        this.eventHubPartitionPump.Host.HostName, this.eventHubPartitionPump.PartitionContext.PartitionId,
+                        "EventHub client disconnected, probably another host took the partition", error.Message);
 
                     // Shutdown the message pump when receiver is disconnected.
                     faultPump = true;
@@ -172,7 +172,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                 else
                 {
                     ProcessorEventSource.Log.PartitionPumpError(
-                        this.eventHubPartitionPump.Host.Id, this.eventHubPartitionPump.PartitionContext.PartitionId, "EventHub client error:", error.ToString());
+                        this.eventHubPartitionPump.Host.HostName, this.eventHubPartitionPump.PartitionContext.PartitionId, "EventHub client error:", error.ToString());
 
                     // No need to fault the pump, we expect receiver to recover on its own.
                     faultPump = false;
