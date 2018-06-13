@@ -68,8 +68,7 @@ namespace Microsoft.Azure.EventHubs
             }
 
             // Other retryable exceptions here.
-            else if (
-                exception is OperationCanceledException ||
+            else if (exception is OperationCanceledException ||
                 exception is SocketException ||
                 exception is TaskCanceledException)
             {
