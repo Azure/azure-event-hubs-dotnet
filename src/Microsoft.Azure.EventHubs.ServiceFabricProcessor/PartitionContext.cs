@@ -28,6 +28,8 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             this.EventHubPath = eventHubPath;
             this.ConsumerGroupName = consumerGroupName;
 
+            this.RuntimeInformation = new ReceiverRuntimeInformation(partitionId);
+
             this.checkpointMananger = checkpointMananger;
         }
 
@@ -52,7 +54,15 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         /// </summary>
         public string PartitionId { get; private set; }
 
-        // TODO receiverRuntimeInformation
+        /// <summary>
+        /// Gets the approximate receiver runtime information for a logical partition of an Event Hub.
+        /// To enable the setting, refer to <see cref="EventProcessorOptions.EnableReceiverRuntimeMetric"/>
+        /// </summary>
+        public ReceiverRuntimeInformation RuntimeInformation
+        {
+            get;
+            private set;
+        }
 
         internal string Offset { get; set; }
 

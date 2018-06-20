@@ -37,7 +37,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         public TimeSpan ReceiveTimeout { get; set; }
 
         /// <summary>
-        /// 
+        /// Gets or sets a value indicating whether the runtime metric of a receiver is enabled (true) or disabled (false).
         /// </summary>
         public bool EnableReceiverRuntimeMetric { get; set; }
 

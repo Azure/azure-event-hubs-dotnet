@@ -70,6 +70,10 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             /// <param name="partitionKey"></param>
             public EventDataMock(long sequenceNumber, DateTime enqueuedTimeUtc, string offset, string partitionKey)
             {
+                this.LastSequenceNumber = sequenceNumber;
+                this.LastEnqueuedOffset = offset;
+                this.LastEnqueuedTime = enqueuedTimeUtc;
+                this.RetrievalTime = DateTime.UtcNow;
                 this.SystemProperties = new SystemPropertiesCollectionMock(sequenceNumber, enqueuedTimeUtc, offset, partitionKey);
                 this.Properties = new Dictionary<string, object>();
             }
@@ -95,6 +99,22 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             public void Dispose()
             {
             }
+
+            /// <summary>
+            /// </summary>
+            public long LastSequenceNumber { get; }
+
+            /// <summary>
+            /// </summary>
+            public string LastEnqueuedOffset { get; }
+
+            /// <summary>
+            /// </summary>
+            public DateTime LastEnqueuedTime { get; }
+
+            /// <summary>
+            /// </summary>
+            public DateTime RetrievalTime { get; }
         }
 
         /// <summary>

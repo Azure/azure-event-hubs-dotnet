@@ -33,9 +33,9 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         private IEventProcessor userEventProcessor = null;
         private CancellationToken linkedCancellationToken;
 
-        private IReliableStateManager StateManager;
-        private StatefulServiceContext Context;
-        private IStatefulServicePartition Partition;
+        private IReliableStateManager ServiceStateManager;
+        private StatefulServiceContext ServiceContext;
+        private IStatefulServicePartition ServicePartition;
 
         /// <summary>
         /// Constructor required by Service Fabric.
@@ -45,13 +45,13 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         /// <param name="partition"></param>
         public EventProcessorService(StatefulServiceContext context, IReliableStateManager stateManager, IStatefulServicePartition partition)
         {
-            this.Context = context;
-            this.StateManager = stateManager;
-            this.Partition = partition;
+            this.ServiceContext = context;
+            this.ServiceStateManager = stateManager;
+            this.ServicePartition = partition;
 
             this.Options = new EventProcessorOptions();
             this.EventProcessorFactory = new DefaultEventProcessorFactory<TEventProcessor>();
-            this.CheckpointManager = new ReliableDictionaryCheckpointMananger(this.StateManager);
+            this.CheckpointManager = new ReliableDictionaryCheckpointMananger(this.ServiceStateManager);
             this.EventHubClientFactory = new EventHubWrappers.EventHubClientFactory();
 
             this.internalCanceller = new CancellationTokenSource();
@@ -295,7 +295,17 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                     {
                         last = scanner.Current;
                     }
-                    this.partitionContext.SetOffsetAndSequenceNumber(last);
+                    if (last != null)
+                    {
+                        this.partitionContext.SetOffsetAndSequenceNumber(last);
+                        if (this.Options.EnableReceiverRuntimeMetric)
+                        {
+                            this.partitionContext.RuntimeInformation.LastSequenceNumber = last.LastSequenceNumber;
+                            this.partitionContext.RuntimeInformation.LastEnqueuedOffset = last.LastEnqueuedOffset;
+                            this.partitionContext.RuntimeInformation.LastEnqueuedTimeUtc = last.LastEnqueuedTime;
+                            this.partitionContext.RuntimeInformation.RetrievalTime = last.RetrievalTime;
+                        }
+                    }
                 }
                 else
                 {
@@ -385,7 +395,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         {
             if (this.partitionOrdinal == -1)
             {
-                Int64RangePartitionInformation thisPartition = (Int64RangePartitionInformation)this.Partition.PartitionInfo;
+                Int64RangePartitionInformation thisPartition = (Int64RangePartitionInformation)this.ServicePartition.PartitionInfo;
 
                 ServicePartitionResolver resolver = ServicePartitionResolver.GetDefault();
                 Int64RangePartitionInformation scanner = null;
@@ -394,7 +404,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 do
                 {
                     ServicePartitionKey resolveKey = new ServicePartitionKey(lowScan);
-                    ResolvedServicePartition partition = await resolver.ResolveAsync(this.Context.ServiceName, resolveKey, cancellationToken);
+                    ResolvedServicePartition partition = await resolver.ResolveAsync(this.ServiceContext.ServiceName, resolveKey, cancellationToken);
                     scanner = (Int64RangePartitionInformation)partition.Info;
                     lowScan = scanner.HighKey + 1;
                     if (scanner.LowKey == thisPartition.LowKey)
@@ -412,7 +422,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         private string GetConfigurationValue(string configurationValueName, string defaultValue = null)
         {
             string value = defaultValue;
-            ConfigurationPackage configurationPackage = this.Context.CodePackageActivationContext.GetConfigurationPackageObject(Constants.ConfigurationPackageName);
+            ConfigurationPackage configurationPackage = this.ServiceContext.CodePackageActivationContext.GetConfigurationPackageObject(Constants.ConfigurationPackageName);
             try
             {
                 ConfigurationSection configurationSection = configurationPackage.Settings.Sections[Constants.EventProcessorConfigSectionName];
@@ -445,7 +455,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                         EventProcessorEventSource.Current.Message("METRIC {0} for partition {1} is {2}", metric.Key, this.partitionContext.PartitionId, metric.Value);
                         reportableMetrics.Add(new LoadMetric(metric.Key, metric.Value));
                     }
-                    this.Partition.ReportLoad(reportableMetrics);
+                    this.ServicePartition.ReportLoad(reportableMetrics);
                     Task.Delay(Constants.MetricReportingInterval, this.linkedCancellationToken).Wait(); // throws on cancel
                 }
                 catch (Exception e)

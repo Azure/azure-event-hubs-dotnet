@@ -97,10 +97,26 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             /// <summary>
             /// </summary>
             void Dispose();
+
+            /// <summary>
+            /// </summary>
+            long LastSequenceNumber { get; }
+
+            /// <summary>
+            /// </summary>
+            string LastEnqueuedOffset { get; }
+
+            /// <summary>
+            /// </summary>
+            DateTime LastEnqueuedTime { get; }
+
+            /// <summary>
+            /// </summary>
+            DateTime RetrievalTime { get; }
         }
 
         /// <summary>
-        /// Interface representing EVentHubClient
+        /// Interface representing EventHubClient
         /// </summary>
         public interface IEventHubClient
         {
@@ -217,6 +233,37 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             public void Dispose()
             {
                 this.inner.Dispose();
+            }
+
+            public long LastSequenceNumber
+            {
+                get
+                {
+                    return inner.LastSequenceNumber;
+                }
+            }
+
+            public string LastEnqueuedOffset
+            {
+                get
+                {
+                    return inner.LastEnqueuedOffset;
+                }
+            }
+
+            public DateTime LastEnqueuedTime
+            {
+                get
+                {
+                    return inner.LastEnqueuedTime;
+                }
+            }
+
+            public DateTime RetrievalTime {
+                get
+                {
+                    return inner.RetrievalTime;
+                }
             }
         }
 
