@@ -49,7 +49,5 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
         Task UpdateCheckpointAsync(string partitionId, Checkpoint checkpoint, CancellationToken cancellationToken);
-
-        //Task DeleteCheckpointAsync(string partitionId, CancellationToken cancellationToken);
     }
 }

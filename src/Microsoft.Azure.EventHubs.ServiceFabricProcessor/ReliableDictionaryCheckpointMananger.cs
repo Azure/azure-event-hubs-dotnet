@@ -60,13 +60,6 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             await PutWithRetry(partitionId, checkpoint, cancellationToken);
         }
 
-        /*
-        public async Task DeleteCheckpointAsync(string partitionId, CancellationToken cancellationToken)
-        {
-            // FOO not really needed, maybe remove from interface?
-        }
-        */
-
         // Throws on error or if cancelled.
         // Returns null if there is no entry for the given partition.
         private async Task<Checkpoint> GetWithRetry(string partitionId, CancellationToken cancellationToken)
