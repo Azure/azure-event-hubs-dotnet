@@ -5,6 +5,7 @@ namespace Microsoft.Azure.EventHubs.Processor
 {
     using System;
     using System.Threading.Tasks;
+    using Microsoft.WindowsAzure.Storage;
 
     /// <summary>
     /// Represents a host for processing Event Hubs event data.
@@ -150,25 +151,25 @@ namespace Microsoft.Azure.EventHubs.Processor
         /// <param name="eventHubPath">The name of the EventHub.</param>
         /// <param name="consumerGroupName">The name of the consumer group within the Event Hub.</param>
         /// <param name="tokenProvider">Token provider which will generate security tokens for authorization.</param>
-        /// <param name="storageConnectionString">Connection string to Azure Storage account used for leases and checkpointing.</param>
+        /// <param name="cloudStorageAccount">Azure Storage account used for leases and checkpointing.</param>
         /// <param name="leaseContainerName">Azure Storage container name for use by built-in lease and checkpoint manager.</param>
         public EventProcessorHost(
             Uri endpointAddress,
             string eventHubPath,
             string consumerGroupName,
             ITokenProvider tokenProvider,
-            string storageConnectionString,
+            CloudStorageAccount cloudStorageAccount,
             string leaseContainerName)
             : this(EventProcessorHost.CreateHostName(null),
                   endpointAddress,
                   eventHubPath,
                   consumerGroupName,
                   tokenProvider,
-                  storageConnectionString,
+                  cloudStorageAccount,
                   leaseContainerName)
         {
         }
-        
+
         /// <summary>
         /// Create a new host to process events from an Event Hub with provided <see cref="TokenProvider"/>
         /// </summary>
@@ -177,7 +178,7 @@ namespace Microsoft.Azure.EventHubs.Processor
         /// <param name="eventHubPath">The name of the EventHub.</param>
         /// <param name="consumerGroupName">The name of the consumer group within the Event Hub.</param>
         /// <param name="tokenProvider">Token provider which will generate security tokens for authorization.</param>
-        /// <param name="storageConnectionString">Connection string to Azure Storage account used for leases and checkpointing.</param>
+        /// <param name="cloudStorageAccount">Azure Storage account used for leases and checkpointing.</param>
         /// <param name="leaseContainerName">Azure Storage container name for use by built-in lease and checkpoint manager.</param>
         /// <param name="storageBlobPrefix">Prefix used when naming blobs within the storage container.</param>
         /// <param name="operationTimeout">Operation timeout for Event Hubs operations.</param>
@@ -188,7 +189,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             string eventHubPath,
             string consumerGroupName,
             ITokenProvider tokenProvider,
-            string storageConnectionString,
+            CloudStorageAccount cloudStorageAccount,
             string leaseContainerName,
             string storageBlobPrefix = null,
             TimeSpan? operationTimeout = null,
@@ -219,9 +220,9 @@ namespace Microsoft.Azure.EventHubs.Processor
                 throw new ArgumentNullException(nameof(tokenProvider));
             }
 
-            if (string.IsNullOrWhiteSpace(storageConnectionString))
+            if (cloudStorageAccount == null)
             {
-                throw new ArgumentNullException(nameof(storageConnectionString));
+                throw new ArgumentNullException(nameof(cloudStorageAccount));
             }
 
             if (string.IsNullOrWhiteSpace(leaseContainerName))
@@ -238,7 +239,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             this.tokenProvider = tokenProvider;
 
             // Create default checkpoint-lease manager.
-            this.CheckpointManager = new AzureStorageCheckpointLeaseManager(storageConnectionString, leaseContainerName, storageBlobPrefix);
+            this.CheckpointManager = new AzureStorageCheckpointLeaseManager(cloudStorageAccount, leaseContainerName, storageBlobPrefix);
             this.LeaseManager = (ILeaseManager)this.CheckpointManager;
             this.PartitionManager = new PartitionManager(this);
             ProcessorEventSource.Log.EventProcessorHostCreated(this.HostName, this.EventHubPath);

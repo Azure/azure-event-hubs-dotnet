@@ -7,21 +7,17 @@ namespace Microsoft.Azure.EventHubs.Processor
     using System.Collections.Generic;
     using System.Text.RegularExpressions;
     using System.Threading.Tasks;
-
     using Newtonsoft.Json;
-
     using WindowsAzure.Storage;
     using WindowsAzure.Storage.Blob;
-    using WindowsAzure.Storage.Blob.Protocol;
 
     class AzureStorageCheckpointLeaseManager : ICheckpointManager, ILeaseManager
     {
         EventProcessorHost host;
-        readonly string storageConnectionString;
+        readonly CloudStorageAccount cloudStorageAccount;
         string leaseContainerName = null;
         string storageBlobPrefix;
 
-        CloudBlobClient storageClient;
         CloudBlobContainer eventHubContainer;
         CloudBlobDirectory consumerGroupDirectory;
 
@@ -31,10 +27,15 @@ namespace Microsoft.Azure.EventHubs.Processor
         BlobRequestOptions renewRequestOptions;
 
         internal AzureStorageCheckpointLeaseManager(string storageConnectionString, string leaseContainerName, string storageBlobPrefix)
+            : this(CloudStorageAccount.Parse(storageConnectionString), leaseContainerName, storageBlobPrefix)
         {
-            if (string.IsNullOrEmpty(storageConnectionString))
+        }
+
+        internal AzureStorageCheckpointLeaseManager(CloudStorageAccount cloudStorageAccount, string leaseContainerName, string storageBlobPrefix)
+        {
+            if (cloudStorageAccount == null)
             {
-                throw new ArgumentNullException(nameof(storageConnectionString));
+                throw new ArgumentNullException(nameof(cloudStorageAccount));
             }
 
             // Validate lease container name.
@@ -45,7 +46,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                    nameof(leaseContainerName));
             }
 
-            this.storageConnectionString = storageConnectionString;
+            this.cloudStorageAccount = cloudStorageAccount;
             this.leaseContainerName = leaseContainerName;
 
             // Convert all-whitespace prefix to empty string. Convert null prefix to empty string.
@@ -74,13 +75,13 @@ namespace Microsoft.Azure.EventHubs.Processor
 
             // Create storage client and configure max execution time.
             // Max execution time will apply to any storage calls except renew.
-            this.storageClient = CloudStorageAccount.Parse(this.storageConnectionString).CreateCloudBlobClient();
-            this.storageClient.DefaultRequestOptions = new BlobRequestOptions()
+            var storageClient = this.cloudStorageAccount.CreateCloudBlobClient();
+            storageClient.DefaultRequestOptions = new BlobRequestOptions()
             {
                 MaximumExecutionTime = AzureStorageCheckpointLeaseManager.storageMaximumExecutionTime
             };
 
-            this.eventHubContainer = this.storageClient.GetContainerReference(this.leaseContainerName);
+            this.eventHubContainer = storageClient.GetContainerReference(this.leaseContainerName);
             this.consumerGroupDirectory = this.eventHubContainer.GetDirectoryReference(this.storageBlobPrefix + this.host.ConsumerGroupName);
         }
 
@@ -488,11 +489,12 @@ namespace Microsoft.Azure.EventHubs.Processor
         {
             CloudBlockBlob leaseBlob = this.consumerGroupDirectory.GetBlockBlobReference(partitionId);
 
+            // Fixed, keeping workaround commented until full validation.
             // GetBlockBlobReference creates a new ServiceClient thus resets options.
             // Because of this we lose settings like MaximumExecutionTime on the client.
             // Until storage addresses the issue we need to override it here once more.
             // Tracking bug: https://github.com/Azure/azure-storage-net/issues/398
-            leaseBlob.ServiceClient.DefaultRequestOptions = this.storageClient.DefaultRequestOptions;
+            // leaseBlob.ServiceClient.DefaultRequestOptions = this.storageClient.DefaultRequestOptions;
 
             return leaseBlob;
         }
