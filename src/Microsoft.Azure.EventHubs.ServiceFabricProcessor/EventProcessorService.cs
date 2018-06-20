@@ -7,6 +7,7 @@ using System.Fabric;
 using System.Fabric.Description;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.ServiceFabric.Data;
 using Microsoft.ServiceFabric.Services.Client;
 using Microsoft.ServiceFabric.Services.Runtime;
 
@@ -17,7 +18,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
     /// Base class that implements event processor functionality.
     /// </summary>
     /// <typeparam name="TEventProcessor">The type of the user's implementation of IEventProcessor</typeparam>
-    public class EventProcessorService<TEventProcessor> : StatefulService, EventHubWrappers.IPartitionReceiveHandler2
+    public class EventProcessorService<TEventProcessor> : EventHubWrappers.IPartitionReceiveHandler2
         where TEventProcessor : IEventProcessor, new()
     {
         private PartitionContext partitionContext = null;
@@ -32,13 +33,22 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         private IEventProcessor userEventProcessor = null;
         private CancellationToken linkedCancellationToken;
 
+        private IReliableStateManager StateManager;
+        private StatefulServiceContext Context;
+        private IStatefulServicePartition Partition;
+
         /// <summary>
         /// Constructor required by Service Fabric.
         /// </summary>
         /// <param name="context"></param>
-        public EventProcessorService(StatefulServiceContext context)
-            : base(context)
+        /// <param name="stateManager"></param>
+        /// <param name="partition"></param>
+        public EventProcessorService(StatefulServiceContext context, IReliableStateManager stateManager, IStatefulServicePartition partition)
         {
+            this.Context = context;
+            this.StateManager = stateManager;
+            this.Partition = partition;
+
             this.Options = new EventProcessorOptions();
             this.EventProcessorFactory = new DefaultEventProcessorFactory<TEventProcessor>();
             this.CheckpointManager = new ReliableDictionaryCheckpointMananger(this.StateManager);
@@ -48,31 +58,31 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         }
 
         /// <summary>
-        /// User's derived type can set processing options in the constructor.
+        /// Set processing options in the constructor.
         /// </summary>
-        protected EventProcessorOptions Options { get; set; }
+        public EventProcessorOptions Options { get; set; }
 
         /// <summary>
-        /// User's derived type can provide a user implementation of the event processor factory.
+        /// Optionally provide a user implementation of the event processor factory.
         /// </summary>
-        protected IEventProcessorFactory EventProcessorFactory { get; set; }
+        public IEventProcessorFactory EventProcessorFactory { get; set; }
 
         /// <summary>
-        /// User's derived type can provide a user implementation of the checkpoint manager.
+        /// Optionally provide a user implementation of the checkpoint manager.
         /// </summary>
-        protected ICheckpointMananger CheckpointManager { get; set; }
+        public ICheckpointMananger CheckpointManager { get; set; }
 
         /// <summary>
-        /// 
+        /// For testing purposes.
         /// </summary>
-        protected EventHubWrappers.IEventHubClientFactory EventHubClientFactory { get; set; }
+        public EventHubWrappers.IEventHubClientFactory EventHubClientFactory { get; set; }
 
         /// <summary>
         /// Called by Service Fabric.
         /// </summary>
         /// <param name="fabricCancellationToken"></param>
         /// <returns></returns>
-        sealed protected override async Task RunAsync(CancellationToken fabricCancellationToken)
+        public async Task RunAsync(CancellationToken fabricCancellationToken)
         {
             try
             {

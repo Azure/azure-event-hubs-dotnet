@@ -54,8 +54,8 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         /// <returns></returns>
         virtual public Dictionary<string, int> GetLoadMetric(CancellationToken cancellationToken, PartitionContext context)
         {
-            // By default all partitions have a metric of 1, so Service Fabric will balance primaries
-            // across nodes simply by the number of primaries on a node. This can be overridden to return
+            // By default all partitions have a metric of named CountOfPartitions with value 1. If Service Fabric is configured to use this metric,
+            // it will balance primaries across nodes simply by the number of primaries on a node. This can be overridden to return
             // more sophisticated metrics like number of events processed or CPU usage.
             Dictionary<string, int> defaultMetric = new Dictionary<string, int>();
             defaultMetric.Add(Constants.DefaultUserLoadMetricName, 1);

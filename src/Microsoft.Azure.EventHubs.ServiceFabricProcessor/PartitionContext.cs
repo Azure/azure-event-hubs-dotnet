@@ -52,7 +52,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         /// </summary>
         public string PartitionId { get; private set; }
 
-        // FOO receiverRuntimeInformation
+        // TODO receiverRuntimeInformation
 
         internal string Offset { get; set; }
 

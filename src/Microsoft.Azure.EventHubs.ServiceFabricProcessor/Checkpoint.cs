@@ -36,6 +36,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             this.Valid = true;
         }
 
+        #region AllVersions
         //
         // Methods and properties valid for all versions.
         //
@@ -105,7 +106,9 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
 
             return result;
         }
+        #endregion AllVersions
 
+        #region Version1
         //
         // Methods and properties for Version==1
         //
@@ -143,5 +146,6 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         /// Sequence number of highest-processed position. Immutable after construction or initialization.
         /// </summary>
         public long SequenceNumber { get; private set; }
+        #endregion Version1
     }
 }

@@ -9,7 +9,9 @@ using System.Threading.Tasks;
 namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
 {
     /// <summary>
-    /// Mocks for the underlying event hub client.
+    /// Mocks for the underlying event hub client. Using these instead of the regular wrappers allows unit testing without an event hub.
+    /// By default, EventProcessorService.EventHubClientFactory is a EventHubWrappers.EventHubClientFactory.
+    /// To use the mocks, change it to a EventHubMocks.EventHubClientFactoryMock.
     /// </summary>
     public class EventHubMocks
     {
@@ -133,11 +135,11 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                     this.sequenceNumber++;
                     EventDataMock e = new EventDataMock(this.sequenceNumber, DateTime.UtcNow, (this.sequenceNumber * 100).ToString(), this.partitionId);
                     e.Properties.Add("userkey", "uservalue");
-                    byte[] body = new byte[] { 0x4D, 0x4F, 0x43, 0x4B, 0x42, 0x4F, 0x44, 0x59 };
+                    byte[] body = new byte[] { 0x4D, 0x4F, 0x43, 0x4B, 0x42, 0x4F, 0x44, 0x59 }; // M O C K B O D Y
                     e.Body = new ArraySegment<byte>(body);
                     events.Add(e);
                 }
-                System.Threading.Thread.Sleep(5000);
+                Thread.Sleep(5000);
                 EventProcessorEventSource.Current.Message("MOCK ReceiveAsync returning {0} events for partition {1} ending at {2}", maxEventCount, this.partitionId, this.sequenceNumber);
                 return Task.FromResult<IEnumerable<EventHubWrappers.IEventData>>(events);
             }
