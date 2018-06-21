@@ -6,6 +6,12 @@ using System;
 namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
 {
     /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="e"></param>
+    public delegate void ShutdownNotification(Exception e);
+
+    /// <summary>
     /// Options that govern the functioning of the processor.
     /// </summary>
     public class EventProcessorOptions
@@ -18,7 +24,10 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             this.MaxBatchSize = 10;
             this.PrefetchCount = 300;
             this.ReceiveTimeout = TimeSpan.FromMinutes(1);
+            this.EnableReceiverRuntimeMetric = false;
+            this.InvokeProcessorAfterReceiveTimeout = false;
             this.InitialPositionProvider = partitionId => EventPosition.FromStart();
+            this.OnShutdown = null;
         }
 
         /// <summary>
@@ -53,5 +62,18 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         /// Defaults to first event available in the stream.
         /// </summary>
         public Func<string, EventPosition> InitialPositionProvider { get; set; }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        public ShutdownNotification OnShutdown { get; set; }
+
+        internal void NotifyOnShutdown(Exception shutdownException)
+        {
+            if (this.OnShutdown != null)
+            {
+                this.OnShutdown(shutdownException);
+            }
+        }
     }
 }

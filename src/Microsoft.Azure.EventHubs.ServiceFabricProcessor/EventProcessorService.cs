@@ -90,14 +90,16 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 {
                     this.linkedCancellationToken = linkedCanceller.Token;
                     await InnerRunAsync();
+                    this.Options.NotifyOnShutdown(null);
                 }
             }
             catch (Exception e)
             {
                 // If InnerRunAsync throws, that is intended to be a fatal exception for this instance.
-                // Catch it here just long enough to log it, then rethrow.
+                // Catch it here just long enough to log and notify, then rethrow.
 
                 EventProcessorEventSource.Current.Message("THROWING OUT: {0}", e);
+                this.Options.NotifyOnShutdown(e);
                 throw e;
             }
         }
