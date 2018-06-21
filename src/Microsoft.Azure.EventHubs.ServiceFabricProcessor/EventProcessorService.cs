@@ -18,7 +18,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
     /// Base class that implements event processor functionality.
     /// </summary>
     /// <typeparam name="TEventProcessor">The type of the user's implementation of IEventProcessor</typeparam>
-    public class EventProcessorService<TEventProcessor> : EventHubWrappers.IPartitionReceiveHandler2
+    public class EventProcessorService<TEventProcessor> : IPartitionReceiveHandler
         where TEventProcessor : IEventProcessor, new()
     {
         private PartitionContext partitionContext = null;
@@ -247,6 +247,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 // Receive pump.
                 //
                 EventProcessorEventSource.Current.Message("RunAsync setting handler and waiting");
+                this.MaxBatchSize = this.Options.MaxBatchSize;
                 receiver.SetReceiveHandler(this, Options.InvokeProcessorAfterReceiveTimeout);
                 this.linkedCancellationToken.WaitHandle.WaitOne();
 
@@ -276,21 +277,21 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         }
 
         /// <summary>
-        /// Called by Event Hub client.
+        /// From IPartitionReceiveHandler
         /// </summary>
-        /// <param name="events"></param>
-        /// <returns></returns>
-        public async Task ProcessEventsAsync(IEnumerable<EventHubWrappers.IEventData> events)
+        public int MaxBatchSize { get; set; }
+
+        async Task IPartitionReceiveHandler.ProcessEventsAsync(IEnumerable<EventData> events)
         {
             if ((events != null) || ((events == null) && Options.InvokeProcessorAfterReceiveTimeout))
             {
-                IEnumerable<EventHubWrappers.IEventData> effectiveEvents = events;
+                IEnumerable<EventData> effectiveEvents = events;
 
                 if (effectiveEvents != null)
                 {
                     // Save position of last event
-                    IEnumerator<EventHubWrappers.IEventData> scanner = effectiveEvents.GetEnumerator();
-                    EventHubWrappers.IEventData last = null;
+                    IEnumerator<EventData> scanner = effectiveEvents.GetEnumerator();
+                    EventData last = null;
                     while (scanner.MoveNext())
                     {
                         last = scanner.Current;
@@ -310,7 +311,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 else
                 {
                     // Client returns null on timeout, but processor expects empty enumerable.
-                    effectiveEvents = new List<EventHubWrappers.IEventData>();
+                    effectiveEvents = new List<EventData>();
                 }
 
                 IEventProcessor capturedEventProcessor = this.userEventProcessor;
@@ -321,12 +322,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             }
         }
 
-        /// <summary>
-        /// Called by Event Hub client.
-        /// </summary>
-        /// <param name="error"></param>
-        /// <returns></returns>
-        public Task ProcessErrorAsync(Exception error)
+        Task IPartitionReceiveHandler.ProcessErrorAsync(Exception error)
         {
             EventProcessorEventSource.Current.Message("RECEIVE EXCEPTION on {0}: {1}", this.partitionId, error);
             this.userEventProcessor.ProcessErrorAsync(this.partitionContext, error);

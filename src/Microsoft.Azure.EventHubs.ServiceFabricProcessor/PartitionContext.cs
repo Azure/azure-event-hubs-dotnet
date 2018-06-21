@@ -68,7 +68,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
 
         internal long SequenceNumber { get; set; }
 
-        internal void SetOffsetAndSequenceNumber(EventHubWrappers.IEventData eventData)
+        internal void SetOffsetAndSequenceNumber(EventData eventData)
         {
             this.Offset = eventData.SystemProperties.Offset;
             this.SequenceNumber = eventData.SystemProperties.SequenceNumber;
@@ -88,7 +88,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         /// </summary>
         /// <param name="eventData">Highest-processed event.</param>
         /// <returns></returns>
-        public async Task CheckpointAsync(EventHubWrappers.IEventData eventData)
+        public async Task CheckpointAsync(EventData eventData)
         {
             await CheckpointAsync(new Checkpoint(eventData.SystemProperties.Offset, eventData.SystemProperties.SequenceNumber));
         }

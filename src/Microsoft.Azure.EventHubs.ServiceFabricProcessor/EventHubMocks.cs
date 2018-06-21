@@ -16,115 +16,13 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
     public class EventHubMocks
     {
         /// <summary>
-        /// Mock for system properties on an event.
-        /// </summary>
-        public class SystemPropertiesCollectionMock : EventHubWrappers.ISystemPropertiesCollection
-        {
-            /// <summary>
-            /// Construct the mock system properties.
-            /// </summary>
-            /// <param name="sequenceNumber"></param>
-            /// <param name="enqueuedTimeUtc"></param>
-            /// <param name="offset"></param>
-            /// <param name="partitionKey"></param>
-            public SystemPropertiesCollectionMock(long sequenceNumber, DateTime enqueuedTimeUtc, string offset, string partitionKey)
-            {
-                this.SequenceNumber = sequenceNumber;
-                this.EnqueuedTimeUtc = enqueuedTimeUtc;
-                this.Offset = offset;
-                this.PartitionKey = partitionKey;
-            }
-
-            /// <summary>
-            /// Sequence number of the mock event.
-            /// </summary>
-            public long SequenceNumber { get; private set; }
-
-            /// <summary>
-            /// Enqueued time of the mock event.
-            /// </summary>
-            public DateTime EnqueuedTimeUtc { get; private set; }
-
-            /// <summary>
-            /// Offset of the mock event.
-            /// </summary>
-            public string Offset { get; private set; }
-
-            /// <summary>
-            /// Partition key of the mock event.
-            /// </summary>
-            public string PartitionKey { get; private set; }
-        }
-
-        /// <summary>
-        /// Mock for an event.
-        /// </summary>
-        public class EventDataMock : EventHubWrappers.IEventData
-        {
-            /// <summary>
-            /// Construct the mock event.
-            /// </summary>
-            /// <param name="sequenceNumber"></param>
-            /// <param name="enqueuedTimeUtc"></param>
-            /// <param name="offset"></param>
-            /// <param name="partitionKey"></param>
-            public EventDataMock(long sequenceNumber, DateTime enqueuedTimeUtc, string offset, string partitionKey)
-            {
-                this.LastSequenceNumber = sequenceNumber;
-                this.LastEnqueuedOffset = offset;
-                this.LastEnqueuedTime = enqueuedTimeUtc;
-                this.RetrievalTime = DateTime.UtcNow;
-                this.SystemProperties = new SystemPropertiesCollectionMock(sequenceNumber, enqueuedTimeUtc, offset, partitionKey);
-                this.Properties = new Dictionary<string, object>();
-            }
-
-            /// <summary>
-            /// Body of the mock event.
-            /// </summary>
-            public ArraySegment<byte> Body { get; set; }
-
-            /// <summary>
-            /// User properties of the mock event.
-            /// </summary>
-            public IDictionary<string, object> Properties { get; set; }
-
-            /// <summary>
-            /// System properties of the mock event.
-            /// </summary>
-            public EventHubWrappers.ISystemPropertiesCollection SystemProperties { get; private set; }
-
-            /// <summary>
-            /// Disposing the mock does nothing.
-            /// </summary>
-            public void Dispose()
-            {
-            }
-
-            /// <summary>
-            /// </summary>
-            public long LastSequenceNumber { get; }
-
-            /// <summary>
-            /// </summary>
-            public string LastEnqueuedOffset { get; }
-
-            /// <summary>
-            /// </summary>
-            public DateTime LastEnqueuedTime { get; }
-
-            /// <summary>
-            /// </summary>
-            public DateTime RetrievalTime { get; }
-        }
-
-        /// <summary>
         /// Mock of an Event Hub partition receiver.
         /// </summary>
         public class PartitionReceiverMock : EventHubWrappers.IPartitionReceiver
         {
             private readonly string partitionId;
             private long sequenceNumber;
-            private EventHubWrappers.IPartitionReceiveHandler2 outerHandler;
+            private IPartitionReceiveHandler outerHandler;
             private bool invokeWhenNoEvents;
             private readonly CancellationToken token;
 
@@ -147,21 +45,24 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             /// <param name="maxEventCount"></param>
             /// <param name="waitTime"></param>
             /// <returns></returns>
-            public Task<IEnumerable<EventHubWrappers.IEventData>> ReceiveAsync(int maxEventCount, TimeSpan waitTime)
+            public Task<IEnumerable<EventData>> ReceiveAsync(int maxEventCount, TimeSpan waitTime)
             {
-                List<EventDataMock> events = new List<EventDataMock>();
+                List<EventData> events = new List<EventData>();
                 for (int i = 0; i < maxEventCount; i++)
                 {
                     this.sequenceNumber++;
-                    EventDataMock e = new EventDataMock(this.sequenceNumber, DateTime.UtcNow, (this.sequenceNumber * 100).ToString(), this.partitionId);
-                    e.Properties.Add("userkey", "uservalue");
                     byte[] body = new byte[] { 0x4D, 0x4F, 0x43, 0x4B, 0x42, 0x4F, 0x44, 0x59 }; // M O C K B O D Y
-                    e.Body = new ArraySegment<byte>(body);
+                    EventData e = new EventData(body);
+                    e.SystemProperties.Add(ClientConstants.SequenceNumberName, this.sequenceNumber);
+                    e.SystemProperties.Add(ClientConstants.EnqueuedTimeUtcName, DateTime.UtcNow);
+                    e.SystemProperties.Add(ClientConstants.OffsetName, (this.sequenceNumber * 100).ToString());
+                    e.SystemProperties.Add(ClientConstants.PartitionKeyName, "");
+                    e.Properties.Add("userkey", "uservalue");
                     events.Add(e);
                 }
                 Thread.Sleep(5000);
                 EventProcessorEventSource.Current.Message("MOCK ReceiveAsync returning {0} events for partition {1} ending at {2}", maxEventCount, this.partitionId, this.sequenceNumber);
-                return Task.FromResult<IEnumerable<EventHubWrappers.IEventData>>(events);
+                return Task.FromResult<IEnumerable<EventData>>(events);
             }
 
             /// <summary>
@@ -169,7 +70,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             /// </summary>
             /// <param name="receiveHandler"></param>
             /// <param name="invokeWhenNoEvents"></param>
-            public void SetReceiveHandler(EventHubWrappers.IPartitionReceiveHandler2 receiveHandler, bool invokeWhenNoEvents = false)
+            public void SetReceiveHandler(IPartitionReceiveHandler receiveHandler, bool invokeWhenNoEvents = false)
             {
                 EventProcessorEventSource.Current.Message("MOCK IPartitionReceiver.SetReceiveHandler");
                 this.outerHandler = receiveHandler;
@@ -195,8 +96,8 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 while ((!this.token.IsCancellationRequested) && (this.outerHandler != null))
                 {
                     EventProcessorEventSource.Current.Message("MOCK Generating messages and sending to handler");
-                    IEnumerable<EventHubWrappers.IEventData> events = ReceiveAsync(10, TimeSpan.FromSeconds(10.0)).Result; // TODO get count from somewhere real
-                    EventHubWrappers.IPartitionReceiveHandler2 capturedHandler = this.outerHandler;
+                    IEnumerable<EventData> events = ReceiveAsync(10, TimeSpan.FromSeconds(10.0)).Result; // TODO get count from somewhere real
+                    IPartitionReceiveHandler capturedHandler = this.outerHandler;
                     if (capturedHandler != null)
                     {
                         await capturedHandler.ProcessEventsAsync(events);

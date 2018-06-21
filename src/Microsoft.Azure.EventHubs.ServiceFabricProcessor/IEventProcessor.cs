@@ -36,7 +36,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         /// <param name="context"></param>
         /// <param name="events"></param>
         /// <returns></returns>
-        abstract public Task ProcessEventsAsync(CancellationToken cancellationToken, PartitionContext context, IEnumerable<EventHubWrappers.IEventData> events);
+        abstract public Task ProcessEventsAsync(CancellationToken cancellationToken, PartitionContext context, IEnumerable<EventData> events);
 
         /// <summary>
         /// Called when an error occurs.
