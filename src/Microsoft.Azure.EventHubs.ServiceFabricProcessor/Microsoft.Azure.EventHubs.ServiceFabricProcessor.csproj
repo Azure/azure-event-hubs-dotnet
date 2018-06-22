@@ -33,13 +33,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Microsoft.Azure.EventHubs\Microsoft.Azure.EventHubs.csproj" />
+    <PackageReference Include="Microsoft.ServiceFabric" Version="6.1.467" />
+    <PackageReference Include="Microsoft.ServiceFabric.Data" Version="3.0.467" />
+    <PackageReference Include="Microsoft.ServiceFabric.Services" Version="3.0.467" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.ServiceFabric" Version="6.1.472" />
-    <PackageReference Include="Microsoft.ServiceFabric.Data" Version="3.0.472" />
-    <PackageReference Include="Microsoft.ServiceFabric.Services" Version="3.0.472" />
+    <ProjectReference Include="..\Microsoft.Azure.EventHubs\Microsoft.Azure.EventHubs.csproj" />
   </ItemGroup>
 
 </Project>
