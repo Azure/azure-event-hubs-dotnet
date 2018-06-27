@@ -53,6 +53,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             this.EventProcessorFactory = new DefaultEventProcessorFactory<TEventProcessor>();
             this.CheckpointManager = new ReliableDictionaryCheckpointMananger(this.ServiceStateManager);
             this.EventHubClientFactory = new EventHubWrappers.EventHubClientFactory();
+            this.TestMode = false;
 
             this.internalCanceller = new CancellationTokenSource();
         }
@@ -76,6 +77,11 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         /// For testing purposes.
         /// </summary>
         public EventHubWrappers.IEventHubClientFactory EventHubClientFactory { get; set; }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        public bool TestMode { get; set; }
 
         /// <summary>
         /// Called by Service Fabric.
@@ -170,7 +176,19 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                     EventProcessorEventSource.Current.Message("Out of retries getting event hub info");
                     throw new Exception("Out of retries getting event hub runtime info", lastException);
                 }
-                if (ehInfo.PartitionCount != this.servicePartitions)
+                if (this.TestMode)
+                {
+                    if (this.servicePartitions > ehInfo.PartitionCount)
+                    {
+                        EventProcessorEventSource.Current.Message("TestMode requires event hub partition count larger than service partitinon count");
+                        throw new EventProcessorConfigurationException("TestMode requires event hub partition count larger than service partitinon count");
+                    }
+                    else if (this.servicePartitions < ehInfo.PartitionCount)
+                    {
+                        EventProcessorEventSource.Current.Message("TestMode: receiving from subset of event hub");
+                    }
+                }
+                else if (ehInfo.PartitionCount != this.servicePartitions)
                 {
                     EventProcessorEventSource.Current.Message("Service partition count {0} does not match event hub partition count {1}", this.servicePartitions, ehInfo.PartitionCount);
                     throw new EventProcessorConfigurationException("Service partition count " + this.servicePartitions + " does not match event hub partition count " + ehInfo.PartitionCount);
@@ -320,6 +338,11 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 if (capturedEventProcessor != null)
                 {
                     await capturedEventProcessor.ProcessEventsAsync(this.linkedCancellationToken, this.partitionContext, effectiveEvents);
+                }
+
+                foreach (EventData ev in effectiveEvents)
+                {
+                    ev.Dispose();
                 }
             }
         }
