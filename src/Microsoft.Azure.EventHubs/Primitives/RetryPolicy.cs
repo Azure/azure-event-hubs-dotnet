@@ -68,18 +68,24 @@ namespace Microsoft.Azure.EventHubs
             }
             else if (exception is TaskCanceledException)
             {
-                if (exception.InnerException == null)
+                if (exception.InnerException != null)
                 {
-                    return true;
+                    return IsRetryableException(exception.InnerException);
                 }
 
-                return IsRetryableException(exception.InnerException);
+                return true;
             }
 
             // Flatten AggregateException
             else if (exception is AggregateException)
             {
-                return IsRetryableException((exception as AggregateException).Flatten().InnerException);
+                var fltAggException = (exception as AggregateException).Flatten();
+                if (fltAggException.InnerException != null)
+                {
+                    return IsRetryableException(fltAggException.InnerException);
+                }
+
+                return false;
             }
 
             // Other retryable exceptions here.
