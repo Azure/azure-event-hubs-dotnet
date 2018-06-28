@@ -9,9 +9,9 @@ namespace Microsoft.Azure.EventHubs
     using System.Net;
 
     /// <summary>
-    /// A WCF SecurityToken that wraps a Shared Access Signature
+    /// A SecurityToken that wraps a Shared Access Signature
     /// </summary>
-    class SharedAccessSignatureToken : SecurityToken
+    public class SharedAccessSignatureToken : SecurityToken
     {
         internal const string SharedAccessSignature = "SharedAccessSignature";
         internal const string SignedResource = "sr";
