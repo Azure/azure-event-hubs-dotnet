@@ -66,14 +66,29 @@ namespace Microsoft.Azure.EventHubs
             {
                 return ((EventHubsException)exception).IsTransient;
             }
+            else if (exception is TaskCanceledException)
+            {
+                if (exception.InnerException == null)
+                {
+                    return true;
+                }
+
+                return IsRetryableException(exception.InnerException);
+            }
+
+            // Flatten AggregateException
+            else if (exception is AggregateException)
+            {
+                return IsRetryableException((exception as AggregateException).Flatten().InnerException);
+            }
 
             // Other retryable exceptions here.
             else if (exception is OperationCanceledException ||
-                exception is SocketException ||
-                exception is TaskCanceledException)
+                exception is SocketException)
             {
                 return true;
             }
+
 
             return false;
         }
