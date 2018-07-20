@@ -5,6 +5,8 @@ namespace Microsoft.Azure.EventHubs
 {
     using System;
     using System.Collections.Concurrent;
+    using System.Net.Sockets;
+    using System.Threading.Tasks;
 
     /// <summary>
     /// Represents an abstraction for retrying messaging operations. Users should not 
@@ -64,10 +66,35 @@ namespace Microsoft.Azure.EventHubs
             {
                 return ((EventHubsException)exception).IsTransient;
             }
-            else if (exception is OperationCanceledException)
+            else if (exception is TaskCanceledException)
+            {
+                if (exception.InnerException != null)
+                {
+                    return IsRetryableException(exception.InnerException);
+                }
+
+                return true;
+            }
+
+            // Flatten AggregateException
+            else if (exception is AggregateException)
+            {
+                var fltAggException = (exception as AggregateException).Flatten();
+                if (fltAggException.InnerException != null)
+                {
+                    return IsRetryableException(fltAggException.InnerException);
+                }
+
+                return false;
+            }
+
+            // Other retryable exceptions here.
+            else if (exception is OperationCanceledException ||
+                exception is SocketException)
             {
                 return true;
             }
+
 
             return false;
         }
