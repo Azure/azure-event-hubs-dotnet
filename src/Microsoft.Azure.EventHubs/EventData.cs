@@ -14,6 +14,7 @@ namespace Microsoft.Azure.EventHubs
     public class EventData : IDisposable
     {
         bool disposed;
+        private SystemPropertiesCollection innerSystemProperties;
 
         /// <summary>
         /// Construct EventData to send to EventHub.
@@ -52,7 +53,7 @@ namespace Microsoft.Azure.EventHubs
         {
             this.Body = arraySegment;
             this.Properties = new Dictionary<string, object>();
-            this.SystemProperties = null;
+            this.innerSystemProperties = null;
         }
 
         /// <summary>
@@ -78,7 +79,18 @@ namespace Microsoft.Azure.EventHubs
         /// </summary>
         public SystemPropertiesCollection SystemProperties
         {
-            get; internal set;
+            get
+            {
+                return this.innerSystemProperties;
+            }
+
+            set
+            {
+                if (this.innerSystemProperties == null)
+                {
+                    this.innerSystemProperties = value;
+                }
+            }
         }
 
         internal AmqpMessage AmqpMessage { get; set; }
@@ -116,32 +128,27 @@ namespace Microsoft.Azure.EventHubs
         }
 
         /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="mockSequenceNumber"></param>
-        /// <param name="mockEnqueuedTimeUtc"></param>
-        /// <param name="mockOffset"></param>
-        /// <param name="mockPartitionKey"></param>
-        public void MockSystemProperties(long mockSequenceNumber, DateTime mockEnqueuedTimeUtc, string mockOffset, string mockPartitionKey)
-        {
-            if (this.SystemProperties == null)
-            {
-                SystemPropertiesCollection mock = new EventData.SystemPropertiesCollection();
-                mock.Add(ClientConstants.SequenceNumberName, mockSequenceNumber);
-                mock.Add(ClientConstants.EnqueuedTimeUtcName, mockEnqueuedTimeUtc);
-                mock.Add(ClientConstants.OffsetName, mockOffset);
-                mock.Add(ClientConstants.PartitionKeyName, mockPartitionKey);
-                this.SystemProperties = mock;
-            }
-        }
-
-        /// <summary>
         /// A collection used to store properties which are set by the Event Hubs service.
         /// </summary>
         public sealed class SystemPropertiesCollection : Dictionary<string, object>
         {
             internal SystemPropertiesCollection()
             {
+            }
+
+            /// <summary>
+            /// 
+            /// </summary>
+            /// <param name="sequenceNumber"></param>
+            /// <param name="enqueuedTimeUtc"></param>
+            /// <param name="offset"></param>
+            /// <param name="partitionKey"></param>
+            public SystemPropertiesCollection(long sequenceNumber, DateTime enqueuedTimeUtc, string offset, string partitionKey)
+            {
+                Add(ClientConstants.SequenceNumberName, sequenceNumber);
+                Add(ClientConstants.EnqueuedTimeUtcName, enqueuedTimeUtc);
+                Add(ClientConstants.OffsetName, offset);
+                Add(ClientConstants.PartitionKeyName, partitionKey);
             }
 
             /// <summary>Gets the logical sequence number of the event within the partition stream of the Event Hub.</summary>
