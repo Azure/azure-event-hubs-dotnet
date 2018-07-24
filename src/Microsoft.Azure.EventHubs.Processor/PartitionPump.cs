@@ -160,10 +160,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                         this.PartitionContext.SetOffsetAndSequenceNumber(last);
                         if (this.Host.EventProcessorOptions.EnableReceiverRuntimeMetric)
                         {
-                            this.PartitionContext.RuntimeInformation.LastSequenceNumber = last.LastSequenceNumber;
-                            this.PartitionContext.RuntimeInformation.LastEnqueuedOffset = last.LastEnqueuedOffset;
-                            this.PartitionContext.RuntimeInformation.LastEnqueuedTimeUtc = last.LastEnqueuedTime;
-                            this.PartitionContext.RuntimeInformation.RetrievalTime = last.RetrievalTime;
+                            this.PartitionContext.RuntimeInformation.Update(last);
                         }
                     }
 
