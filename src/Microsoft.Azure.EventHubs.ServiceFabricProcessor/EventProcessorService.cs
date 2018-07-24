@@ -321,10 +321,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                         this.partitionContext.SetOffsetAndSequenceNumber(last);
                         if (this.Options.EnableReceiverRuntimeMetric)
                         {
-                            this.partitionContext.RuntimeInformation.LastSequenceNumber = last.LastSequenceNumber;
-                            this.partitionContext.RuntimeInformation.LastEnqueuedOffset = last.LastEnqueuedOffset;
-                            this.partitionContext.RuntimeInformation.LastEnqueuedTimeUtc = last.LastEnqueuedTime;
-                            this.partitionContext.RuntimeInformation.RetrievalTime = last.RetrievalTime;
+                            this.partitionContext.RuntimeInformation.Update(last);
                         }
                     }
                 }

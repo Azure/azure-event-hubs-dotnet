@@ -52,6 +52,7 @@ namespace Microsoft.Azure.EventHubs
         {
             this.Body = arraySegment;
             this.Properties = new Dictionary<string, object>();
+            this.SystemProperties = null;
         }
 
         /// <summary>
@@ -111,6 +112,26 @@ namespace Microsoft.Azure.EventHubs
                 }
 
                 disposed = true;
+            }
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="mockSequenceNumber"></param>
+        /// <param name="mockEnqueuedTimeUtc"></param>
+        /// <param name="mockOffset"></param>
+        /// <param name="mockPartitionKey"></param>
+        public void MockSystemProperties(long mockSequenceNumber, DateTime mockEnqueuedTimeUtc, string mockOffset, string mockPartitionKey)
+        {
+            if (this.SystemProperties == null)
+            {
+                SystemPropertiesCollection mock = new EventData.SystemPropertiesCollection();
+                mock.Add(ClientConstants.SequenceNumberName, mockSequenceNumber);
+                mock.Add(ClientConstants.EnqueuedTimeUtcName, mockEnqueuedTimeUtc);
+                mock.Add(ClientConstants.OffsetName, mockOffset);
+                mock.Add(ClientConstants.PartitionKeyName, mockPartitionKey);
+                this.SystemProperties = mock;
             }
         }
 

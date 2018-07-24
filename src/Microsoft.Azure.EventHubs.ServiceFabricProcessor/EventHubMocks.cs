@@ -53,11 +53,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                     this.sequenceNumber++;
                     byte[] body = new byte[] { 0x4D, 0x4F, 0x43, 0x4B, 0x42, 0x4F, 0x44, 0x59 }; // M O C K B O D Y
                     EventData e = new EventData(body);
-                    e.SystemProperties = new EventData.SystemPropertiesCollection();
-                    e.SystemProperties.Add(ClientConstants.SequenceNumberName, this.sequenceNumber);
-                    e.SystemProperties.Add(ClientConstants.EnqueuedTimeUtcName, DateTime.UtcNow);
-                    e.SystemProperties.Add(ClientConstants.OffsetName, (this.sequenceNumber * 100).ToString());
-                    e.SystemProperties.Add(ClientConstants.PartitionKeyName, "");
+                    e.MockSystemProperties(this.sequenceNumber, DateTime.UtcNow, (this.sequenceNumber * 100).ToString(), "");
                     e.Properties.Add("userkey", "uservalue");
                     events.Add(e);
                 }
