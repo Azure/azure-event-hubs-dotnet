@@ -51,6 +51,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
         protected override async Task<IList<EventData>> OnReceiveAsync(int maxMessageCount, TimeSpan waitTime)
         {
             bool shouldRetry;
+            int retryCount = 0;
 
             var timeoutHelper = new TimeoutHelper(waitTime, true);
 
@@ -78,8 +79,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
                             throw receiveLink.TerminalException;
                         }
 
-                        this.RetryPolicy.ResetRetryCount(this.ClientId);
-
                         if (hasMessages && amqpMessages != null)
                         {
                             IList<EventData> eventDatas = null;
@@ -105,8 +104,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 catch (Exception ex)
                 {
                     // Evaluate retry condition?
-                    this.RetryPolicy.IncrementRetryCount(this.ClientId);
-                    TimeSpan? retryInterval = this.RetryPolicy.GetNextRetryInterval(this.ClientId, ex, timeoutHelper.RemainingTime());
+                    TimeSpan? retryInterval = this.RetryPolicy.GetNextRetryInterval(ex, timeoutHelper.RemainingTime(), ++retryCount);
                     if (retryInterval != null)
                     {
                         await Task.Delay(retryInterval.Value).ConfigureAwait(false);
