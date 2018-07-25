@@ -19,35 +19,12 @@ namespace Microsoft.Azure.EventHubs
         static readonly TimeSpan DefaultRetryMinBackoff = TimeSpan.Zero;
         static readonly TimeSpan DefaultRetryMaxBackoff = TimeSpan.FromSeconds(30);
 
-        // Same retry policy may be used by multiple senders and receivers.
-        // Because of this we keep track of retry counters in a concurrent dictionary.
-        ConcurrentDictionary<String, int> retryCounts;
         object serverBusySync;
 
         /// <summary></summary>
         protected RetryPolicy()
         {
-            this.retryCounts = new ConcurrentDictionary<string, int>();
             this.serverBusySync = new Object();
-        }
-
-        /// <summary>
-        /// Increases the retry count.
-        /// </summary>
-        /// <param name="clientId">The <see cref="ClientEntity.ClientId"/> associated with the operation to retry</param>
-        public void IncrementRetryCount(string clientId)
-        {
-            this.retryCounts.AddOrUpdate(clientId, 1, (k, v) => v + 1);
-        }
-
-        /// <summary>
-        /// Resets the retry count to zero.
-        /// </summary>
-        /// <param name="clientId">The <see cref="ClientEntity.ClientId"/> associated with the operation to retry</param>
-        public void ResetRetryCount(string clientId)
-        {
-            int currentRetryCount;
-            this.retryCounts.TryRemove(clientId, out currentRetryCount);
         }
 
         /// <summary>
@@ -122,33 +99,21 @@ namespace Microsoft.Azure.EventHubs
         }
 
         /// <summary></summary>
-        /// <param name="clientId"></param>
-        /// <returns></returns>
-        protected int GetRetryCount(string clientId)
-        {
-            int retryCount;
-
-            this.retryCounts.TryGetValue(clientId, out retryCount);
-
-            return retryCount;
-        }
-
-        /// <summary></summary>
-        /// <param name="clientId"></param>
         /// <param name="lastException"></param>
         /// <param name="remainingTime"></param>
         /// <param name="baseWaitTime"></param>
+        /// <param name="retryCount"></param>
         /// <returns></returns>
-        protected abstract TimeSpan? OnGetNextRetryInterval(String clientId, Exception lastException, TimeSpan remainingTime, int baseWaitTime);
+        protected abstract TimeSpan? OnGetNextRetryInterval(Exception lastException, TimeSpan remainingTime, int baseWaitTime, int retryCount);
 
         /// <summary>
         /// Gets the timespan for the next retry operation.
         /// </summary>
-        /// <param name="clientId">The <see cref="ClientEntity.ClientId"/> associated with the operation to retry</param>
         /// <param name="lastException">The last exception that was thrown</param>
         /// <param name="remainingTime">Remaining time for the cumulative timeout</param>
+        /// <param name="retryCount">Current retry count</param>
         /// <returns></returns>
-        public TimeSpan? GetNextRetryInterval(string clientId, Exception lastException, TimeSpan remainingTime)
+        public TimeSpan? GetNextRetryInterval(Exception lastException, TimeSpan remainingTime, int retryCount)
         {
             int baseWaitTime = 0;
             lock(this.serverBusySync)
@@ -160,7 +125,7 @@ namespace Microsoft.Azure.EventHubs
                 }
             }
 
-            var retryAfter = this.OnGetNextRetryInterval(clientId, lastException, remainingTime, baseWaitTime);
+            var retryAfter = this.OnGetNextRetryInterval(lastException, remainingTime, baseWaitTime, retryCount);
 
             // Don't retry if remaining time isn't enough.
             if (retryAfter == null || 
