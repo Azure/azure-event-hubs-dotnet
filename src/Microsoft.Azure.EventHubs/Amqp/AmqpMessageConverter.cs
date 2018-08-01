@@ -214,6 +214,39 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     }
                 }
             }
+
+            if ((sections & SectionFlag.Properties) != 0)
+            {
+                if (data.SystemProperties == null)
+                {
+                    data.SystemProperties = new EventData.SystemPropertiesCollection();
+                }
+
+                if (amqpMessage.Properties != null)
+                {
+                    AddFieldToSystemProperty(amqpMessage.Properties.MessageId != null, data.SystemProperties, Properties.MessageIdName, amqpMessage.Properties.MessageId);
+                    AddFieldToSystemProperty(amqpMessage.Properties.UserId.Array != null, data.SystemProperties, Properties.UserIdName, amqpMessage.Properties.UserId);
+                    AddFieldToSystemProperty(amqpMessage.Properties.To != null, data.SystemProperties, Properties.ToName, amqpMessage.Properties.To);
+                    AddFieldToSystemProperty(amqpMessage.Properties.Subject != null, data.SystemProperties, Properties.SubjectName, amqpMessage.Properties.Subject);
+                    AddFieldToSystemProperty(amqpMessage.Properties.ReplyTo != null, data.SystemProperties, Properties.ReplyToName, amqpMessage.Properties.ReplyTo);
+                    AddFieldToSystemProperty(amqpMessage.Properties.CorrelationId != null, data.SystemProperties, Properties.CorrelationIdName, amqpMessage.Properties.CorrelationId);
+                    AddFieldToSystemProperty(amqpMessage.Properties.ContentType.Value != null, data.SystemProperties, Properties.ContentTypeName, amqpMessage.Properties.ContentType);
+                    AddFieldToSystemProperty(amqpMessage.Properties.ContentEncoding.Value != null, data.SystemProperties, Properties.ContentEncodingName, amqpMessage.Properties.ContentEncoding);
+                    AddFieldToSystemProperty(amqpMessage.Properties.AbsoluteExpiryTime != null, data.SystemProperties, Properties.AbsoluteExpiryTimeName, amqpMessage.Properties.AbsoluteExpiryTime);
+                    AddFieldToSystemProperty(amqpMessage.Properties.CreationTime != null, data.SystemProperties, Properties.CreationTimeName, amqpMessage.Properties.CreationTime);
+                    AddFieldToSystemProperty(amqpMessage.Properties.GroupId != null, data.SystemProperties, Properties.GroupIdName, amqpMessage.Properties.GroupId);
+                    AddFieldToSystemProperty(amqpMessage.Properties.GroupSequence != null, data.SystemProperties, Properties.GroupSequenceName, amqpMessage.Properties.GroupSequence);
+                    AddFieldToSystemProperty(amqpMessage.Properties.ReplyToGroupId != null, data.SystemProperties, Properties.ReplyToGroupIdName, amqpMessage.Properties.ReplyToGroupId);
+                }
+            }
+        }
+
+        private static void AddFieldToSystemProperty(bool condition, EventData.SystemPropertiesCollection systemProperties, string propertyName, object value)
+        {
+            if (condition)
+            {
+                systemProperties[propertyName] = value;
+            }
         }
 
         static ArraySegment<byte> StreamToBytes(Stream stream)
