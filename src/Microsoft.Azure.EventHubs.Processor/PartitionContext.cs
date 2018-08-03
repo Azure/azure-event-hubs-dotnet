@@ -73,7 +73,7 @@ namespace Microsoft.Azure.EventHubs.Processor
         internal long SequenceNumber { get; set; }
 
         /// <summary>
-        /// Gets the most check-point lease.
+        /// Gets the most recent checkpointed lease.
         /// </summary>
         // Unlike other properties which are immutable after creation, the lease is updated dynamically and needs a setter.
         public Lease Lease { get; internal set; }
