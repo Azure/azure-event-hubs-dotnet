@@ -413,27 +413,26 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         {
             if (this.partitionOrdinal == -1)
             {
-                Int64RangePartitionInformation thisPartition = (Int64RangePartitionInformation)this.ServicePartition.PartitionInfo;
-
-                ServicePartitionResolver resolver = ServicePartitionResolver.GetDefault();
-                Int64RangePartitionInformation scanner = null;
-                long lowScan = long.MinValue;
-                this.servicePartitions = 0;
-                do
+                using (var fabricClient = new FabricClient())
                 {
-                    ServicePartitionKey resolveKey = new ServicePartitionKey(lowScan);
-                    ResolvedServicePartition partition = await resolver.ResolveAsync(this.ServiceContext.ServiceName, resolveKey, cancellationToken);
-                    scanner = (Int64RangePartitionInformation)partition.Info;
-                    lowScan = scanner.HighKey + 1;
-                    if (scanner.LowKey == thisPartition.LowKey)
-                    {
-                        this.partitionOrdinal = this.servicePartitions;
-                        EventProcessorEventSource.Current.Message("Found our partition, ordinal {0}", this.partitionOrdinal);
-                    }
-                    this.servicePartitions++;
-                } while (scanner.HighKey != long.MaxValue);
+                    var partitionList =
+                        await fabricClient.QueryManager.GetPartitionListAsync(this.ServiceContext.ServiceName);
 
-                EventProcessorEventSource.Current.Message("Total partitions {0}", this.servicePartitions);
+                    //Set the number of partitions
+                    this.servicePartitions = partitionList.Count;
+
+                    //Which partition is this one?
+                    for (var a = 0; a < partitionList.Count; a++)
+                    {
+                        if (partitionList[a].PartitionInformation.Id == this.ServiceContext.PartitionId)
+                        {
+                            this.partitionOrdinal = a;
+                            break;
+                        }
+                    }
+
+                    EventProcessorEventSource.Current.Message($"Total partitions {this.servicePartitions}");
+                }
             }
         }
 
