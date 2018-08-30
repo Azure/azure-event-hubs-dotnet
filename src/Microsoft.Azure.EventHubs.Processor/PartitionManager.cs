@@ -248,11 +248,17 @@ namespace Microsoft.Azure.EventHubs.Processor
                     {
                         if (await possibleLease.IsExpired().ConfigureAwait(false))
                         {
+                            bool isExpiredLeaseOwned = possibleLease.Owner == this.host.HostName;
                             ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, possibleLease.PartitionId, "Trying to acquire lease.");
                             if (await leaseManager.AcquireLeaseAsync(possibleLease).ConfigureAwait(false))
                             {
-                                ourLeaseCount++;
                                 ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, possibleLease.PartitionId, "Acquired lease.");
+
+                                // Don't double count if we have already counted this lease at the beginning of the loop.
+                                if (!isExpiredLeaseOwned)
+                                {
+                                    ourLeaseCount++;
+                                }
                             }
                         }
                     }
