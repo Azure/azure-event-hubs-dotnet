@@ -52,18 +52,18 @@
     <Reference Include="System" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.IdentityModel" />
-    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="4.0.4.402070948" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="4.0.4.403061554" />
   </ItemGroup>
 
   <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard2.0' ">
     <PackageReference Include="System.Reflection.TypeExtensions" Version="4.3.0" />
     <PackageReference Include="System.Runtime.Serialization.Primitives" Version="4.3.0" />
-	<PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="5.2.2" />
+	<PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="5.2.4" />
   </ItemGroup>
 
   <ItemGroup Condition=" '$(TargetFramework)' == 'uap10.0' ">
 	<PackageReference Include="Microsoft.NETCore.UniversalWindowsPlatform " Version="5.2.3" />
-	<PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="5.2.2" />
+	<PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="5.2.4" />
   </ItemGroup>
 
   <ItemGroup>
