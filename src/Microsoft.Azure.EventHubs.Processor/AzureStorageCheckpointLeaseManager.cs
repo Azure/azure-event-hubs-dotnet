@@ -75,7 +75,7 @@ namespace Microsoft.Azure.EventHubs.Processor
 
 #if NET461
             // Proxy enabled?
-            if (this.host.EventProcessorOptions.WebProxy != null)
+            if (this.host.EventProcessorOptions != null && this.host.EventProcessorOptions.WebProxy != null)
             {
                 this.operationContext = new OperationContext()
                 {
