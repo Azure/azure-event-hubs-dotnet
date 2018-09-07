@@ -19,6 +19,8 @@ namespace Microsoft.Azure.EventHubs
     {
         EventDataSender innerSender;
 
+        internal bool closeCalled = false;
+
         internal EventHubClient(EventHubsConnectionStringBuilder csb)
             : base($"{nameof(EventHubClient)}{ClientEntity.GetNextId()}({csb.EntityPath})")
         {
@@ -241,6 +243,8 @@ namespace Microsoft.Azure.EventHubs
         /// <returns></returns>
         public sealed override async Task CloseAsync()
         {
+            this.closeCalled = true;
+
             EventHubsEventSource.Log.ClientCloseStart(this.ClientId);
             try
             {
