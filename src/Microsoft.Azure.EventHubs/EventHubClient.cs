@@ -18,8 +18,7 @@ namespace Microsoft.Azure.EventHubs
     public abstract class EventHubClient : ClientEntity
     {
         EventDataSender innerSender;
-
-        internal bool closeCalled = false;
+        bool closeCalled = false;
 
         internal EventHubClient(EventHubsConnectionStringBuilder csb)
             : base($"{nameof(EventHubClient)}{ClientEntity.GetNextId()}({csb.EntityPath})")
@@ -563,6 +562,8 @@ namespace Microsoft.Azure.EventHubs
             get;
             set;
         }
+
+        internal bool CloseCalled { get => closeCalled; }
 
         internal EventDataSender CreateEventSender(string partitionId = null)
         {
