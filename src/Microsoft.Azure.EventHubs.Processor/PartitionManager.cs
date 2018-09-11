@@ -143,6 +143,7 @@ namespace Microsoft.Azure.EventHubs.Processor
         // Throws if it runs out of retries. If it returns, action succeeded.
         async Task RetryAsync(Func<Task> lambda, string partitionId, string retryMessage, string finalFailureMessage, string action, int maxRetries) // throws ExceptionWithAction
         {
+            Exception finalException = null;
             bool createdOK = false;
     	    int retryCount = 0;
     	    do
@@ -152,16 +153,18 @@ namespace Microsoft.Azure.EventHubs.Processor
                     await lambda().ConfigureAwait(false);
                     createdOK = true;
                 }
-                catch (Exception e)
+                catch (Exception ex)
                 {
                     if (partitionId != null)
                     {
-                        ProcessorEventSource.Log.PartitionPumpWarning(this.host.HostName, partitionId, retryMessage, e.ToString());
+                        ProcessorEventSource.Log.PartitionPumpWarning(this.host.HostName, partitionId, retryMessage, ex.ToString());
                     }
                     else
                     {
-                        ProcessorEventSource.Log.EventProcessorHostWarning(this.host.HostName, retryMessage, e.ToString());
+                        ProcessorEventSource.Log.EventProcessorHostWarning(this.host.HostName, retryMessage, ex.ToString());
                     }
+
+                    finalException = ex;
                     retryCount++;
                 }
             }
@@ -178,7 +181,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                     ProcessorEventSource.Log.EventProcessorHostError(this.host.HostName, finalFailureMessage, null);
                 }
 
-                throw new EventProcessorRuntimeException(finalFailureMessage, action);
+                throw new EventProcessorRuntimeException(finalFailureMessage, action, finalException);
             }
         }
 
