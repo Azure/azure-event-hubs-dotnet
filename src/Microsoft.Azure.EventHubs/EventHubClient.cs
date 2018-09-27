@@ -563,7 +563,7 @@ namespace Microsoft.Azure.EventHubs
             set;
         }
 
-        internal bool CloseCalled { get => closeCalled; }
+        internal bool CloseCalled { get => this.closeCalled; }
 
         internal EventDataSender CreateEventSender(string partitionId = null)
         {
