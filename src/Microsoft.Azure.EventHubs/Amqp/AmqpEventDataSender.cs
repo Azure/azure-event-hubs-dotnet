@@ -45,6 +45,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
         protected override async Task OnSendAsync(IEnumerable<EventData> eventDatas, string partitionKey)
         {
             bool shouldRetry;
+            int retryCount = 0;
 
             var timeoutHelper = new TimeoutHelper(this.EventHubClient.ConnectionStringBuilder.OperationTimeout, true);
 
@@ -76,8 +77,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
                                 Rejected rejected = (Rejected)outcome;
                                 throw new AmqpException(rejected.Error);
                             }
-
-                            this.RetryPolicy.ResetRetryCount(this.ClientId);
                         }
                         catch (AmqpException amqpException)
                         {
@@ -87,9 +86,8 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     catch (Exception ex)
                     {
                         // Evaluate retry condition?
-                        this.RetryPolicy.IncrementRetryCount(this.ClientId);
-                        TimeSpan? retryInterval = this.RetryPolicy.GetNextRetryInterval(this.ClientId, ex, timeoutHelper.RemainingTime());
-                        if (retryInterval != null)
+                        TimeSpan? retryInterval = this.RetryPolicy.GetNextRetryInterval(ex, timeoutHelper.RemainingTime(), ++retryCount);
+                        if (retryInterval != null && !this.EventHubClient.CloseCalled)
                         {
                             await Task.Delay(retryInterval.Value).ConfigureAwait(false);
                             shouldRetry = true;
