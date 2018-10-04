@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 namespace Microsoft.Azure.EventHubs.Processor
@@ -143,6 +143,7 @@ namespace Microsoft.Azure.EventHubs.Processor
         // Throws if it runs out of retries. If it returns, action succeeded.
         async Task RetryAsync(Func<Task> lambda, string partitionId, string retryMessage, string finalFailureMessage, string action, int maxRetries) // throws ExceptionWithAction
         {
+            Exception finalException = null;
             bool createdOK = false;
     	    int retryCount = 0;
     	    do
@@ -152,16 +153,18 @@ namespace Microsoft.Azure.EventHubs.Processor
                     await lambda().ConfigureAwait(false);
                     createdOK = true;
                 }
-                catch (Exception e)
+                catch (Exception ex)
                 {
                     if (partitionId != null)
                     {
-                        ProcessorEventSource.Log.PartitionPumpWarning(this.host.HostName, partitionId, retryMessage, e.ToString());
+                        ProcessorEventSource.Log.PartitionPumpWarning(this.host.HostName, partitionId, retryMessage, ex.ToString());
                     }
                     else
                     {
-                        ProcessorEventSource.Log.EventProcessorHostWarning(this.host.HostName, retryMessage, e.ToString());
+                        ProcessorEventSource.Log.EventProcessorHostWarning(this.host.HostName, retryMessage, ex.ToString());
                     }
+
+                    finalException = ex;
                     retryCount++;
                 }
             }
@@ -178,7 +181,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                     ProcessorEventSource.Log.EventProcessorHostError(this.host.HostName, finalFailureMessage, null);
                 }
 
-                throw new EventProcessorRuntimeException(finalFailureMessage, action);
+                throw new EventProcessorRuntimeException(finalFailureMessage, action, finalException);
             }
         }
 
@@ -248,11 +251,17 @@ namespace Microsoft.Azure.EventHubs.Processor
                     {
                         if (await possibleLease.IsExpired().ConfigureAwait(false))
                         {
+                            bool isExpiredLeaseOwned = possibleLease.Owner == this.host.HostName;
                             ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, possibleLease.PartitionId, "Trying to acquire lease.");
                             if (await leaseManager.AcquireLeaseAsync(possibleLease).ConfigureAwait(false))
                             {
-                                ourLeaseCount++;
                                 ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, possibleLease.PartitionId, "Acquired lease.");
+
+                                // Don't double count if we have already counted this lease at the beginning of the loop.
+                                if (!isExpiredLeaseOwned)
+                                {
+                                    ourLeaseCount++;
+                                }
                             }
                         }
                     }

@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 namespace Microsoft.Azure.EventHubs.Tests.Client
@@ -213,6 +213,27 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
                 new EventData(null);
                 throw new Exception("new EventData(null) was supposed to fail");
             });
+        }
+
+        [Fact]
+        [DisplayTestMethodName]
+        async Task InvalidPrefetchCount()
+        {
+            var receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", EventPosition.FromStart());
+
+            await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            {
+                receiver.PrefetchCount = 3;
+                throw new Exception("Setting PrefetchCount to 3 didn't fail.");
+            });
+
+            TestUtility.Log("Setting PrefetchCount to 10.");
+            receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", EventPosition.FromStart());
+            receiver.PrefetchCount = 10;
+
+            TestUtility.Log("Setting PrefetchCount to int.MaxValue.");
+            receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, "0", EventPosition.FromStart());
+            receiver.PrefetchCount = int.MaxValue;
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 namespace Microsoft.Azure.EventHubs
@@ -6,7 +6,9 @@ namespace Microsoft.Azure.EventHubs
     using System;
     using System.Collections.ObjectModel;
     using System.IdentityModel.Tokens;
+#if !NET461
     using System.IdentityModel.Tokens.Jwt;
+#endif
 
     /// <summary>
     /// Extends SecurityToken for JWT specific properties

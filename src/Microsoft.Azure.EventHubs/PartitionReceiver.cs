@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 namespace Microsoft.Azure.EventHubs
@@ -31,8 +31,8 @@ namespace Microsoft.Azure.EventHubs
         internal const long NullEpoch = 0;
 
         const int MinPrefetchCount = 10;
-        const int MaxPrefetchCount = 999;
         const int DefaultPrefetchCount = 300;
+        int prefetchCount;
 
         /// <summary></summary>
         /// <param name="eventHubClient"></param>
@@ -54,7 +54,7 @@ namespace Microsoft.Azure.EventHubs
             this.ConsumerGroupName = consumerGroupName;
             this.PartitionId = partitionId;
             this.EventPosition = eventPosition;
-            this.PrefetchCount = DefaultPrefetchCount;
+            this.prefetchCount = DefaultPrefetchCount;
             this.Epoch = epoch;
             this.RuntimeInfo = new ReceiverRuntimeInformation(partitionId);
             this.ReceiverRuntimeMetricEnabled = receiverOptions == null ? this.EventHubClient.EnableReceiverRuntimeMetric
@@ -85,7 +85,26 @@ namespace Microsoft.Azure.EventHubs
         /// Get Prefetch Count configured on the Receiver.
         /// </summary>
         /// <value>The upper limit of events this receiver will actively receive regardless of whether a receive operation is pending.</value>
-        public int PrefetchCount { get; set; }
+        public int PrefetchCount
+        {
+            get
+            {
+                return this.prefetchCount;
+            }
+
+            set
+            {
+                if (value < MinPrefetchCount)
+                {
+                    throw Fx.Exception.ArgumentOutOfRange(
+                        "PrefetchCount",
+                        value,
+                        Resources.ValueOutOfRange.FormatForUser(MinPrefetchCount, int.MaxValue));
+                }
+
+                this.prefetchCount = value;
+            }
+        }
 
         /// <summary>
         /// Get the epoch value that this receiver is currently using for partition ownership.

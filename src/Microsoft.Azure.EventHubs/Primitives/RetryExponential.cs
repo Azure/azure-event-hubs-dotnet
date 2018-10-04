@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 namespace Microsoft.Azure.EventHubs
@@ -35,16 +35,14 @@ namespace Microsoft.Azure.EventHubs
         }
 
         /// <summary></summary>
-        /// <param name="clientId"></param>
         /// <param name="lastException"></param>
         /// <param name="remainingTime"></param>
         /// <param name="baseWaitTimeSecs"></param>
+        /// <param name="retryCount"></param>
         /// <returns></returns>
-        protected override TimeSpan? OnGetNextRetryInterval(string clientId, Exception lastException, TimeSpan remainingTime, int baseWaitTimeSecs)
+        protected override TimeSpan? OnGetNextRetryInterval(Exception lastException, TimeSpan remainingTime, int baseWaitTimeSecs, int retryCount)
         {
-            int currentRetryCount = this.GetRetryCount(clientId);
-
-            if (currentRetryCount >= this.maximumRetryCount)
+            if (retryCount >= this.maximumRetryCount)
             {
                 return null;
             }
@@ -54,7 +52,7 @@ namespace Microsoft.Azure.EventHubs
                 return null;
             }
 
-            double nextRetryInterval = Math.Pow(this.retryFactor, (double)currentRetryCount);
+            double nextRetryInterval = Math.Pow(this.retryFactor, (double)retryCount);
             long nextRetryIntervalSeconds = (long)nextRetryInterval;
             long nextRetryIntervalMilliseconds = (long)((nextRetryInterval - (double)nextRetryIntervalSeconds) * 1000);
 

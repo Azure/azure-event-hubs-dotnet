@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 namespace Microsoft.Azure.EventHubs
@@ -9,9 +9,9 @@ namespace Microsoft.Azure.EventHubs
     using System.Net;
 
     /// <summary>
-    /// A WCF SecurityToken that wraps a Shared Access Signature
+    /// A SecurityToken that wraps a Shared Access Signature
     /// </summary>
-    class SharedAccessSignatureToken : SecurityToken
+    public class SharedAccessSignatureToken : SecurityToken
     {
         internal const string SharedAccessSignature = "SharedAccessSignature";
         internal const string SignedResource = "sr";

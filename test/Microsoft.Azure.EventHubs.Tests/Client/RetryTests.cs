@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 namespace Microsoft.Azure.EventHubs.Tests.Client
@@ -12,68 +12,58 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
         [DisplayTestMethodName]
         void ValidateRetryPolicyBuiltIn()
         {
-            String clientId = "someClientEntity";
+            int retryCount = 0;
             RetryPolicy retry = RetryPolicy.Default;
 
-            retry.IncrementRetryCount(clientId);
-            TimeSpan? firstRetryInterval = retry.GetNextRetryInterval(clientId, new ServerBusyException(string.Empty), TimeSpan.FromSeconds(60));
+            TimeSpan? firstRetryInterval = retry.GetNextRetryInterval(new ServerBusyException(string.Empty), TimeSpan.FromSeconds(60), ++retryCount);
             TestUtility.Log("firstRetryInterval: " + firstRetryInterval);
             Assert.True(firstRetryInterval != null);
 
-            retry.IncrementRetryCount(clientId);
-            TimeSpan? secondRetryInterval = retry.GetNextRetryInterval(clientId, new ServerBusyException(string.Empty), TimeSpan.FromSeconds(60));
+            TimeSpan? secondRetryInterval = retry.GetNextRetryInterval(new ServerBusyException(string.Empty), TimeSpan.FromSeconds(60), ++retryCount);
             TestUtility.Log("secondRetryInterval: " + secondRetryInterval);
 
             Assert.True(secondRetryInterval != null);
             Assert.True(secondRetryInterval?.TotalMilliseconds > firstRetryInterval?.TotalMilliseconds);
 
-            retry.IncrementRetryCount(clientId);
-            TimeSpan? thirdRetryInterval = retry.GetNextRetryInterval(clientId, new ServerBusyException(string.Empty), TimeSpan.FromSeconds(60));
+            TimeSpan? thirdRetryInterval = retry.GetNextRetryInterval(new ServerBusyException(string.Empty), TimeSpan.FromSeconds(60), ++retryCount);
             TestUtility.Log("thirdRetryInterval: " + thirdRetryInterval);
 
             Assert.True(thirdRetryInterval != null);
             Assert.True(thirdRetryInterval?.TotalMilliseconds > secondRetryInterval?.TotalMilliseconds);
 
-            retry.IncrementRetryCount(clientId);
-            TimeSpan? fourthRetryInterval = retry.GetNextRetryInterval(clientId, new ServerBusyException(string.Empty), TimeSpan.FromSeconds(60));
+            TimeSpan? fourthRetryInterval = retry.GetNextRetryInterval(new ServerBusyException(string.Empty), TimeSpan.FromSeconds(60), ++retryCount);
             TestUtility.Log("fourthRetryInterval: " + fourthRetryInterval);
 
             Assert.True(fourthRetryInterval != null);
             Assert.True(fourthRetryInterval?.TotalMilliseconds > thirdRetryInterval?.TotalMilliseconds);
 
-            retry.IncrementRetryCount(clientId);
-            TimeSpan? fifthRetryInterval = retry.GetNextRetryInterval(clientId, new ServerBusyException(string.Empty), TimeSpan.FromSeconds(60));
+            TimeSpan? fifthRetryInterval = retry.GetNextRetryInterval(new ServerBusyException(string.Empty), TimeSpan.FromSeconds(60), ++retryCount);
             TestUtility.Log("fifthRetryInterval: " + fifthRetryInterval);
 
             Assert.True(fifthRetryInterval != null);
             Assert.True(fifthRetryInterval?.TotalMilliseconds > fourthRetryInterval?.TotalMilliseconds);
 
-            retry.IncrementRetryCount(clientId);
-            TimeSpan? sixthRetryInterval = retry.GetNextRetryInterval(clientId, new ServerBusyException(string.Empty), TimeSpan.FromSeconds(60));
+            TimeSpan? sixthRetryInterval = retry.GetNextRetryInterval(new ServerBusyException(string.Empty), TimeSpan.FromSeconds(60), ++retryCount);
             TestUtility.Log("sixthRetryInterval: " + sixthRetryInterval);
 
             Assert.True(sixthRetryInterval != null);
             Assert.True(sixthRetryInterval?.TotalMilliseconds > fifthRetryInterval?.TotalMilliseconds);
 
-            retry.IncrementRetryCount(clientId);
-            TimeSpan? seventhRetryInterval = retry.GetNextRetryInterval(clientId, new ServerBusyException(string.Empty), TimeSpan.FromSeconds(60));
+            TimeSpan? seventhRetryInterval = retry.GetNextRetryInterval(new ServerBusyException(string.Empty), TimeSpan.FromSeconds(60), ++retryCount);
             TestUtility.Log("seventhRetryInterval: " + seventhRetryInterval);
 
             Assert.True(seventhRetryInterval != null);
             Assert.True(seventhRetryInterval?.TotalMilliseconds > sixthRetryInterval?.TotalMilliseconds);
 
-            retry.IncrementRetryCount(clientId);
-            TimeSpan? nextRetryInterval = retry.GetNextRetryInterval(clientId, new EventHubsException(false), TimeSpan.FromSeconds(60));
+            TimeSpan? nextRetryInterval = retry.GetNextRetryInterval(new EventHubsException(false), TimeSpan.FromSeconds(60), ++retryCount);
             Assert.True(nextRetryInterval == null);
 
-            retry.ResetRetryCount(clientId);
-            retry.IncrementRetryCount(clientId);
-            TimeSpan? firstRetryIntervalAfterReset = retry.GetNextRetryInterval(clientId, new ServerBusyException(string.Empty), TimeSpan.FromSeconds(60));
+            retryCount = 0;
+            TimeSpan? firstRetryIntervalAfterReset = retry.GetNextRetryInterval(new ServerBusyException(string.Empty), TimeSpan.FromSeconds(60), ++retryCount);
             Assert.True(firstRetryInterval.Equals(firstRetryIntervalAfterReset));
 
             retry = RetryPolicy.NoRetry;
-            retry.IncrementRetryCount(clientId);
-            TimeSpan? noRetryInterval = retry.GetNextRetryInterval(clientId, new ServerBusyException(string.Empty), TimeSpan.FromSeconds(60));
+            TimeSpan? noRetryInterval = retry.GetNextRetryInterval(new ServerBusyException(string.Empty), TimeSpan.FromSeconds(60), ++retryCount);
             Assert.True(noRetryInterval == null);
         }
 
@@ -81,23 +71,19 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
         [DisplayTestMethodName]
         void ValidateRetryPolicyCustom()
         {
-            String clientId = "someClientEntity";
-
             // Retry up to 5 times.
             RetryPolicy retry = new RetryPolicyCustom(5);
 
             // Retry 4 times. These should allow retry.
             for (int i = 0; i < 4; i++)
             {
-                retry.IncrementRetryCount(clientId);
-                TimeSpan? thisRetryInterval = retry.GetNextRetryInterval(clientId, new ServerBusyException(string.Empty), TimeSpan.FromSeconds(60));
+                TimeSpan? thisRetryInterval = retry.GetNextRetryInterval(new ServerBusyException(string.Empty), TimeSpan.FromSeconds(60), i + 1);
                 TestUtility.Log("RetryInterval: " + thisRetryInterval);
                 Assert.True(thisRetryInterval.Value.TotalSeconds == 2 + i);
             }
 
             // Retry 5th times. This should not allow retry.
-            retry.IncrementRetryCount(clientId);
-            TimeSpan? newRetryInterval = retry.GetNextRetryInterval(clientId, new ServerBusyException(string.Empty), TimeSpan.FromSeconds(60));
+            TimeSpan? newRetryInterval = retry.GetNextRetryInterval(new ServerBusyException(string.Empty), TimeSpan.FromSeconds(60), 6);
             TestUtility.Log("RetryInterval: " + newRetryInterval);
             Assert.True(newRetryInterval == null);
         }
@@ -133,11 +119,9 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
                 this.maximumRetryCount = maximumRetryCount;
             }
 
-            protected override TimeSpan? OnGetNextRetryInterval(string clientId, Exception lastException, TimeSpan remainingTime, int baseWaitTimeSecs)
+            protected override TimeSpan? OnGetNextRetryInterval(Exception lastException, TimeSpan remainingTime, int baseWaitTimeSecs, int retryCount)
             {
-                int currentRetryCount = this.GetRetryCount(clientId);
-
-                if (currentRetryCount >= this.maximumRetryCount)
+                if (retryCount >= this.maximumRetryCount)
                 {
                     TestUtility.Log("Not retrying: currentRetryCount >= maximumRetryCount");
                     return null;
@@ -146,7 +130,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
                 TestUtility.Log("Retrying: currentRetryCount < maximumRetryCount");
 
                 // Retry after 1 second + retry count.
-                TimeSpan retryAfter = TimeSpan.FromSeconds(1 + currentRetryCount);
+                TimeSpan retryAfter = TimeSpan.FromSeconds(1 + retryCount);
 
                 return retryAfter;
             }
