@@ -40,17 +40,18 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
         FaultTolerantAmqpObject<ReceivingAmqpLink> ReceiveLinkManager { get; }
 
-        protected override Task OnCloseAsync()
+        protected async override Task OnCloseAsync()
         {
             // Close any ReceiveHandler (this is safe if there is none) and the ReceiveLinkManager in parallel.
-            this.ReceiveHandlerClose();
+            await this.ReceiveHandlerClose();
             this.clientLinkManager.Close();
-            return this.ReceiveLinkManager.CloseAsync();
+            await this.ReceiveLinkManager.CloseAsync();
         }
 
         protected override async Task<IList<EventData>> OnReceiveAsync(int maxMessageCount, TimeSpan waitTime)
         {
             bool shouldRetry;
+            int retryCount = 0;
 
             var timeoutHelper = new TimeoutHelper(waitTime, true);
 
@@ -78,8 +79,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
                             throw receiveLink.TerminalException;
                         }
 
-                        this.RetryPolicy.ResetRetryCount(this.ClientId);
-
                         if (hasMessages && amqpMessages != null)
                         {
                             IList<EventData> eventDatas = null;
@@ -105,9 +104,8 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 catch (Exception ex)
                 {
                     // Evaluate retry condition?
-                    this.RetryPolicy.IncrementRetryCount(this.ClientId);
-                    TimeSpan? retryInterval = this.RetryPolicy.GetNextRetryInterval(this.ClientId, ex, timeoutHelper.RemainingTime());
-                    if (retryInterval != null)
+                    TimeSpan? retryInterval = this.RetryPolicy.GetNextRetryInterval(ex, timeoutHelper.RemainingTime(), ++retryCount);
+                    if (retryInterval != null && !this.EventHubClient.CloseCalled)
                     {
                         await Task.Delay(retryInterval.Value).ConfigureAwait(false);
                         shouldRetry = true;
@@ -163,6 +161,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     // newReceiveHandler == null, so this is an unregister call, ensure pump is shut down.
                     if (this.receivePumpTask != null)
                     {
+                        // Do not wait as could block and would still match the previous behavior
                         this.ReceiveHandlerClose();
                     }
 
@@ -339,14 +338,17 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
         // Encapsulates taking the receivePumpLock, checking this.receiveHandler for null,
         // calls this.receiveHandler.CloseAsync (starting this operation inside the receivePumpLock).
-        void ReceiveHandlerClose()
+        Task ReceiveHandlerClose()
         {
+            Task task = null;
+
             lock (this.receivePumpLock)
             {
                 if (this.receiveHandler != null)
                 {
                     if (this.receivePumpTask != null)
                     {
+                        task = this.receivePumpTask;
                         this.receivePumpCancellationSource.Cancel();
                         this.receivePumpCancellationSource.Dispose();
                         this.receivePumpCancellationSource = null;
@@ -356,6 +358,8 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     this.receiveHandler = null;
                 }
             }
+
+            return task ?? Task.CompletedTask;
         }
 
         // Encapsulates taking the receivePumpLock, checking this.receiveHandler for null,
