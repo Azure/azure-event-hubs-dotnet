@@ -36,7 +36,7 @@ namespace Microsoft.Azure.EventHubs
         }
 
         /// <summary>
-        /// Gets a list of currently registered plugins for this QueueClient.
+        /// Gets a list of currently registered plugins for this Client.
         /// </summary>
         public virtual IList<EventHubPlugin> RegisteredPlugins { get; } = new List<EventHubPlugin>();
 
