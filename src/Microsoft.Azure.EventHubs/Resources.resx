@@ -168,4 +168,7 @@
   <data name="ValueOutOfRange" xml:space="preserve">
     <value>The value supplied must be between {0} and {1}.</value>
   </data>
+  <data name="PluginAlreadyRegistered" xml:space="preserve">
+    <value>The {0} plugin has already been registered.</value>
+  </data>
 </root>

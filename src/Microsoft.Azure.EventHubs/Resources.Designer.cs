@@ -10,8 +10,8 @@
 
 namespace Microsoft.Azure.EventHubs {
     using System;
-    using System.Reflection;
-
+    
+    
     /// <summary>
     ///   A strongly-typed resource class, for looking up localized strings, etc.
     /// </summary>
@@ -39,7 +39,7 @@ namespace Microsoft.Azure.EventHubs {
         internal static global::System.Resources.ResourceManager ResourceManager {
             get {
                 if (object.ReferenceEquals(resourceMan, null)) {
-                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("Microsoft.Azure.EventHubs.Resources", typeof(Resources).GetTypeInfo().Assembly);
+                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("Microsoft.Azure.EventHubs.Resources", typeof(Resources).Assembly);
                     resourceMan = temp;
                 }
                 return resourceMan;
@@ -147,6 +147,15 @@ namespace Microsoft.Azure.EventHubs {
         internal static string PartitionSenderInvalidWithPartitionKeyOnBatch {
             get {
                 return ResourceManager.GetString("PartitionSenderInvalidWithPartitionKeyOnBatch", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The {0} plugin has already been registered..
+        /// </summary>
+        internal static string PluginAlreadyRegistered {
+            get {
+                return ResourceManager.GetString("PluginAlreadyRegistered", resourceCulture);
             }
         }
         
