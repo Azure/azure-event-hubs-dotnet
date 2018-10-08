@@ -3,7 +3,7 @@
   <PropertyGroup>
     <Description>This is the next generation Azure Event Hubs .NET Standard client library. For more information about Event Hubs, see https://azure.microsoft.com/en-us/services/event-hubs/</Description>
     <AssemblyTitle>Microsoft.Azure.EventHubs</AssemblyTitle>
-    <VersionPrefix>2.2.0</VersionPrefix>
+    <VersionPrefix>2.2.1</VersionPrefix>
     <Authors>Microsoft</Authors>
     <TargetFrameworks>net461;netstandard2.0;uap10.0</TargetFrameworks>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
@@ -24,10 +24,10 @@
     <GenerateAssemblyProductAttribute>false</GenerateAssemblyProductAttribute>
     <DebugType>full</DebugType>
     <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\Microsoft.Azure.EventHubs.xml</DocumentationFile>
-    <Version>2.2.0</Version>
-    <AssemblyVersion>2.2.0.0</AssemblyVersion>
-    <FileVersion>2.2.0.0</FileVersion>
-    <DelaySign>true</DelaySign>
+    <Version>2.2.1</Version>
+    <AssemblyVersion>2.2.1.0</AssemblyVersion>
+    <FileVersion>2.2.1.0</FileVersion>
+    <DelaySign>false</DelaySign>
     <Copyright>© Microsoft Corporation. All rights reserved.</Copyright>
   </PropertyGroup>
 
