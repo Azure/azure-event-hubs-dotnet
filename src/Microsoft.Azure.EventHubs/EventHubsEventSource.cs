@@ -218,7 +218,7 @@ namespace Microsoft.Azure.EventHubs
         {
             if (this.IsEnabled())
             {
-                this.WriteEvent(95, pluginName, clientId);
+                this.WriteEvent(100, pluginName, clientId);
             }
         }
 
@@ -227,7 +227,7 @@ namespace Microsoft.Azure.EventHubs
         {
             if (this.IsEnabled())
             {
-                this.WriteEvent(96, pluginName, clientId);
+                this.WriteEvent(101, pluginName, clientId);
             }
         }
 
@@ -236,7 +236,7 @@ namespace Microsoft.Azure.EventHubs
         {
             if (this.IsEnabled())
             {
-                this.WriteEvent(97, pluginName, clientId, exception);
+                this.WriteEvent(102, pluginName, clientId, exception);
             }
         }
 

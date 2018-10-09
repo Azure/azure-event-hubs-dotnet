@@ -4,6 +4,7 @@
 namespace Microsoft.Azure.EventHubs.Core
 {
     using System.Threading.Tasks;
+    using System.Collections.Generic;
 
     /// <summary>
     ///     This class provides methods that can be overridden to manipulate messages for custom plugin functionality.
@@ -29,6 +30,16 @@ namespace Microsoft.Azure.EventHubs.Core
         public virtual Task<EventData> BeforeMessageSend(EventData eventData)
         {
             return Task.FromResult(eventData);
+        }
+
+        /// <summary>
+        ///     This operation is called after a event collection is received, but before it is returned to the client.
+        /// </summary>
+        /// <param name="eventsData">The <see cref="EventData"/> collection of events to be modified by the plugin</param>
+        /// <returns>The modified collection of events <see cref="EventData"/></returns>
+        public virtual Task<IEnumerable<EventData>> AfterEventsReceive(IEnumerable<EventData> eventsData)
+        {
+            return Task.FromResult(eventsData);
         }
     }
 }

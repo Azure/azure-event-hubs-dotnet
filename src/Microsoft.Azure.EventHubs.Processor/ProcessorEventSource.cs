@@ -3,6 +3,7 @@
 
 namespace Microsoft.Azure.EventHubs
 {
+    using System;
     using System.Diagnostics.Tracing;
 
     /// <summary>
@@ -323,6 +324,36 @@ namespace Microsoft.Azure.EventHubs
             if (IsEnabled())
             {
                 WriteEvent(103, hostId, partitionId, details, exception);
+            }
+        }
+
+        //
+        // 151-180 reserved for Plugins traces
+        //
+        [Event(151, Level = EventLevel.Verbose, Message = "User plugin {0} called on client {1}")]
+        public void PluginCallStarted(string pluginName, string clientId)
+        {
+            if (this.IsEnabled())
+            {
+                this.WriteEvent(151, pluginName, clientId);
+            }
+        }
+
+        [Event(152, Level = EventLevel.Verbose, Message = "User plugin {0} completed on client {1}")]
+        public void PluginCallCompleted(string pluginName, string clientId)
+        {
+            if (this.IsEnabled())
+            {
+                this.WriteEvent(152, pluginName, clientId);
+            }
+        }
+
+        [Event(153, Level = EventLevel.Error, Message = "Exception during {0} plugin execution. clientId: {1}, Exception {2}")]
+        public void PluginCallFailed(string pluginName, string clientId, Exception exception)
+        {
+            if (this.IsEnabled())
+            {
+                this.WriteEvent(152, pluginName, clientId, exception);
             }
         }
 
