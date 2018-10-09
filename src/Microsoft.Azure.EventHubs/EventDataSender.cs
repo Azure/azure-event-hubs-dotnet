@@ -44,18 +44,18 @@ namespace Microsoft.Azure.EventHubs
             return count;
         }
 
-        async Task<EventData> ProcessEvent(EventData @event)
+        async Task<EventData> ProcessEvent(EventData eventData)
         {
             if (this.RegisteredPlugins == null || this.RegisteredPlugins.Count == 0)
-                return @event;
+                return eventData;
 
-            var processedEvent = @event;
+            var processedEvent = eventData;
             foreach (var plugin in this.RegisteredPlugins)
             {
                 try
                 {
                     EventHubsEventSource.Log.PluginCallStarted(plugin.Name, ClientId);
-                    processedEvent = await plugin.BeforeMessageSend(@event).ConfigureAwait(false);
+                    processedEvent = await plugin.BeforeMessageSend(eventData).ConfigureAwait(false);
                     EventHubsEventSource.Log.PluginCallCompleted(plugin.Name, ClientId);
                 }
                 catch (Exception ex)
@@ -79,9 +79,10 @@ namespace Microsoft.Azure.EventHubs
             }
 
             var processedEventList = new List<EventData>();
-            foreach (var @event in eventDatas)
+            foreach (var eventData in eventDatas)
             {
-                var processedMessage = await this.ProcessEvent(@event).ConfigureAwait(false);
+                var processedMessage = await this.ProcessEvent(eventData)
+                    .ConfigureAwait(false);
                 processedEventList.Add(processedMessage);
             }
 

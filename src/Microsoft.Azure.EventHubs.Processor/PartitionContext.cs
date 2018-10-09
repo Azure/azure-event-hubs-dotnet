@@ -146,7 +146,7 @@ namespace Microsoft.Azure.EventHubs.Processor
         {
             if (eventData == null)
             {
-                throw new ArgumentNullException("eventData");
+                throw new ArgumentNullException(nameof(eventData));
             }
 
             // We have never seen this sequence number yet

@@ -432,7 +432,7 @@ namespace Microsoft.Azure.EventHubs.Processor
 
             if ((biggestOwner.Value - haveLeaseCount) >= 2)
             {
-                stealThisLease = stealableLeases.Where(l => l.Owner == biggestOwner.Key).First();
+                stealThisLease = stealableLeases.First(l => l.Owner == biggestOwner.Key);
                 ProcessorEventSource.Log.EventProcessorHostInfo(this.host.HostName, $"Proposed to steal lease for partition {stealThisLease.PartitionId} from {biggestOwner.Key}");
             }
 

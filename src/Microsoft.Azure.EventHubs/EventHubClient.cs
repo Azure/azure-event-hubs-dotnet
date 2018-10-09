@@ -1,9 +1,6 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-using System.Linq;
-using Microsoft.Azure.EventHubs.Core;
-
 namespace Microsoft.Azure.EventHubs
 {
     using System;
@@ -13,6 +10,8 @@ namespace Microsoft.Azure.EventHubs
     using System.Threading.Tasks;
     using Microsoft.Azure.EventHubs.Amqp;
     using Microsoft.IdentityModel.Clients.ActiveDirectory;
+    using System.Linq;
+    using Microsoft.Azure.EventHubs.Core;
 
     /// <summary>
     /// Anchor class - all EventHub client operations start here.

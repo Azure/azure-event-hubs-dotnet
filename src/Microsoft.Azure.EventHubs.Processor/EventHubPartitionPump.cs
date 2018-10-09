@@ -139,7 +139,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             }
 
             public int MaxBatchSize { get; set; }
-
+            
             public Task ProcessEventsAsync(IEnumerable<EventData> events)
             {
                 // This method is called on the thread that the EH client uses to run the pump.

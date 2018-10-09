@@ -1,10 +1,9 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-using System;
-
 namespace Microsoft.Azure.EventHubs
 {
+    using System;
     using System.Diagnostics.Tracing;
 
     /// <summary>
@@ -211,7 +210,10 @@ namespace Microsoft.Azure.EventHubs
             }
         }
 
-        [Event(22, Level = EventLevel.Verbose, Message = "User plugin {0} called on client {1}")]
+        //
+        // 100-120 reserved for Plugins traces
+        //
+        [Event(100, Level = EventLevel.Verbose, Message = "User plugin {0} called on client {1}")]
         public void PluginCallStarted(string pluginName, string clientId)
         {
             if (this.IsEnabled())
@@ -220,7 +222,7 @@ namespace Microsoft.Azure.EventHubs
             }
         }
 
-        [Event(23, Level = EventLevel.Verbose, Message = "User plugin {0} completed on client {1}")]
+        [Event(101, Level = EventLevel.Verbose, Message = "User plugin {0} completed on client {1}")]
         public void PluginCallCompleted(string pluginName, string clientId)
         {
             if (this.IsEnabled())
@@ -229,7 +231,7 @@ namespace Microsoft.Azure.EventHubs
             }
         }
 
-        [Event(24, Level = EventLevel.Error, Message = "Exception during {0} plugin execution. clientId: {1}, Exception {2}")]
+        [Event(102, Level = EventLevel.Error, Message = "Exception during {0} plugin execution. clientId: {1}, Exception {2}")]
         public void PluginCallFailed(string pluginName, string clientId, Exception exception)
         {
             if (this.IsEnabled())
