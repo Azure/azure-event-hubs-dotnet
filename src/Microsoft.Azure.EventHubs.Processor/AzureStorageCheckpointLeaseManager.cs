@@ -38,12 +38,15 @@ namespace Microsoft.Azure.EventHubs.Processor
                 throw new ArgumentNullException(nameof(cloudStorageAccount));
             }
 
-            // Validate lease container name.
-            if (!Regex.IsMatch(leaseContainerName, @"^[a-z0-9](([a-z0-9\-[^\-])){1,61}[a-z0-9]$"))
+            try
+            {
+                NameValidator.ValidateContainerName(leaseContainerName);
+            }
+            catch (ArgumentException)
             {
                 throw new ArgumentException(
                     "Azure Storage lease container name is invalid. Please check naming conventions at https://msdn.microsoft.com/en-us/library/azure/dd135715.aspx",
-                   nameof(leaseContainerName));
+                    nameof(leaseContainerName));
             }
 
             this.cloudStorageAccount = cloudStorageAccount;
