@@ -71,7 +71,11 @@ namespace Microsoft.Azure.EventHubs.Amqp
                                 }
                             }
 
-                            Outcome outcome = await amqpLink.SendMessageAsync(amqpMessage, this.GetNextDeliveryTag(), AmqpConstants.NullBinary, timeoutHelper.RemainingTime()).ConfigureAwait(false);
+                            Outcome outcome = await amqpLink.SendMessageAsync(
+                                amqpMessage, 
+                                this.GetNextDeliveryTag(), 
+                                AmqpConstants.NullBinary,
+                                timeoutHelper.RemainingTime()).ConfigureAwait(false);
                             if (outcome.DescriptorCode != Accepted.Code)
                             {
                                 Rejected rejected = (Rejected)outcome;
@@ -121,7 +125,13 @@ namespace Microsoft.Azure.EventHubs.Amqp
             Uri address = new Uri(amqpEventHubClient.ConnectionStringBuilder.Endpoint, this.Path);
             string audience = address.AbsoluteUri;
             string resource = address.AbsoluteUri;
-            var expiresAt = await cbsLink.SendTokenAsync(cbsTokenProvider, address, audience, resource, new[] { ClaimConstants.Send }, timeoutHelper.RemainingTime()).ConfigureAwait(false);
+            var expiresAt = await cbsLink.SendTokenAsync(
+                cbsTokenProvider,
+                address, 
+                audience,
+                resource, 
+                new[] { ClaimConstants.Send },
+                timeoutHelper.RemainingTime()).ConfigureAwait(false);
 
             AmqpSession session = null;
             try

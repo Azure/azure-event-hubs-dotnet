@@ -104,13 +104,18 @@ namespace Microsoft.Azure.EventHubs.Processor
                 // No checkpoint was ever stored. Use the initialOffsetProvider instead.
                 ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, this.PartitionId, "Calling user-provided initial offset provider");
                 eventPosition = this.host.EventProcessorOptions.InitialOffsetProvider(this.PartitionId);
-                ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, this.PartitionId, $"Initial Position Provider. Offset:{eventPosition.Offset}, SequenceNumber:{eventPosition.SequenceNumber}, DateTime:{eventPosition.EnqueuedTimeUtc}");
+                ProcessorEventSource.Log.PartitionPumpInfo(
+                    this.host.HostName, 
+                    this.PartitionId, 
+                    $"Initial Position Provider. Offset:{eventPosition.Offset}, SequenceNumber:{eventPosition.SequenceNumber}, DateTime:{eventPosition.EnqueuedTimeUtc}");
             }
             else
             {
                 this.Offset = startingCheckpoint.Offset;
                 this.SequenceNumber = startingCheckpoint.SequenceNumber;
-                ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, this.PartitionId, $"Retrieved starting offset/sequenceNumber: {this.Offset}/{this.SequenceNumber}");
+                ProcessorEventSource.Log.PartitionPumpInfo(
+                    this.host.HostName, 
+                    this.PartitionId, $"Retrieved starting offset/sequenceNumber: {this.Offset}/{this.SequenceNumber}");
                 eventPosition = EventPosition.FromOffset(this.Offset);
             }
 
@@ -146,7 +151,7 @@ namespace Microsoft.Azure.EventHubs.Processor
         {
             if (eventData == null)
             {
-                throw new ArgumentNullException("eventData");
+                throw new ArgumentNullException(nameof(eventData));
             }
 
             // We have never seen this sequence number yet
