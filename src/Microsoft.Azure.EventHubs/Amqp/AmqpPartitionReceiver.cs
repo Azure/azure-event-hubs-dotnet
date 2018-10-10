@@ -40,7 +40,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
         FaultTolerantAmqpObject<ReceivingAmqpLink> ReceiveLinkManager { get; }
 
-        protected async override Task OnCloseAsync()
+        protected override async Task OnCloseAsync()
         {
             // Close any ReceiveHandler (this is safe if there is none) and the ReceiveLinkManager in parallel.
             await this.ReceiveHandlerClose();
