@@ -40,7 +40,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
         FaultTolerantAmqpObject<ReceivingAmqpLink> ReceiveLinkManager { get; }
 
-        protected async override Task OnCloseAsync()
+        protected override async Task OnCloseAsync()
         {
             // Close any ReceiveHandler (this is safe if there is none) and the ReceiveLinkManager in parallel.
             await this.ReceiveHandlerClose();
@@ -112,9 +112,9 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     }
                     else
                     {
-                        // Handle System.TimeoutException explicitly.
-                        // We don't really want to to throw TimeoutException on this call.
-                        if (ex is TimeoutException)
+                        // Handle EventHubsTimeoutException explicitly.
+                        // We don't really want to to throw EventHubsTimeoutException on this call.
+                        if (ex is EventHubsTimeoutException)
                         {
                             break;
                         }

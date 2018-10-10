@@ -223,9 +223,13 @@ namespace Microsoft.Azure.EventHubs.Processor
                                     // Might have failed due to intermittent error or lease-lost.
                                     // Just log here, expired leases will be picked by same or another host anyway.
                                     ProcessorEventSource.Log.PartitionPumpError(this.host.HostName, lease.PartitionId, "Failed to renew lease.", renewResult.Exception?.Message);
-                                    this.host.EventProcessorOptions.NotifyOfException(this.host.HostName, lease.PartitionId, renewResult.Exception, EventProcessorHostActionStrings.RenewingLease);
+                                    this.host.EventProcessorOptions.NotifyOfException(
+                                        this.host.HostName, 
+                                        lease.PartitionId, 
+                                        renewResult.Exception, 
+                                        EventProcessorHostActionStrings.RenewingLease);
                                 }
-                            }));
+                            }, cancellationToken));
                         }
                         else
                         {

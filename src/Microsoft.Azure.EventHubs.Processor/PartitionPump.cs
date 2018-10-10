@@ -42,7 +42,12 @@ namespace Microsoft.Azure.EventHubs.Processor
 
             this.cancellationTokenSource = new CancellationTokenSource();
 
-            this.PartitionContext = new PartitionContext(this.Host, this.Lease.PartitionId, this.Host.EventHubPath, this.Host.ConsumerGroupName, this.cancellationTokenSource.Token);
+            this.PartitionContext = new PartitionContext(
+                this.Host, 
+                this.Lease.PartitionId, 
+                this.Host.EventHubPath, 
+                this.Host.ConsumerGroupName, 
+                this.cancellationTokenSource.Token);
             this.PartitionContext.Lease = this.Lease;
 
             if (this.PumpStatus == PartitionPumpStatus.Opening)

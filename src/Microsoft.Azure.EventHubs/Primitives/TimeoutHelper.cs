@@ -12,8 +12,8 @@ namespace Microsoft.Azure.EventHubs
     {
         DateTime deadline;
         bool deadlineSet;
-        TimeSpan originalTimeout;
-        public static readonly TimeSpan MaxWait = TimeSpan.FromMilliseconds(Int32.MaxValue);
+        readonly TimeSpan originalTimeout;
+        public static readonly TimeSpan MaxWait = TimeSpan.FromMilliseconds(int.MaxValue);
 
         public TimeoutHelper(TimeSpan timeout) :
             this(timeout, false)
