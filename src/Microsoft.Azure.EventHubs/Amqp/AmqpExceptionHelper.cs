@@ -73,7 +73,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
         {
             if (string.Equals(condition, AmqpClientConstants.TimeoutError.Value))
             {
-                return new TimeoutException(message);
+                return new EventHubsTimeoutException(message);
             }
             else if (string.Equals(condition, AmqpErrorCode.NotFound.Value))
             {
