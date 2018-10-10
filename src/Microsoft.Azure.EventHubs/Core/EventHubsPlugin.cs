@@ -3,8 +3,8 @@
 
 namespace Microsoft.Azure.EventHubs.Core
 {
-    using System.Threading.Tasks;
     using System.Collections.Generic;
+    using System.Threading.Tasks;
 
     /// <summary>
     ///     This class provides methods that can be overridden to manipulate messages for custom plugin functionality.

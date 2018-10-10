@@ -8,10 +8,8 @@ namespace Microsoft.Azure.EventHubs
     using System.Diagnostics;
     using System.Net;
     using System.Threading.Tasks;
-    using Microsoft.Azure.EventHubs.Amqp;
-    using Microsoft.IdentityModel.Clients.ActiveDirectory;
-    using System.Linq;
-    using Microsoft.Azure.EventHubs.Core;
+    using Amqp;
+    using IdentityModel.Clients.ActiveDirectory;
 
     /// <summary>
     /// Anchor class - all EventHub client operations start here.

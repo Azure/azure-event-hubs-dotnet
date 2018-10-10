@@ -4,12 +4,11 @@
 namespace Microsoft.Azure.EventHubs
 {
     using System;
-    using System.Threading;
-    using System.Threading.Tasks;
     using System.Collections.Generic;
     using System.Linq;
-    using Microsoft.Azure.EventHubs.Core;
-
+    using System.Threading;
+    using System.Threading.Tasks;
+    using Core;
 
     /// <summary>
     /// Contract for all client entities with Open-Close/Abort state m/c
