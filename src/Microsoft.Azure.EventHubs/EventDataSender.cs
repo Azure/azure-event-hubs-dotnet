@@ -55,7 +55,7 @@ namespace Microsoft.Azure.EventHubs
                 try
                 {
                     EventHubsEventSource.Log.PluginCallStarted(plugin.Name, ClientId);
-                    processedEvent = await plugin.BeforeMessageSend(eventData).ConfigureAwait(false);
+                    processedEvent = await plugin.BeforeEventSend(eventData).ConfigureAwait(false);
                     EventHubsEventSource.Log.PluginCallCompleted(plugin.Name, ClientId);
                 }
                 catch (Exception ex)

@@ -27,7 +27,7 @@ namespace Microsoft.Azure.EventHubs.Core
         /// </summary>
         /// <param name="eventData">The <see cref="EventData" /> to be modified by the plugin</param>
         /// <returns>The modified event <see cref="EventData" /></returns>
-        public virtual Task<EventData> BeforeMessageSend(EventData eventData)
+        public virtual Task<EventData> BeforeEventSend(EventData eventData)
         {
             return Task.FromResult(eventData);
         }
