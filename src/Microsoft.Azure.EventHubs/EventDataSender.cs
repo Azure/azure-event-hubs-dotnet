@@ -50,7 +50,7 @@ namespace Microsoft.Azure.EventHubs
                 return eventData;
 
             var processedEvent = eventData;
-            foreach (var plugin in this.RegisteredPlugins)
+            foreach (var plugin in this.RegisteredPlugins.Values)
             {
                 try
                 {

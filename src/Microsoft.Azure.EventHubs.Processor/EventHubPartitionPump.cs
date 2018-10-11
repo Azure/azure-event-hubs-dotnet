@@ -140,36 +140,14 @@ namespace Microsoft.Azure.EventHubs.Processor
 
             public int MaxBatchSize { get; set; }
 
-            public async Task ProcessEventsAsync(IEnumerable<EventData> events)
+            public Task ProcessEventsAsync(IEnumerable<EventData> events)
             {
-                var eventHubClient = this.eventHubPartitionPump.eventHubClient;
-                var processedEvents = events;
-
-                foreach (var plugin in eventHubClient.RegisteredPlugins)
-                {
-                    try
-                    {
-                        ProcessorEventSource.Log.PluginCallStarted(plugin.Name, eventHubClient.ClientId);
-                        processedEvents = await plugin.AfterEventsReceive(processedEvents).ConfigureAwait(false);
-                        ProcessorEventSource.Log.PluginCallCompleted(plugin.Name, eventHubClient.ClientId);
-                    }
-                    catch (Exception ex)
-                    {
-                        ProcessorEventSource.Log.PluginCallFailed(plugin.Name, eventHubClient.ClientId, ex);
-                        if (!plugin.ShouldContinueOnException)
-                        {
-                            throw;
-                        }
-                    }
-                }
-
                 // This method is called on the thread that the EH client uses to run the pump.
                 // There is one pump per EventHubClient. Since each PartitionPump creates a new EventHubClient,
                 // using that thread to call OnEvents does no harm. Even if OnEvents is slow, the pump will
                 // get control back each time OnEvents returns, and be able to receive a new batch of messages
                 // with which to make the next OnEvents call. The pump gains nothing by running faster than OnEvents.
-                await this.eventHubPartitionPump.ProcessEventsAsync(processedEvents)
-                    .ConfigureAwait(false);
+                return this.eventHubPartitionPump.ProcessEventsAsync(events);
             }
 
             public async Task ProcessErrorAsync(Exception error)

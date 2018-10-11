@@ -1,14 +1,16 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
+using System.Collections.Concurrent;
+
 namespace Microsoft.Azure.EventHubs
 {
+    using Microsoft.Azure.EventHubs.Core;
     using System;
     using System.Collections.Generic;
     using System.Linq;
     using System.Threading;
     using System.Threading.Tasks;
-    using Core;
 
     /// <summary>
     /// Contract for all client entities with Open-Close/Abort state m/c
@@ -37,7 +39,8 @@ namespace Microsoft.Azure.EventHubs
         /// <summary>
         /// Gets a list of currently registered plugins for this Client.
         /// </summary>
-        public virtual IList<EventHubsPlugin> RegisteredPlugins { get; } = new List<EventHubsPlugin>();
+        public virtual ConcurrentDictionary<string, EventHubsPlugin> RegisteredPlugins { get; }
+            = new ConcurrentDictionary<string, EventHubsPlugin>();
 
         /// <summary>
         /// Gets the <see cref="EventHubs.RetryPolicy"/> for the ClientEntity.
@@ -71,11 +74,14 @@ namespace Microsoft.Azure.EventHubs
             {
                 throw new ArgumentNullException(nameof(eventHubPlugin), Resources.ArgumentNullOrWhiteSpace.FormatForUser(nameof(eventHubPlugin)));
             }
-            if (this.RegisteredPlugins.Any(p => p.Name == eventHubPlugin.Name))
+            if (this.RegisteredPlugins.Any(p => p.Key == eventHubPlugin.Name))
             {
                 throw new ArgumentException(nameof(eventHubPlugin), Resources.PluginAlreadyRegistered.FormatForUser(nameof(eventHubPlugin.Name)));
             }
-            this.RegisteredPlugins.Add(eventHubPlugin);
+            if (!this.RegisteredPlugins.TryAdd(eventHubPlugin.Name, eventHubPlugin))
+            {
+                throw new ArgumentException(nameof(eventHubPlugin), Resources.PluginRegistrationFailed.FormatForUser(nameof(eventHubPlugin.Name)));
+            }
         }
 
         /// <summary>
@@ -92,11 +98,8 @@ namespace Microsoft.Azure.EventHubs
             {
                 throw new ArgumentNullException(nameof(eventHubPlugin), Resources.ArgumentNullOrWhiteSpace.FormatForUser(nameof(eventHubPlugin)));
             }
-            if (this.RegisteredPlugins.Any(p => p.Name == eventHubPlugin))
-            {
-                var plugin = this.RegisteredPlugins.First(p => p.Name == eventHubPlugin);
-                this.RegisteredPlugins.Remove(plugin);
-            }
+
+            this.RegisteredPlugins.TryRemove(eventHubPlugin, out EventHubsPlugin plugin);
         }
 
         /// <summary>

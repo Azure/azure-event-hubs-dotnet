@@ -171,4 +171,7 @@
   <data name="PluginAlreadyRegistered" xml:space="preserve">
     <value>The {0} plugin has already been registered.</value>
   </data>
+  <data name="PluginRegistrationFailed" xml:space="preserve">
+    <value>There was an error trying to register the {0} plugin.</value>
+  </data>
 </root>

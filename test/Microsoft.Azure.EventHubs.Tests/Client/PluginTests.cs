@@ -3,11 +3,11 @@
 
 namespace Microsoft.Azure.EventHubs.Tests.Client
 {
+    using Microsoft.Azure.EventHubs.Core;
     using System;
     using System.Threading.Tasks;
     using System.Text;
     using Xunit;
-    using Core;
 
     public class PluginTests
     {
