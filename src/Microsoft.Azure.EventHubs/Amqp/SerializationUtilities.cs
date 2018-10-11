@@ -20,7 +20,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
     class SerializationUtilities
     {
-        readonly static Dictionary<Type, PropertyValueType> typeToIntMap = new Dictionary<Type, PropertyValueType>
+        static readonly Dictionary<Type, PropertyValueType> typeToIntMap = new Dictionary<Type, PropertyValueType>
         {
             { typeof(byte), PropertyValueType.Byte },
             { typeof(sbyte), PropertyValueType.SByte },

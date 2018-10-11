@@ -20,9 +20,9 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
 
         readonly AmqpEventHubClient eventHubClient;
         readonly FaultTolerantAmqpObject<RequestResponseAmqpLink> link;
+        readonly AsyncLock tokenLock = new AsyncLock();
 
         SecurityToken token;
-        AsyncLock tokenLock = new AsyncLock();
 
         public AmqpServiceClient(AmqpEventHubClient eventHubClient, string address)
             : base("AmqpServiceClient-" + StringUtility.GetRandomString())
