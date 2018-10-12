@@ -3,13 +3,13 @@
 
 namespace Microsoft.Azure.EventHubs
 {
-    using Microsoft.Azure.EventHubs.Amqp;
-    using Microsoft.IdentityModel.Clients.ActiveDirectory;
     using System;
     using System.Collections.Generic;
     using System.Diagnostics;
     using System.Net;
     using System.Threading.Tasks;
+    using Microsoft.Azure.EventHubs.Amqp;
+    using Microsoft.IdentityModel.Clients.ActiveDirectory;
 
     /// <summary>
     /// Anchor class - all EventHub client operations start here.

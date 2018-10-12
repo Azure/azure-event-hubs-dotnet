@@ -5,12 +5,11 @@ using System.Collections.Concurrent;
 
 namespace Microsoft.Azure.EventHubs
 {
-    using Microsoft.Azure.EventHubs.Core;
     using System;
-    using System.Collections.Generic;
     using System.Linq;
     using System.Threading;
     using System.Threading.Tasks;
+    using Microsoft.Azure.EventHubs.Core;
 
     /// <summary>
     /// Contract for all client entities with Open-Close/Abort state m/c
@@ -68,38 +67,38 @@ namespace Microsoft.Azure.EventHubs
         /// <summary>
         /// Registers a <see cref="EventHubsPlugin"/> to be used with this client.
         /// </summary>
-        public virtual void RegisterPlugin(EventHubsPlugin eventHubPlugin)
+        public virtual void RegisterPlugin(EventHubsPlugin eventHubsPlugin)
         {
-            if (eventHubPlugin == null)
+            if (eventHubsPlugin == null)
             {
-                throw new ArgumentNullException(nameof(eventHubPlugin), Resources.ArgumentNullOrWhiteSpace.FormatForUser(nameof(eventHubPlugin)));
+                throw new ArgumentNullException(nameof(eventHubsPlugin), Resources.ArgumentNullOrWhiteSpace.FormatForUser(nameof(eventHubsPlugin)));
             }
-            if (this.RegisteredPlugins.Any(p => p.Key == eventHubPlugin.Name))
+            if (this.RegisteredPlugins.Any(p => p.Value.Name == eventHubsPlugin.Name))
             {
-                throw new ArgumentException(nameof(eventHubPlugin), Resources.PluginAlreadyRegistered.FormatForUser(nameof(eventHubPlugin.Name)));
+                throw new ArgumentException(nameof(eventHubsPlugin.Name), Resources.PluginAlreadyRegistered.FormatForUser(nameof(eventHubsPlugin.Name)));
             }
-            if (!this.RegisteredPlugins.TryAdd(eventHubPlugin.Name, eventHubPlugin))
+            if (!this.RegisteredPlugins.TryAdd(eventHubsPlugin.Name, eventHubsPlugin))
             {
-                throw new ArgumentException(nameof(eventHubPlugin), Resources.PluginRegistrationFailed.FormatForUser(nameof(eventHubPlugin.Name)));
+                throw new ArgumentException(nameof(eventHubsPlugin), Resources.PluginRegistrationFailed.FormatForUser(nameof(eventHubsPlugin.Name)));
             }
         }
 
         /// <summary>
         /// Unregisters a <see cref="EventHubsPlugin"/>.
         /// </summary>
-        /// <param name="eventHubPlugin">The <see cref="EventHubsPlugin.Name"/> of the plugin to be unregistered.</param>
-        public virtual void UnregisterPlugin(string eventHubPlugin)
+        /// <param name="pluginName">The <see cref="EventHubsPlugin.Name"/> of the plugin to be unregistered.</param>
+        public virtual void UnregisterPlugin(string pluginName)
         {
             if (this.RegisteredPlugins == null)
             {
                 return;
             }
-            if (string.IsNullOrWhiteSpace(eventHubPlugin))
+            if (string.IsNullOrWhiteSpace(pluginName))
             {
-                throw new ArgumentNullException(nameof(eventHubPlugin), Resources.ArgumentNullOrWhiteSpace.FormatForUser(nameof(eventHubPlugin)));
+                throw new ArgumentNullException(nameof(pluginName), Resources.ArgumentNullOrWhiteSpace.FormatForUser(nameof(pluginName)));
             }
 
-            this.RegisteredPlugins.TryRemove(eventHubPlugin, out EventHubsPlugin plugin);
+            this.RegisteredPlugins.TryRemove(pluginName, out EventHubsPlugin plugin);
         }
 
         /// <summary>

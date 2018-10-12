@@ -3,10 +3,10 @@
 
 namespace Microsoft.Azure.EventHubs.Tests.Client
 {
-    using Microsoft.Azure.EventHubs.Core;
     using System;
     using System.Threading.Tasks;
     using System.Text;
+    using Microsoft.Azure.EventHubs.Core;
     using Xunit;
 
     public class PluginTests
