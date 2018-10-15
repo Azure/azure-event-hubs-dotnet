@@ -3,6 +3,7 @@
 
 namespace Microsoft.Azure.EventHubs
 {
+    using System;
     using System.Diagnostics.Tracing;
 
     /// <summary>

@@ -1,11 +1,15 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
+
 namespace Microsoft.Azure.EventHubs
 {
     using System;
+    using System.Collections.Concurrent;
+    using System.Linq;
     using System.Threading;
     using System.Threading.Tasks;
+    using Microsoft.Azure.EventHubs.Core;
 
     /// <summary>
     /// Contract for all client entities with Open-Close/Abort state m/c
@@ -14,7 +18,6 @@ namespace Microsoft.Azure.EventHubs
     public abstract class ClientEntity
     {
         static int nextId;
-
         RetryPolicy retryPolicy;
 
         /// <summary></summary>
@@ -33,7 +36,13 @@ namespace Microsoft.Azure.EventHubs
         }
 
         /// <summary>
-        /// Gets the <see cref="RetryPolicy.RetryPolicy"/> for the ClientEntity.
+        /// Gets a list of currently registered plugins for this Client.
+        /// </summary>
+        public virtual ConcurrentDictionary<string, EventHubsPlugin> RegisteredPlugins { get; }
+            = new ConcurrentDictionary<string, EventHubsPlugin>();
+
+        /// <summary>
+        /// Gets the <see cref="EventHubs.RetryPolicy"/> for the ClientEntity.
         /// </summary>
         public RetryPolicy RetryPolicy
         {
@@ -54,6 +63,43 @@ namespace Microsoft.Azure.EventHubs
         /// </summary>
         /// <returns>The asynchronous operation</returns>
         public abstract Task CloseAsync();
+
+        /// <summary>
+        /// Registers a <see cref="EventHubsPlugin"/> to be used with this client.
+        /// </summary>
+        public virtual void RegisterPlugin(EventHubsPlugin eventHubsPlugin)
+        {
+            if (eventHubsPlugin == null)
+            {
+                throw new ArgumentNullException(nameof(eventHubsPlugin), Resources.ArgumentNullOrWhiteSpace.FormatForUser(nameof(eventHubsPlugin)));
+            }
+            if (this.RegisteredPlugins.Any(p => p.Value.Name == eventHubsPlugin.Name))
+            {
+                throw new ArgumentException(eventHubsPlugin.Name, Resources.PluginAlreadyRegistered.FormatForUser(eventHubsPlugin.Name));
+            }
+            if (!this.RegisteredPlugins.TryAdd(eventHubsPlugin.Name, eventHubsPlugin))
+            {
+                throw new ArgumentException(eventHubsPlugin.Name, Resources.PluginRegistrationFailed.FormatForUser(eventHubsPlugin.Name));
+            }
+        }
+
+        /// <summary>
+        /// Unregisters a <see cref="EventHubsPlugin"/>.
+        /// </summary>
+        /// <param name="pluginName">The <see cref="EventHubsPlugin.Name"/> of the plugin to be unregistered.</param>
+        public virtual void UnregisterPlugin(string pluginName)
+        {
+            if (this.RegisteredPlugins == null)
+            {
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(pluginName))
+            {
+                throw new ArgumentNullException(nameof(pluginName), Resources.ArgumentNullOrWhiteSpace.FormatForUser(nameof(pluginName)));
+            }
+
+            this.RegisteredPlugins.TryRemove(pluginName, out EventHubsPlugin plugin);
+        }
 
         /// <summary>
         /// Closes the ClientEntity.
