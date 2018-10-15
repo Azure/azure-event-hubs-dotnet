@@ -75,11 +75,11 @@ namespace Microsoft.Azure.EventHubs
             }
             if (this.RegisteredPlugins.Any(p => p.Value.Name == eventHubsPlugin.Name))
             {
-                throw new ArgumentException(nameof(eventHubsPlugin.Name), Resources.PluginAlreadyRegistered.FormatForUser(nameof(eventHubsPlugin.Name)));
+                throw new ArgumentException(eventHubsPlugin.Name, Resources.PluginAlreadyRegistered.FormatForUser(eventHubsPlugin.Name));
             }
             if (!this.RegisteredPlugins.TryAdd(eventHubsPlugin.Name, eventHubsPlugin))
             {
-                throw new ArgumentException(nameof(eventHubsPlugin), Resources.PluginRegistrationFailed.FormatForUser(nameof(eventHubsPlugin.Name)));
+                throw new ArgumentException(eventHubsPlugin.Name, Resources.PluginRegistrationFailed.FormatForUser(eventHubsPlugin.Name));
             }
         }
 
