@@ -66,7 +66,18 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
         internal override EventDataSender OnCreateEventSender(string partitionId)
         {
-            return new AmqpEventDataSender(this, partitionId);
+            var sender = new AmqpEventDataSender(this, partitionId);
+
+            if (this.RegisteredPlugins.Count >= 1)
+            {
+                // register all the plugins
+                foreach (var plugin in this.RegisteredPlugins)
+                {
+                    sender.RegisterPlugin(plugin.Value);
+                }
+            }
+
+            return sender;
         }
 
         protected override PartitionReceiver OnCreateReceiver(

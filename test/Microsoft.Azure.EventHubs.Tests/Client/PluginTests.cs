@@ -83,7 +83,6 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
 
                 this.EventHubClient.RegisterPlugin(plugin);
                 var testEvent = new EventData(Encoding.UTF8.GetBytes("Test message"));
-                await this.EventHubClient.SendAsync(testEvent);
                 await Assert.ThrowsAsync<NotImplementedException>(() => this.EventHubClient.SendAsync(testEvent));
             }
             finally
