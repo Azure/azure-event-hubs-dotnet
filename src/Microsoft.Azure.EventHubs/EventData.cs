@@ -77,7 +77,7 @@ namespace Microsoft.Azure.EventHubs
         /// </summary>
         public SystemPropertiesCollection SystemProperties
         {
-            get; internal set;
+            get; set;
         }
 
         internal AmqpMessage AmqpMessage { get; set; }
