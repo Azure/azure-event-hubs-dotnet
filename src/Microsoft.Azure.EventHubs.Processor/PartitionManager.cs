@@ -250,21 +250,18 @@ namespace Microsoft.Azure.EventHubs.Processor
 
                 // Check any expired leases that we can grab here.
                 var checkLeaseTasks = new List<Task>();
-                foreach (var possibleLease in allLeases.Values)
+                foreach (var possibleLease in allLeases.Values.Where(lease => lease.Owner != this.host.HostName))
                 {
                     checkLeaseTasks.Add(Task.Run(async () =>
                     {
                         try
                         {
-                            if (possibleLease.Owner != this.host.HostName)
+                            if (await possibleLease.IsExpired().ConfigureAwait(false))
                             {
-                                if (await possibleLease.IsExpired().ConfigureAwait(false))
+                                ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, possibleLease.PartitionId, "Trying to acquire lease.");
+                                if (await leaseManager.AcquireLeaseAsync(possibleLease).ConfigureAwait(false))
                                 {
-                                    ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, possibleLease.PartitionId, "Trying to acquire lease.");
-                                    if (await leaseManager.AcquireLeaseAsync(possibleLease).ConfigureAwait(false))
-                                    {
-                                        ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, possibleLease.PartitionId, "Acquired lease.");
-                                    }
+                                    ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, possibleLease.PartitionId, "Acquired lease.");
                                 }
                             }
                         }
