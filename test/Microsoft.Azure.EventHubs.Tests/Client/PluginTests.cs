@@ -18,8 +18,8 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
         Task Registering_plugin_multiple_times_should_throw()
         {
             this.EventHubClient = EventHubClient.CreateFromConnectionString(TestUtility.EventHubsConnectionString);
-            var firstPlugin = new FirstSendPlugin();
-            var secondPlugin = new FirstSendPlugin();
+            var firstPlugin = new SamplePlugin();
+            var secondPlugin = new SamplePlugin();
 
             this.EventHubClient.RegisterPlugin(firstPlugin);
             Assert.Throws<ArgumentException>(() => EventHubClient.RegisterPlugin(secondPlugin));
@@ -31,7 +31,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
         Task Unregistering_plugin_should_complete_with_plugin_set()
         {
             this.EventHubClient = EventHubClient.CreateFromConnectionString(TestUtility.EventHubsConnectionString);
-            var firstPlugin = new FirstSendPlugin();
+            var firstPlugin = new SamplePlugin();
 
             this.EventHubClient.RegisterPlugin(firstPlugin);
             this.EventHubClient.UnregisterPlugin(firstPlugin.Name);
@@ -45,31 +45,6 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             this.EventHubClient = EventHubClient.CreateFromConnectionString(TestUtility.EventHubsConnectionString);
             this.EventHubClient.UnregisterPlugin("Non-existant plugin");
             return this.EventHubClient.CloseAsync();
-        }
-
-        [Fact]
-        [DisplayTestMethodName]
-        async Task Multiple_plugins_should_run_in_order()
-        {
-            this.EventHubClient = EventHubClient.CreateFromConnectionString(TestUtility.EventHubsConnectionString);
-
-            try
-            {
-                var firstPlugin = new FirstSendPlugin();
-                var secondPlugin = new SecondSendPlugin();
-
-                this.EventHubClient.RegisterPlugin(firstPlugin);
-                this.EventHubClient.RegisterPlugin(secondPlugin);
-
-                var testEvent = new EventData(Encoding.UTF8.GetBytes("Test message"));
-                await this.EventHubClient.SendAsync(testEvent);
-
-                // BeforeEventSend for Plugin2 should break is 1 was not called
-            }
-            finally
-            {
-                await this.EventHubClient.CloseAsync();
-            }
         }
 
         [Fact]
@@ -112,25 +87,13 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
         }
     }
 
-    internal class FirstSendPlugin : EventHubsPlugin
+    internal class SamplePlugin : EventHubsPlugin
     {
-        public override string Name => nameof(FirstSendPlugin);
+        public override string Name => nameof(SamplePlugin);
 
         public override Task<EventData> BeforeEventSend(EventData eventData)
         {
             eventData.Properties.Add("FirstSendPlugin", true);
-            return Task.FromResult(eventData);
-        }
-    }
-
-    internal class SecondSendPlugin : EventHubsPlugin
-    {
-        public override string Name => nameof(SecondSendPlugin);
-
-        public override Task<EventData> BeforeEventSend(EventData eventData)
-        {
-            Assert.True((bool)eventData.Properties["FirstSendPlugin"]);
-            eventData.Properties.Add("SecondSendPlugin", true);
             return Task.FromResult(eventData);
         }
     }
