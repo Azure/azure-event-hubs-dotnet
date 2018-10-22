@@ -15,7 +15,13 @@ namespace Microsoft.Azure.EventHubs.Amqp
         readonly AmqpObject amqpLinkObject;
         DateTime authorizationValidToUtc;
 
-        public ActiveClientLinkObject(AmqpObject amqpLinkObject, string audience, string endpointUri, string[] requiredClaims, bool isClientToken, DateTime authorizationValidToUtc)
+        protected ActiveClientLinkObject(
+            AmqpObject amqpLinkObject, 
+            string audience,
+            string endpointUri,
+            string[] requiredClaims,
+            bool isClientToken,
+            DateTime authorizationValidToUtc)
         {
             this.amqpLinkObject = amqpLinkObject;
             this.audience = audience;

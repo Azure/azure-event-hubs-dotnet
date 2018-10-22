@@ -143,6 +143,7 @@ namespace Microsoft.Azure.EventHubs.Processor
         // Throws if it runs out of retries. If it returns, action succeeded.
         async Task RetryAsync(Func<Task> lambda, string partitionId, string retryMessage, string finalFailureMessage, string action, int maxRetries) // throws ExceptionWithAction
         {
+            Exception finalException = null;
             bool createdOK = false;
     	    int retryCount = 0;
     	    do
@@ -152,16 +153,18 @@ namespace Microsoft.Azure.EventHubs.Processor
                     await lambda().ConfigureAwait(false);
                     createdOK = true;
                 }
-                catch (Exception e)
+                catch (Exception ex)
                 {
                     if (partitionId != null)
                     {
-                        ProcessorEventSource.Log.PartitionPumpWarning(this.host.HostName, partitionId, retryMessage, e.ToString());
+                        ProcessorEventSource.Log.PartitionPumpWarning(this.host.HostName, partitionId, retryMessage, ex.ToString());
                     }
                     else
                     {
-                        ProcessorEventSource.Log.EventProcessorHostWarning(this.host.HostName, retryMessage, e.ToString());
+                        ProcessorEventSource.Log.EventProcessorHostWarning(this.host.HostName, retryMessage, ex.ToString());
                     }
+
+                    finalException = ex;
                     retryCount++;
                 }
             }
@@ -178,7 +181,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                     ProcessorEventSource.Log.EventProcessorHostError(this.host.HostName, finalFailureMessage, null);
                 }
 
-                throw new EventProcessorRuntimeException(finalFailureMessage, action);
+                throw new EventProcessorRuntimeException(finalFailureMessage, action, finalException);
             }
         }
 
@@ -197,8 +200,8 @@ namespace Microsoft.Azure.EventHubs.Processor
                 // Inspect all leases.
                 // Acquire any expired leases.
                 // Renew any leases that currently belong to us.
-                IEnumerable<Task<Lease>> gettingAllLeases = leaseManager.GetAllLeases();
-                List<Lease> leasesOwnedByOthers = new List<Lease>();
+                var gettingAllLeases = leaseManager.GetAllLeases();
+                var leasesOwnedByOthers = new List<Lease>();
                 var renewLeaseTasks = new List<Task>();
                 int ourLeaseCount = 0;
 
@@ -206,7 +209,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                 foreach (Task<Lease> getLeaseTask in gettingAllLeases)
                 {
                     try
-                    { 
+                    {
                         var lease = await getLeaseTask.ConfigureAwait(false);
                         allLeases[lease.PartitionId] = lease;
                         if (lease.Owner == this.host.HostName)
@@ -220,9 +223,13 @@ namespace Microsoft.Azure.EventHubs.Processor
                                     // Might have failed due to intermittent error or lease-lost.
                                     // Just log here, expired leases will be picked by same or another host anyway.
                                     ProcessorEventSource.Log.PartitionPumpError(this.host.HostName, lease.PartitionId, "Failed to renew lease.", renewResult.Exception?.Message);
-                                    this.host.EventProcessorOptions.NotifyOfException(this.host.HostName, lease.PartitionId, renewResult.Exception, EventProcessorHostActionStrings.RenewingLease);
+                                    this.host.EventProcessorOptions.NotifyOfException(
+                                        this.host.HostName, 
+                                        lease.PartitionId, 
+                                        renewResult.Exception, 
+                                        EventProcessorHostActionStrings.RenewingLease);
                                 }
-                            }));
+                            }, cancellationToken));
                         }
                         else
                         {
@@ -238,30 +245,35 @@ namespace Microsoft.Azure.EventHubs.Processor
 
                 // Wait until we are done with renewing our own leases here.
                 // In theory, this should never throw, error are logged and notified in the renew tasks.
-                await Task.WhenAll(renewLeaseTasks.ToArray()).ConfigureAwait(false);
+                await Task.WhenAll(renewLeaseTasks).ConfigureAwait(false);
                 ProcessorEventSource.Log.EventProcessorHostInfo(this.host.HostName, "Lease renewal is finished.");
 
                 // Check any expired leases that we can grab here.
-                foreach (var possibleLease in allLeases.Values)
-                { 
-                    try
+                var checkLeaseTasks = new List<Task>();
+                foreach (var possibleLease in allLeases.Values.Where(lease => lease.Owner != this.host.HostName))
+                {
+                    checkLeaseTasks.Add(Task.Run(async () =>
                     {
-                        if (await possibleLease.IsExpired().ConfigureAwait(false))
+                        try
                         {
-                            ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, possibleLease.PartitionId, "Trying to acquire lease.");
-                            if (await leaseManager.AcquireLeaseAsync(possibleLease).ConfigureAwait(false))
+                            if (await possibleLease.IsExpired().ConfigureAwait(false))
                             {
-                                ourLeaseCount++;
-                                ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, possibleLease.PartitionId, "Acquired lease.");
+                                ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, possibleLease.PartitionId, "Trying to acquire lease.");
+                                if (await leaseManager.AcquireLeaseAsync(possibleLease).ConfigureAwait(false))
+                                {
+                                    ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, possibleLease.PartitionId, "Acquired lease.");
+                                }
                             }
                         }
-                    }
-                    catch (Exception e)
-                    {
-                        ProcessorEventSource.Log.PartitionPumpError(this.host.HostName, possibleLease.PartitionId, "Failure during acquiring lease", e.ToString());
-                        this.host.EventProcessorOptions.NotifyOfException(this.host.HostName, possibleLease.PartitionId, e, EventProcessorHostActionStrings.CheckingLeases);
-                    }
+                        catch (Exception e)
+                        {
+                            ProcessorEventSource.Log.PartitionPumpError(this.host.HostName, possibleLease.PartitionId, "Failure during acquiring lease", e.ToString());
+                            this.host.EventProcessorOptions.NotifyOfException(this.host.HostName, possibleLease.PartitionId, e, EventProcessorHostActionStrings.CheckingLeases);
+                        }
+                    }));
                 }
+
+                await Task.WhenAll(checkLeaseTasks);
 
                 // Grab more leases if available and needed for load balancing
                 if (leasesOwnedByOthers.Count > 0)
@@ -423,7 +435,7 @@ namespace Microsoft.Azure.EventHubs.Processor
 
             if ((biggestOwner.Value - haveLeaseCount) >= 2)
             {
-                stealThisLease = stealableLeases.Where(l => l.Owner == biggestOwner.Key).First();
+                stealThisLease = stealableLeases.First(l => l.Owner == biggestOwner.Key);
                 ProcessorEventSource.Log.EventProcessorHostInfo(this.host.HostName, $"Proposed to steal lease for partition {stealThisLease.PartitionId} from {biggestOwner.Key}");
             }
 

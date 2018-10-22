@@ -14,17 +14,17 @@ namespace Microsoft.Azure.EventHubs.Processor
     class AzureStorageCheckpointLeaseManager : ICheckpointManager, ILeaseManager
     {
         EventProcessorHost host;
-        readonly CloudStorageAccount cloudStorageAccount;
-        string leaseContainerName = null;
-        string storageBlobPrefix;
-
-        CloudBlobContainer eventHubContainer;
-        CloudBlobDirectory consumerGroupDirectory;
-
-        static readonly TimeSpan storageMaximumExecutionTime = TimeSpan.FromMinutes(2);
         TimeSpan leaseDuration;
         TimeSpan leaseRenewInterval;
+
+        static readonly TimeSpan storageMaximumExecutionTime = TimeSpan.FromMinutes(2);
+        readonly CloudStorageAccount cloudStorageAccount;
+        readonly string leaseContainerName = null;
+        readonly string storageBlobPrefix;
         BlobRequestOptions renewRequestOptions;
+        OperationContext operationContext = null;
+        CloudBlobContainer eventHubContainer;
+        CloudBlobDirectory consumerGroupDirectory;
 
         internal AzureStorageCheckpointLeaseManager(string storageConnectionString, string leaseContainerName, string storageBlobPrefix)
             : this(CloudStorageAccount.Parse(storageConnectionString), leaseContainerName, storageBlobPrefix)
@@ -38,12 +38,15 @@ namespace Microsoft.Azure.EventHubs.Processor
                 throw new ArgumentNullException(nameof(cloudStorageAccount));
             }
 
-            // Validate lease container name.
-            if (!Regex.IsMatch(leaseContainerName, @"^[a-z0-9](([a-z0-9\-[^\-])){1,61}[a-z0-9]$"))
+            try
+            {
+                NameValidator.ValidateContainerName(leaseContainerName);
+            }
+            catch (ArgumentException)
             {
                 throw new ArgumentException(
                     "Azure Storage lease container name is invalid. Please check naming conventions at https://msdn.microsoft.com/en-us/library/azure/dd135715.aspx",
-                   nameof(leaseContainerName));
+                    nameof(leaseContainerName));
             }
 
             this.cloudStorageAccount = cloudStorageAccount;
@@ -72,6 +75,17 @@ namespace Microsoft.Azure.EventHubs.Processor
                 ServerTimeout = this.leaseRenewInterval,
                 MaximumExecutionTime = TimeSpan.FromMinutes(1)
             };
+
+#if NET461
+            // Proxy enabled?
+            if (this.host.EventProcessorOptions != null && this.host.EventProcessorOptions.WebProxy != null)
+            {
+                this.operationContext = new OperationContext()
+                {
+                    Proxy = this.host.EventProcessorOptions.WebProxy
+                };
+            }
+#endif
 
             // Create storage client and configure max execution time.
             // Max execution time will apply to any storage calls except renew.
@@ -165,12 +179,12 @@ namespace Microsoft.Azure.EventHubs.Processor
 
         public Task<bool> LeaseStoreExistsAsync()
         {
-            return this.eventHubContainer.ExistsAsync();
+            return this.eventHubContainer.ExistsAsync(null, this.operationContext);
         }
 
         public Task<bool> CreateLeaseStoreIfNotExistsAsync()
         {
-            return this.eventHubContainer.CreateIfNotExistsAsync();
+            return this.eventHubContainer.CreateIfNotExistsAsync(null, this.operationContext);
         }
 
         public async Task<bool> DeleteLeaseStoreAsync()
@@ -231,7 +245,7 @@ namespace Microsoft.Azure.EventHubs.Processor
 
             CloudBlockBlob leaseBlob = GetBlockBlobReference(partitionId);
 
-            if (await leaseBlob.ExistsAsync().ConfigureAwait(false))
+            if (await leaseBlob.ExistsAsync(null, this.operationContext).ConfigureAwait(false))
 		    {
                 retval = await DownloadLeaseAsync(partitionId, leaseBlob).ConfigureAwait(false);
 		    }
@@ -265,7 +279,12 @@ namespace Microsoft.Azure.EventHubs.Processor
                     partitionId,
                     "CreateLeaseIfNotExist - leaseContainerName: " + this.leaseContainerName + 
                     " consumerGroupName: " + this.host.ConsumerGroupName + " storageBlobPrefix: " + this.storageBlobPrefix);
-                await leaseBlob.UploadTextAsync(jsonLease, null, AccessCondition.GenerateIfNoneMatchCondition("*"), null, null).ConfigureAwait(false);
+                await leaseBlob.UploadTextAsync(
+                    jsonLease, 
+                    null, 
+                    AccessCondition.GenerateIfNoneMatchCondition("*"), 
+                    null, 
+                    this.operationContext).ConfigureAwait(false);
             }
     	    catch (StorageException se)
     	    {
@@ -312,7 +331,7 @@ namespace Microsoft.Azure.EventHubs.Processor
         	try
             {
                 string newToken;
-                await leaseBlob.FetchAttributesAsync().ConfigureAwait(false);
+                await leaseBlob.FetchAttributesAsync(null, null, this.operationContext).ConfigureAwait(false);
                 if (leaseBlob.Properties.LeaseState == LeaseState.Leased)
                 {
                     if (string.IsNullOrEmpty(lease.Token))
@@ -328,7 +347,11 @@ namespace Microsoft.Azure.EventHubs.Processor
                     }
 
                     ProcessorEventSource.Log.AzureStorageManagerInfo(this.host.HostName, lease.PartitionId, "Need to ChangeLease");
-                    newToken = await leaseBlob.ChangeLeaseAsync(newLeaseId, AccessCondition.GenerateLeaseCondition(lease.Token)).ConfigureAwait(false);
+                    newToken = await leaseBlob.ChangeLeaseAsync(
+                        newLeaseId, 
+                        AccessCondition.GenerateLeaseCondition(lease.Token), 
+                        null, 
+                        this.operationContext).ConfigureAwait(false);
                 }
                 else
                 {
@@ -336,7 +359,7 @@ namespace Microsoft.Azure.EventHubs.Processor
 
                     try
                     {
-                        newToken = await leaseBlob.AcquireLeaseAsync(leaseDuration, newLeaseId).ConfigureAwait(false);
+                        newToken = await leaseBlob.AcquireLeaseAsync(leaseDuration, newLeaseId, null, null, this.operationContext).ConfigureAwait(false);
                     }
                     catch (StorageException se)
                         when (se.RequestInformation != null
@@ -350,7 +373,12 @@ namespace Microsoft.Azure.EventHubs.Processor
                 lease.Token = newToken;
                 lease.Owner = this.host.HostName;
                 lease.IncrementEpoch(); // Increment epoch each time lease is acquired or stolen by a new host
-                await leaseBlob.UploadTextAsync(JsonConvert.SerializeObject(lease), null, AccessCondition.GenerateLeaseCondition(lease.Token), null, null).ConfigureAwait(false);
+                await leaseBlob.UploadTextAsync(
+                    JsonConvert.SerializeObject(lease),
+                    null,
+                    AccessCondition.GenerateLeaseCondition(lease.Token),
+                    null,
+                    this.operationContext).ConfigureAwait(false);
             }
     	    catch (StorageException se)
             {
@@ -372,7 +400,10 @@ namespace Microsoft.Azure.EventHubs.Processor
 
     	    try
             {
-                await leaseBlob.RenewLeaseAsync(AccessCondition.GenerateLeaseCondition(lease.Token), this.renewRequestOptions, null).ConfigureAwait(false);
+                await leaseBlob.RenewLeaseAsync(
+                    AccessCondition.GenerateLeaseCondition(lease.Token),
+                    this.renewRequestOptions,
+                    this.operationContext).ConfigureAwait(false);
             }
     	    catch (StorageException se)
             {
@@ -402,7 +433,12 @@ namespace Microsoft.Azure.EventHubs.Processor
                     Token = string.Empty,
                     Owner = string.Empty
                 };
-                await leaseBlob.UploadTextAsync(JsonConvert.SerializeObject(releasedCopy), null, AccessCondition.GenerateLeaseCondition(leaseId), null, null).ConfigureAwait(false);
+                await leaseBlob.UploadTextAsync(
+                    JsonConvert.SerializeObject(releasedCopy), 
+                    null, 
+                    AccessCondition.GenerateLeaseCondition(leaseId), 
+                    null,
+                    this.operationContext).ConfigureAwait(false);
                 await leaseBlob.ReleaseLeaseAsync(AccessCondition.GenerateLeaseCondition(leaseId)).ConfigureAwait(false);
             }
     	    catch (StorageException se)
@@ -442,7 +478,12 @@ namespace Microsoft.Azure.EventHubs.Processor
             {
                 string jsonToUpload = JsonConvert.SerializeObject(lease);
                 ProcessorEventSource.Log.AzureStorageManagerInfo(this.host.HostName, lease.PartitionId, $"Raw JSON uploading: {jsonToUpload}");
-                await leaseBlob.UploadTextAsync(jsonToUpload, null, AccessCondition.GenerateLeaseCondition(token), null, null).ConfigureAwait(false);
+                await leaseBlob.UploadTextAsync(
+                    jsonToUpload, 
+                    null, 
+                    AccessCondition.GenerateLeaseCondition(token), 
+                    null,
+                    this.operationContext).ConfigureAwait(false);
             }
     	    catch (StorageException se)
 	        {

@@ -12,7 +12,7 @@ namespace Microsoft.Azure.EventHubs
     /// </summary>
     public class ManagedServiceIdentityTokenProvider : TokenProvider
     {
-        static AzureServiceTokenProvider azureServiceTokenProvider = new AzureServiceTokenProvider();
+        static readonly AzureServiceTokenProvider azureServiceTokenProvider = new AzureServiceTokenProvider();
 
         /// <summary>
         /// Gets a <see cref="SecurityToken"/> for the given audience and duration.
@@ -20,7 +20,7 @@ namespace Microsoft.Azure.EventHubs
         /// <param name="appliesTo">The URI which the access token applies to</param>
         /// <param name="timeout">The time span that specifies the timeout value for the message that gets the security token</param>
         /// <returns><see cref="SecurityToken"/></returns>
-        public async override Task<SecurityToken> GetTokenAsync(string appliesTo, TimeSpan timeout)
+        public override async Task<SecurityToken> GetTokenAsync(string appliesTo, TimeSpan timeout)
         {
             string accessToken = await azureServiceTokenProvider.GetAccessTokenAsync(ClientConstants.AadEventHubsAudience);
             return new JsonSecurityToken(accessToken, appliesTo);

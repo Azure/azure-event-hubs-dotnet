@@ -93,7 +93,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                 receiverOptions);
 
             this.partitionReceiver.PrefetchCount = this.Host.EventProcessorOptions.PrefetchCount;
-            
+
             ProcessorEventSource.Log.PartitionPumpCreateClientsStop(this.Host.HostName, this.PartitionContext.PartitionId);
         }
 

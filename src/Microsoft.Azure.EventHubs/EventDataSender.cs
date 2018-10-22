@@ -3,6 +3,7 @@
 
 namespace Microsoft.Azure.EventHubs
 {
+    using System;
     using System.Collections.Generic;
     using System.Linq;
     using System.Threading.Tasks;
@@ -21,9 +22,12 @@ namespace Microsoft.Azure.EventHubs
 
         protected string PartitionId { get; }
 
-        public Task SendAsync(IEnumerable<EventData> eventDatas, string partitionKey)
+        public async Task SendAsync(IEnumerable<EventData> eventDatas, string partitionKey)
         {
-            return this.OnSendAsync(eventDatas, partitionKey);
+            var processedEvents = await this.ProcessEvents(eventDatas).ConfigureAwait(false);
+
+            await this.OnSendAsync(processedEvents, partitionKey)
+                .ConfigureAwait(false);
         }
 
         protected abstract Task OnSendAsync(IEnumerable<EventData> eventDatas, string partitionKey);
@@ -38,6 +42,51 @@ namespace Microsoft.Azure.EventHubs
             }
 
             return count;
+        }
+
+        async Task<EventData> ProcessEvent(EventData eventData)
+        {
+            if (this.RegisteredPlugins == null || this.RegisteredPlugins.Count == 0)
+                return eventData;
+
+            var processedEvent = eventData;
+            foreach (var plugin in this.RegisteredPlugins.Values)
+            {
+                try
+                {
+                    EventHubsEventSource.Log.PluginCallStarted(plugin.Name, ClientId);
+                    processedEvent = await plugin.BeforeEventSend(processedEvent).ConfigureAwait(false);
+                    EventHubsEventSource.Log.PluginCallCompleted(plugin.Name, ClientId);
+                }
+                catch (Exception ex)
+                {
+                    EventHubsEventSource.Log.PluginCallFailed(plugin.Name, ClientId, ex);
+
+                    if (!plugin.ShouldContinueOnException)
+                    {
+                        throw;
+                    }
+                }
+            }
+            return processedEvent;
+        }
+
+        async Task<IEnumerable<EventData>> ProcessEvents(IEnumerable<EventData> eventDatas)
+        {
+            if (this.RegisteredPlugins.Count < 1)
+            {
+                return eventDatas;
+            }
+
+            var processedEventList = new List<EventData>();
+            foreach (var eventData in eventDatas)
+            {
+                var processedMessage = await this.ProcessEvent(eventData)
+                    .ConfigureAwait(false);
+                processedEventList.Add(processedMessage);
+            }
+
+            return processedEventList;
         }
 
         internal long MaxMessageSize

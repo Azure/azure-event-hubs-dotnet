@@ -40,7 +40,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
         FaultTolerantAmqpObject<ReceivingAmqpLink> ReceiveLinkManager { get; }
 
-        protected async override Task OnCloseAsync()
+        protected override async Task OnCloseAsync()
         {
             // Close any ReceiveHandler (this is safe if there is none) and the ReceiveLinkManager in parallel.
             await this.ReceiveHandlerClose();
@@ -105,16 +105,16 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 {
                     // Evaluate retry condition?
                     TimeSpan? retryInterval = this.RetryPolicy.GetNextRetryInterval(ex, timeoutHelper.RemainingTime(), ++retryCount);
-                    if (retryInterval != null)
+                    if (retryInterval != null && !this.EventHubClient.CloseCalled)
                     {
                         await Task.Delay(retryInterval.Value).ConfigureAwait(false);
                         shouldRetry = true;
                     }
                     else
                     {
-                        // Handle System.TimeoutException explicitly.
-                        // We don't really want to to throw TimeoutException on this call.
-                        if (ex is TimeoutException)
+                        // Handle EventHubsTimeoutException explicitly.
+                        // We don't really want to to throw EventHubsTimeoutException on this call.
+                        if (ex is EventHubsTimeoutException)
                         {
                             break;
                         }

@@ -13,22 +13,22 @@ namespace Microsoft.Azure.EventHubs
         /// <summary>
         /// Token literal
         /// </summary>
-        string token;
+        readonly string token;
 
         /// <summary>
         /// Expiry date-time
         /// </summary>
-        DateTime expiresAtUtc;
+        readonly DateTime expiresAtUtc;
         
         /// <summary>
         /// Token audience
         /// </summary>
-        string audience;
+        readonly string audience;
 
         /// <summary>
         /// Token type
         /// </summary>
-        string tokenType;
+        readonly string tokenType;
 
         /// <summary>
         /// Creates a new instance of the <see cref="SecurityToken"/> class.
