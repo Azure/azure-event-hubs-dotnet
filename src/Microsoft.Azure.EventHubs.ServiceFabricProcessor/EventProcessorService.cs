@@ -121,24 +121,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 //
                 Exception lastException = null;
                 EventProcessorEventSource.Current.Message("Creating event hub client");
-                for (int i = 0; i < Constants.RetryCount; i++)
-                {
-                    this.linkedCancellationToken.ThrowIfCancellationRequested();
-                    try
-                    {
-                        ehclient = this.EventHubClientFactory.CreateFromConnectionString(this.ehConnectionString.ToString());
-                        break;
-                    }
-                    catch (EventHubsException e)
-                    {
-                        if (!e.IsTransient)
-                        {
-                            // Nontransient exceptions when creating the client are fatal and throw out of RunAsync.
-                            throw e;
-                        }
-                        lastException = e;
-                    }
-                }
+                lastException = RetryWrapper(() => { ehclient = this.EventHubClientFactory.CreateFromConnectionString(this.ehConnectionString.ToString()); });
                 if (ehclient == null)
                 {
                     EventProcessorEventSource.Current.Message("Out of retries event hub client");
@@ -147,24 +130,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 EventProcessorEventSource.Current.Message("Event hub client OK");
                 EventProcessorEventSource.Current.Message("Getting event hub info");
                 EventHubRuntimeInformation ehInfo = null;
-                for (int i = 0; i < Constants.RetryCount; i++)
-                {
-                    this.linkedCancellationToken.ThrowIfCancellationRequested();
-                    try
-                    {
-                        ehInfo = await ehclient.GetRuntimeInformationAsync();
-                        break;
-                    }
-                    catch (EventHubsException e)
-                    {
-                        if (!e.IsTransient)
-                        {
-                            // Nontransient exceptions here are fatal and throw out of RunAsync.
-                            throw e;
-                        }
-                        lastException = e;
-                    }
-                }
+                lastException = RetryWrapper(async () => { ehInfo = await ehclient.GetRuntimeInformationAsync(); });
                 if (ehInfo == null)
                 {
                     EventProcessorEventSource.Current.Message("Out of retries getting event hub info");
@@ -219,23 +185,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 // Create receiver.
                 //
                 EventProcessorEventSource.Current.Message("Creating receiver");
-                for (int i = 0; i < Constants.RetryCount; i++)
-                {
-                    this.linkedCancellationToken.ThrowIfCancellationRequested();
-                    try
-                    {
-                        receiver = ehclient.CreateEpochReceiver(this.consumerGroupName, this.partitionId, initialPosition, this.initialOffset, Constants.FixedReceiverEpoch, null); // FOO receiveroptions
-                        break;
-                    }
-                    catch (EventHubsException e)
-                    {
-                        if (!e.IsTransient)
-                        {
-                            throw e;
-                        }
-                        lastException = e;
-                    }
-                }
+                lastException = RetryWrapper(() => { receiver = ehclient.CreateEpochReceiver(this.consumerGroupName, this.partitionId, initialPosition, this.initialOffset, Constants.FixedReceiverEpoch, null); }); /* FOO receiveroptions */
                 if (receiver == null)
                 {
                     EventProcessorEventSource.Current.Message("Out of retries creating receiver");
@@ -286,6 +236,31 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                     throw this.internalFatalException;
                 }
             }
+        }
+
+        private EventHubsException RetryWrapper(Action action)
+        {
+            EventHubsException lastException = null;
+
+            for (int i = 0; i < Constants.RetryCount; i++)
+            {
+                this.linkedCancellationToken.ThrowIfCancellationRequested();
+                try
+                {
+                    action.Invoke();
+                    break;
+                }
+                catch (EventHubsException e)
+                {
+                    if (!e.IsTransient)
+                    {
+                        throw e;
+                    }
+                    lastException = e;
+                }
+            }
+
+            return lastException;
         }
 
         /// <summary>
