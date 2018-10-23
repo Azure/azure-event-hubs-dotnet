@@ -20,19 +20,22 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         private PartitionContext partitionContext = null;
         private EventHubsConnectionStringBuilder ehConnectionString;
         private string consumerGroupName;
-        private int partitionOrdinal = -1;
-        private string partitionId = null;
+        private int fabricPartitionOrdinal = -1;
+        private string hubPartitionId = null;
         private int servicePartitions = -1;
         private string initialOffset = null;
         private CancellationTokenSource internalCanceller;
         private Exception internalFatalException = null;
         private CancellationToken linkedCancellationToken;
+        private int running = 0;
 
         private readonly IReliableStateManager ServiceStateManager;
         private readonly StatefulServiceContext ServiceContext;
         private readonly IStatefulServicePartition ServicePartition;
 
         private readonly IEventProcessor userEventProcessor;
+        private readonly EventProcessorOptions options;
+        private readonly ICheckpointMananger checkpointManager;
 
         /// <summary>
         /// Constructor required by Service Fabric.
@@ -41,7 +44,10 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         /// <param name="stateManager"></param>
         /// <param name="partition"></param>
         /// <param name="userEventProcessor"></param>
-        public EventProcessorService(StatefulServiceContext context, IReliableStateManager stateManager, IStatefulServicePartition partition, IEventProcessor userEventProcessor)
+        /// <param name="options"></param>
+        /// <param name="checkpointManager"></param>
+        public EventProcessorService(StatefulServiceContext context, IReliableStateManager stateManager, IStatefulServicePartition partition, IEventProcessor userEventProcessor,
+            EventProcessorOptions options = null, ICheckpointMananger checkpointManager = null)
         {
             this.ServiceContext = context;
             this.ServiceStateManager = stateManager;
@@ -49,8 +55,8 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
 
             this.userEventProcessor = userEventProcessor;
 
-            this.Options = new EventProcessorOptions();
-            this.CheckpointManager = new ReliableDictionaryCheckpointMananger(this.ServiceStateManager);
+            this.options = options ?? new EventProcessorOptions();
+            this.checkpointManager = checkpointManager ?? new ReliableDictionaryCheckpointMananger(this.ServiceStateManager);
             this.EventHubClientFactory = new EventHubWrappers.EventHubClientFactory();
             this.TestMode = false;
 
@@ -58,22 +64,12 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         }
 
         /// <summary>
-        /// Set processing options in the constructor.
-        /// </summary>
-        public EventProcessorOptions Options { get; set; }
-
-        /// <summary>
-        /// Optionally provide a user implementation of the checkpoint manager.
-        /// </summary>
-        public ICheckpointMananger CheckpointManager { get; set; }
-
-        /// <summary>
-        /// For testing purposes.
+        /// For testing purposes. Do not change after calling RunAsync.
         /// </summary>
         public EventHubWrappers.IEventHubClientFactory EventHubClientFactory { get; set; }
 
         /// <summary>
-        /// 
+        /// For testing purposes. Do not change after calling RunAsync.
         /// </summary>
         public bool TestMode { get; set; }
 
@@ -84,13 +80,19 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         /// <returns></returns>
         public async Task RunAsync(CancellationToken fabricCancellationToken)
         {
+            if (Interlocked.Exchange(ref this.running, 1) == 1)
+            {
+                EventProcessorEventSource.Current.Message("Already running");
+                throw new InvalidOperationException("EventProcessorService.RunAsync already in progress");
+            }
+
             try
             {
                 using (CancellationTokenSource linkedCanceller = CancellationTokenSource.CreateLinkedTokenSource(fabricCancellationToken, this.internalCanceller.Token))
                 {
                     this.linkedCancellationToken = linkedCanceller.Token;
                     await InnerRunAsync();
-                    this.Options.NotifyOnShutdown(null);
+                    this.options.NotifyOnShutdown(null);
                 }
             }
             catch (Exception e)
@@ -99,8 +101,12 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 // Catch it here just long enough to log and notify, then rethrow.
 
                 EventProcessorEventSource.Current.Message("THROWING OUT: {0}", e);
-                this.Options.NotifyOnShutdown(e);
+                this.options.NotifyOnShutdown(e);
                 throw e;
+            }
+            finally
+            {
+                Interlocked.Exchange(ref this.running, 0);
             }
         }
 
@@ -153,12 +159,12 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                     EventProcessorEventSource.Current.Message("Service partition count {0} does not match event hub partition count {1}", this.servicePartitions, ehInfo.PartitionCount);
                     throw new EventProcessorConfigurationException("Service partition count " + this.servicePartitions + " does not match event hub partition count " + ehInfo.PartitionCount);
                 }
-                this.partitionId = ehInfo.PartitionIds[this.partitionOrdinal];
+                this.hubPartitionId = ehInfo.PartitionIds[this.fabricPartitionOrdinal];
 
                 //
                 // Generate a PartitionContext now that the required info is available.
                 //
-                this.partitionContext = new PartitionContext(this.linkedCancellationToken, this.partitionId, this.ehConnectionString.EntityPath, this.consumerGroupName, this.CheckpointManager);
+                this.partitionContext = new PartitionContext(this.linkedCancellationToken, this.hubPartitionId, this.ehConnectionString.EntityPath, this.consumerGroupName, this.checkpointManager);
 
                 //
                 // Start up checkpoint manager.
@@ -177,7 +183,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 }
                 else
                 {
-                    initialPosition = this.Options.InitialPositionProvider(this.partitionId);
+                    initialPosition = this.options.InitialPositionProvider(this.hubPartitionId);
                     EventProcessorEventSource.Current.Message("Initial position from provider");
                 }
 
@@ -185,8 +191,8 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 // Create receiver.
                 //
                 EventProcessorEventSource.Current.Message("Creating receiver");
-                lastException = RetryWrapper(() => { receiver = ehclient.CreateEpochReceiver(this.consumerGroupName, this.partitionId, initialPosition, this.initialOffset,
-                    Constants.FixedReceiverEpoch, this.Options.ClientReceiverOptions); });
+                lastException = RetryWrapper(() => { receiver = ehclient.CreateEpochReceiver(this.consumerGroupName, this.hubPartitionId, initialPosition, this.initialOffset,
+                    Constants.FixedReceiverEpoch, this.options.ClientReceiverOptions); });
                 if (receiver == null)
                 {
                     EventProcessorEventSource.Current.Message("Out of retries creating receiver");
@@ -211,8 +217,8 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 // Receive pump.
                 //
                 EventProcessorEventSource.Current.Message("RunAsync setting handler and waiting");
-                this.MaxBatchSize = this.Options.MaxBatchSize;
-                receiver.SetReceiveHandler(this, Options.InvokeProcessorAfterReceiveTimeout);
+                this.MaxBatchSize = this.options.MaxBatchSize;
+                receiver.SetReceiveHandler(this, this.options.InvokeProcessorAfterReceiveTimeout);
                 this.linkedCancellationToken.WaitHandle.WaitOne();
 
                 EventProcessorEventSource.Current.Message("RunAsync continuing, cleanup");
@@ -285,7 +291,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 if (last != null)
                 {
                     this.partitionContext.SetOffsetAndSequenceNumber(last);
-                    if (this.Options.EnableReceiverRuntimeMetric)
+                    if (this.options.EnableReceiverRuntimeMetric)
                     {
                         this.partitionContext.RuntimeInformation.Update(last);
                     }
@@ -302,7 +308,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
 
         Task IPartitionReceiveHandler.ProcessErrorAsync(Exception error)
         {
-            EventProcessorEventSource.Current.Message("RECEIVE EXCEPTION on {0}: {1}", this.partitionId, error);
+            EventProcessorEventSource.Current.Message("RECEIVE EXCEPTION on {0}: {1}", this.hubPartitionId, error);
             this.userEventProcessor.ProcessErrorAsync(this.partitionContext, error);
             if (error is EventHubsException)
             {
@@ -316,6 +322,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             else
             {
                 // All other exceptions are assumed fatal.
+                this.internalFatalException = error;
                 this.internalCanceller.Cancel();
             }
             return Task.CompletedTask;
@@ -343,8 +350,8 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         private async Task CheckpointStartup(CancellationToken cancellationToken)
         {
             // Set up store and get checkpoint, if any.
-            await this.CheckpointManager.CreateCheckpointStoreIfNotExistsAsync(cancellationToken);
-            Checkpoint checkpoint = await this.CheckpointManager.CreateCheckpointIfNotExistsAsync(this.partitionId, cancellationToken);
+            await this.checkpointManager.CreateCheckpointStoreIfNotExistsAsync(cancellationToken);
+            Checkpoint checkpoint = await this.checkpointManager.CreateCheckpointIfNotExistsAsync(this.hubPartitionId, cancellationToken);
             if (!checkpoint.Valid)
             {
                 // Not actually any existing checkpoint.
@@ -367,7 +374,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
 
         private async Task GetServicePartitionId(CancellationToken cancellationToken)
         {
-            if (this.partitionOrdinal == -1)
+            if (this.fabricPartitionOrdinal == -1)
             {
                 using (FabricClient fabricClient = new FabricClient())
                 {
@@ -382,7 +389,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                     {
                         if (partitionList[a].PartitionInformation.Id == this.ServiceContext.PartitionId)
                         {
-                            this.partitionOrdinal = a;
+                            this.fabricPartitionOrdinal = a;
                             break;
                         }
                     }
