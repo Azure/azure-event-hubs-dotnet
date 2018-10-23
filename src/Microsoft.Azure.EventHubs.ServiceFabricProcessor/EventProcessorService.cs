@@ -295,40 +295,32 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
 
         async Task IPartitionReceiveHandler.ProcessEventsAsync(IEnumerable<EventData> events)
         {
-            if ((events != null) || ((events == null) && Options.InvokeProcessorAfterReceiveTimeout))
+            IEnumerable<EventData> effectiveEvents = events ?? new List<EventData>(); // convert to empty list if events is null
+
+            if (events != null)
             {
-                IEnumerable<EventData> effectiveEvents = events;
-
-                if (effectiveEvents != null)
+                // Save position of last event if we got a real list of events
+                IEnumerator<EventData> scanner = effectiveEvents.GetEnumerator();
+                EventData last = null;
+                while (scanner.MoveNext())
                 {
-                    // Save position of last event
-                    IEnumerator<EventData> scanner = effectiveEvents.GetEnumerator();
-                    EventData last = null;
-                    while (scanner.MoveNext())
+                    last = scanner.Current;
+                }
+                if (last != null)
+                {
+                    this.partitionContext.SetOffsetAndSequenceNumber(last);
+                    if (this.Options.EnableReceiverRuntimeMetric)
                     {
-                        last = scanner.Current;
-                    }
-                    if (last != null)
-                    {
-                        this.partitionContext.SetOffsetAndSequenceNumber(last);
-                        if (this.Options.EnableReceiverRuntimeMetric)
-                        {
-                            this.partitionContext.RuntimeInformation.Update(last);
-                        }
+                        this.partitionContext.RuntimeInformation.Update(last);
                     }
                 }
-                else
-                {
-                    // Client returns null on timeout, but processor expects empty enumerable.
-                    effectiveEvents = new List<EventData>();
-                }
+            }
 
-                await this.userEventProcessor.ProcessEventsAsync(this.linkedCancellationToken, this.partitionContext, effectiveEvents);
+            await this.userEventProcessor.ProcessEventsAsync(this.linkedCancellationToken, this.partitionContext, effectiveEvents);
 
-                foreach (EventData ev in effectiveEvents)
-                {
-                    ev.Dispose();
-                }
+            foreach (EventData ev in effectiveEvents)
+            {
+                ev.Dispose();
             }
         }
 
