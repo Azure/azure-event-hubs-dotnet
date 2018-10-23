@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Fabric;
 using System.Fabric.Description;
+using System.Fabric.Query;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.ServiceFabric.Data;
@@ -17,9 +18,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
     /// <summary>
     /// Base class that implements event processor functionality.
     /// </summary>
-    /// <typeparam name="TEventProcessor">The type of the user's implementation of IEventProcessor</typeparam>
-    public class EventProcessorService<TEventProcessor> : IPartitionReceiveHandler
-        where TEventProcessor : IEventProcessor, new()
+    public class EventProcessorService : IPartitionReceiveHandler
     {
         private PartitionContext partitionContext = null;
         private EventHubsConnectionStringBuilder ehConnectionString;
@@ -30,12 +29,13 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         private string initialOffset = null;
         private CancellationTokenSource internalCanceller;
         private Exception internalFatalException = null;
-        private IEventProcessor userEventProcessor = null;
         private CancellationToken linkedCancellationToken;
 
-        private IReliableStateManager ServiceStateManager;
-        private StatefulServiceContext ServiceContext;
-        private IStatefulServicePartition ServicePartition;
+        private readonly IReliableStateManager ServiceStateManager;
+        private readonly StatefulServiceContext ServiceContext;
+        private readonly IStatefulServicePartition ServicePartition;
+
+        private readonly IEventProcessor userEventProcessor;
 
         /// <summary>
         /// Constructor required by Service Fabric.
@@ -43,14 +43,16 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         /// <param name="context"></param>
         /// <param name="stateManager"></param>
         /// <param name="partition"></param>
-        public EventProcessorService(StatefulServiceContext context, IReliableStateManager stateManager, IStatefulServicePartition partition)
+        /// <param name="userEventProcessor"></param>
+        public EventProcessorService(StatefulServiceContext context, IReliableStateManager stateManager, IStatefulServicePartition partition, IEventProcessor userEventProcessor)
         {
             this.ServiceContext = context;
             this.ServiceStateManager = stateManager;
             this.ServicePartition = partition;
 
+            this.userEventProcessor = userEventProcessor;
+
             this.Options = new EventProcessorOptions();
-            this.EventProcessorFactory = new DefaultEventProcessorFactory<TEventProcessor>();
             this.CheckpointManager = new ReliableDictionaryCheckpointMananger(this.ServiceStateManager);
             this.EventHubClientFactory = new EventHubWrappers.EventHubClientFactory();
             this.TestMode = false;
@@ -62,11 +64,6 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         /// Set processing options in the constructor.
         /// </summary>
         public EventProcessorOptions Options { get; set; }
-
-        /// <summary>
-        /// Optionally provide a user implementation of the event processor factory.
-        /// </summary>
-        public IEventProcessorFactory EventProcessorFactory { get; set; }
 
         /// <summary>
         /// Optionally provide a user implementation of the checkpoint manager.
@@ -249,11 +246,10 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 }
 
                 //
-                // Instantiate user's event processor class and call Open.
+                // Call Open on user's event processor instance.
                 // If user's Open code fails, treat that as a fatal exception and let it throw out.
                 //
                 EventProcessorEventSource.Current.Message("Creating event processor");
-                this.userEventProcessor = this.EventProcessorFactory.CreateEventProcessor(this.linkedCancellationToken, this.partitionContext);
                 await this.userEventProcessor.OpenAsync(this.linkedCancellationToken, this.partitionContext);
                 EventProcessorEventSource.Current.Message("Event processor created and opened OK");
 
@@ -275,9 +271,8 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             }
             finally
             {
-                if (this.userEventProcessor != null)
+                if (this.partitionContext != null)
                 {
-                    // partitionContext is set up before processor is created, so it is available if processor is not null
                     await this.userEventProcessor.CloseAsync(this.partitionContext, this.linkedCancellationToken.IsCancellationRequested ? CloseReason.Cancelled : CloseReason.Failure);
                 }
                 if (receiver != null)
@@ -331,11 +326,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                     effectiveEvents = new List<EventData>();
                 }
 
-                IEventProcessor capturedEventProcessor = this.userEventProcessor;
-                if (capturedEventProcessor != null)
-                {
-                    await capturedEventProcessor.ProcessEventsAsync(this.linkedCancellationToken, this.partitionContext, effectiveEvents);
-                }
+                await this.userEventProcessor.ProcessEventsAsync(this.linkedCancellationToken, this.partitionContext, effectiveEvents);
 
                 foreach (EventData ev in effectiveEvents)
                 {
@@ -413,16 +404,16 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         {
             if (this.partitionOrdinal == -1)
             {
-                using (var fabricClient = new FabricClient())
+                using (FabricClient fabricClient = new FabricClient())
                 {
-                    var partitionList =
+                    ServicePartitionList partitionList =
                         await fabricClient.QueryManager.GetPartitionListAsync(this.ServiceContext.ServiceName);
 
                     //Set the number of partitions
                     this.servicePartitions = partitionList.Count;
 
                     //Which partition is this one?
-                    for (var a = 0; a < partitionList.Count; a++)
+                    for (int a = 0; a < partitionList.Count; a++)
                     {
                         if (partitionList[a].PartitionInformation.Id == this.ServiceContext.PartitionId)
                         {
@@ -459,10 +450,9 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         {
             EventProcessorEventSource.Current.Message("METRIC reporter starting");
 
-            IEventProcessor capturedProcessor = this.userEventProcessor;
             while (!this.linkedCancellationToken.IsCancellationRequested)
             {
-                Dictionary<string, int> userMetrics = capturedProcessor.GetLoadMetric(this.linkedCancellationToken, this.partitionContext);
+                Dictionary<string, int> userMetrics = this.userEventProcessor.GetLoadMetric(this.linkedCancellationToken, this.partitionContext);
 
                 try
                 {
