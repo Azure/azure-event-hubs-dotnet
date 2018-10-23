@@ -1,20 +1,17 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.using System;
 
-using System;
-using System.Collections.Generic;
-using System.Fabric;
-using System.Fabric.Description;
-using System.Fabric.Query;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.ServiceFabric.Data;
-using Microsoft.ServiceFabric.Services.Client;
-using Microsoft.ServiceFabric.Services.Runtime;
-
-
 namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Fabric;
+    using System.Fabric.Description;
+    using System.Fabric.Query;
+    using System.Threading;
+    using System.Threading.Tasks;
+    using Microsoft.ServiceFabric.Data;
+
     /// <summary>
     /// Base class that implements event processor functionality.
     /// </summary>

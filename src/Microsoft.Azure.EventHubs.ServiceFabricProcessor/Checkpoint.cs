@@ -1,11 +1,11 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.using System;
 
-using System;
-using System.Collections.Generic;
-
 namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
 {
+    using System;
+    using System.Collections.Generic;
+
     /// <summary>
     /// A persistable representation of what events in the stream have been processed.
     /// Version 1 checkpoint is just a high-water mark, containing an offset and sequence number. All events at or lower than the given position
