@@ -17,25 +17,33 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
     /// </summary>
     public class EventProcessorService : IPartitionReceiveHandler
     {
-        private PartitionContext partitionContext = null;
-        private EventHubsConnectionStringBuilder ehConnectionString = null;
-        private string consumerGroupName = null;
-        private int fabricPartitionOrdinal = -1;
-        private string hubPartitionId = null;
-        private int servicePartitions = -1;
-        private string initialOffset = null;
-        private CancellationTokenSource internalCanceller;
-        private Exception internalFatalException = null;
-        private CancellationToken linkedCancellationToken;
-        private int running = 0;
-
+        // Service Fabric objects initialized in constructor
         private readonly IReliableStateManager ServiceStateManager;
         private readonly StatefulServiceContext ServiceContext;
         private readonly IStatefulServicePartition ServicePartition;
 
+        // ServiceFabricProcessor settings initialized in constructor
         private readonly IEventProcessor userEventProcessor;
         private readonly EventProcessorOptions options;
         private readonly ICheckpointMananger checkpointManager;
+
+        // Initialized by first call to RunAsync -- do not need to rediscover
+        private int fabricPartitionOrdinal = -1;
+        private int servicePartitions = -1;
+
+        // Initialized during RunAsync startup
+        private string hubPartitionId;
+        private PartitionContext partitionContext;
+        private string initialOffset;
+        private CancellationTokenSource internalCanceller;
+        private Exception internalFatalException;
+        private CancellationToken linkedCancellationToken;
+        private EventHubsConnectionStringBuilder ehConnectionString;
+        private string consumerGroupName;
+
+        // Value managed by RunAsync
+        private int running = 0;
+
 
         /// <summary>
         /// Constructor required by Service Fabric.
@@ -59,8 +67,6 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             this.checkpointManager = checkpointManager ?? new ReliableDictionaryCheckpointMananger(this.ServiceStateManager);
             this.EventHubClientFactory = new EventHubWrappers.EventHubClientFactory();
             this.TestMode = false;
-
-            this.internalCanceller = new CancellationTokenSource();
         }
 
         /// <summary>
@@ -88,6 +94,9 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 throw new InvalidOperationException("EventProcessorService.RunAsync already in progress");
             }
 
+            this.internalCanceller = new CancellationTokenSource();
+            this.internalFatalException = null;
+
             try
             {
                 using (CancellationTokenSource linkedCanceller = CancellationTokenSource.CreateLinkedTokenSource(fabricCancellationToken, this.internalCanceller.Token))
@@ -97,6 +106,10 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                     if (eventHubConnectionString != null)
                     {
                         this.ehConnectionString = new EventHubsConnectionStringBuilder(eventHubConnectionString);
+                    }
+                    else
+                    {
+                        this.ehConnectionString = null;
                     }
                     this.consumerGroupName = eventHubConsumerGroup;
 
