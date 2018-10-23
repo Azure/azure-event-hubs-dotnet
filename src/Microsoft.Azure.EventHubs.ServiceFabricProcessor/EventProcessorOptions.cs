@@ -27,6 +27,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             this.EnableReceiverRuntimeMetric = false;
             this.InvokeProcessorAfterReceiveTimeout = false;
             this.InitialPositionProvider = partitionId => EventPosition.FromStart();
+            this.ClientReceiverOptions = null;
             this.OnShutdown = null;
         }
 
@@ -62,6 +63,11 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         /// Defaults to first event available in the stream.
         /// </summary>
         public Func<string, EventPosition> InitialPositionProvider { get; set; }
+
+        /// <summary>
+        /// ReceiverOptions used by the underlying Event Hubs client
+        /// </summary>
+        public ReceiverOptions ClientReceiverOptions { get; set; }
 
         /// <summary>
         /// 

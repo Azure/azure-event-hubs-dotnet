@@ -185,7 +185,8 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 // Create receiver.
                 //
                 EventProcessorEventSource.Current.Message("Creating receiver");
-                lastException = RetryWrapper(() => { receiver = ehclient.CreateEpochReceiver(this.consumerGroupName, this.partitionId, initialPosition, this.initialOffset, Constants.FixedReceiverEpoch, null); }); /* FOO receiveroptions */
+                lastException = RetryWrapper(() => { receiver = ehclient.CreateEpochReceiver(this.consumerGroupName, this.partitionId, initialPosition, this.initialOffset,
+                    Constants.FixedReceiverEpoch, this.Options.ClientReceiverOptions); });
                 if (receiver == null)
                 {
                     EventProcessorEventSource.Current.Message("Out of retries creating receiver");
