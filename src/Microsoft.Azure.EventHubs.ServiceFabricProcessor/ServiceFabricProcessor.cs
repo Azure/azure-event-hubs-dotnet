@@ -15,7 +15,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
     /// <summary>
     /// Base class that implements event processor functionality.
     /// </summary>
-    public class EventProcessorService : IPartitionReceiveHandler
+    public class ServiceFabricProcessor : IPartitionReceiveHandler
     {
         // Service Fabric objects initialized in constructor
         private readonly IReliableStateManager ServiceStateManager;
@@ -54,7 +54,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         /// <param name="userEventProcessor"></param>
         /// <param name="options"></param>
         /// <param name="checkpointManager"></param>
-        public EventProcessorService(StatefulServiceContext context, IReliableStateManager stateManager, IStatefulServicePartition partition, IEventProcessor userEventProcessor,
+        public ServiceFabricProcessor(StatefulServiceContext context, IReliableStateManager stateManager, IStatefulServicePartition partition, IEventProcessor userEventProcessor,
             EventProcessorOptions options = null, ICheckpointMananger checkpointManager = null)
         {
             this.ServiceContext = context;
