@@ -8,7 +8,7 @@ namespace Microsoft.Azure.EventHubs
 
     static class Fx
     {
-        static readonly Lazy<ExceptionUtility> exceptionUtility = new Lazy<ExceptionUtility>(() => new ExceptionUtility());
+        private static readonly Lazy<ExceptionUtility> exceptionUtility = new Lazy<ExceptionUtility>();
 
         public static ExceptionUtility Exception
         {
