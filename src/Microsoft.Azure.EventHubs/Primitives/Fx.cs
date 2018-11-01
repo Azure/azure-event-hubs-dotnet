@@ -3,22 +3,18 @@
 
 namespace Microsoft.Azure.EventHubs
 {
+    using System;
     using System.Diagnostics;
 
     static class Fx
     {
-        static ExceptionUtility exceptionUtility;
+        private static readonly Lazy<ExceptionUtility> exceptionUtility = new Lazy<ExceptionUtility>();
 
         public static ExceptionUtility Exception
         {
             get
             {
-                if (exceptionUtility == null)
-                {
-                    exceptionUtility = new ExceptionUtility();
-                }
-
-                return exceptionUtility;
+                return exceptionUtility.Value;
             }
         }
 
