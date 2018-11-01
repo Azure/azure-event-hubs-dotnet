@@ -318,11 +318,7 @@ namespace Microsoft.Azure.EventHubs
         public Task SendAsync(EventData eventData, string partitionKey)
         {
             Guard.ArgumentNotNull(nameof(eventData), eventData);
-
-            if (string.IsNullOrEmpty(partitionKey))
-            {
-                throw Fx.Exception.ArgumentNull(nameof(partitionKey));
-            }
+            Guard.ArgumentNotNullOrEmpty(nameof(partitionKey), partitionKey);
 
             return this.SendAsync(new[] { eventData }, partitionKey);
         }

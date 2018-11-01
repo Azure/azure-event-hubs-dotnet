@@ -9,5 +9,10 @@ namespace Microsoft.Azure.EventHubs.Primitives
         {
             if (value == null) Fx.Exception.ArgumentNull(argumentName);
         }
+
+        internal static void ArgumentNotNullOrEmpty(string argumentName, string value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) Fx.Exception.ArgumentNull(argumentName);
+        }
     }
 }
