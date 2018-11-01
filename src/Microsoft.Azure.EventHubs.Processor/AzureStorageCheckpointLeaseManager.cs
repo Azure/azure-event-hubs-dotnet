@@ -537,7 +537,6 @@ namespace Microsoft.Azure.EventHubs.Processor
             // Until storage addresses the issue we need to override it here once more.
             // Tracking bug: https://github.com/Azure/azure-storage-net/issues/398
             // leaseBlob.ServiceClient.DefaultRequestOptions = this.storageClient.DefaultRequestOptions;
-
             return leaseBlob;
         }
     }

@@ -12,6 +12,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
     using Microsoft.Azure.Amqp;
     using Microsoft.Azure.Amqp.Encoding;
     using Microsoft.Azure.Amqp.Framing;
+    using Microsoft.Azure.EventHubs.Primitives;
 
     static class AmqpMessageConverter
     {
@@ -27,11 +28,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
         public static EventData AmqpMessageToEventData(AmqpMessage amqpMessage)
         {
-            if (amqpMessage == null)
-            {
-                throw Fx.Exception.ArgumentNull("amqpMessage");
-            }
-
+            Guard.ArgumentNotNull(nameof(amqpMessage), amqpMessage);
             EventData eventData = new EventData(StreamToBytes(amqpMessage.BodyStream));
             UpdateEventDataHeaderAndProperties(amqpMessage, eventData);
             return eventData;

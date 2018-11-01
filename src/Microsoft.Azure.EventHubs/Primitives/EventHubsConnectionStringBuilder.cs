@@ -5,6 +5,7 @@ namespace Microsoft.Azure.EventHubs
 {
     using System;
     using System.Text;
+    using Microsoft.Azure.EventHubs.Primitives;
 
     /// <summary>
     ///  Supported transport types
@@ -147,15 +148,11 @@ namespace Microsoft.Azure.EventHubs
             TimeSpan operationTimeout,
             TransportType transportType = TransportType.Amqp)
         {
-            if (endpointAddress == null)
-            {
-                throw Fx.Exception.ArgumentNull(nameof(endpointAddress));
-            }
+            Guard.ArgumentNotNull(nameof(endpointAddress), endpointAddress);
             if (string.IsNullOrWhiteSpace(entityPath))
             {
                 throw Fx.Exception.ArgumentNullOrWhiteSpace(nameof(entityPath));
             }
-
             // Replace the scheme. We cannot really make sure that user passed an amps:// scheme to us.
             var uriBuilder = new UriBuilder(endpointAddress.AbsoluteUri)
             {

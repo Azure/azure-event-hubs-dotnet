@@ -9,6 +9,7 @@ namespace Microsoft.Azure.EventHubs
     using System.Net;
     using System.Threading.Tasks;
     using Microsoft.Azure.EventHubs.Amqp;
+    using Microsoft.Azure.EventHubs.Primitives;
     using Microsoft.IdentityModel.Clients.ActiveDirectory;
 
     /// <summary>
@@ -71,21 +72,12 @@ namespace Microsoft.Azure.EventHubs
             TimeSpan? operationTimeout = null,
             TransportType transportType = TransportType.Amqp)
         {
-            if (endpointAddress == null)
-            {
-                throw Fx.Exception.ArgumentNull(nameof(endpointAddress));
-            }
-
+            Guard.ArgumentNotNull(nameof(endpointAddress), endpointAddress);
+            Guard.ArgumentNotNull(nameof(tokenProvider), tokenProvider);
             if (string.IsNullOrWhiteSpace(entityPath))
             {
                 throw Fx.Exception.ArgumentNullOrWhiteSpace(nameof(entityPath));
             }
-
-            if (tokenProvider == null)
-            {
-                throw Fx.Exception.ArgumentNull(nameof(tokenProvider));
-            }
-
             EventHubsEventSource.Log.EventHubClientCreateStart(endpointAddress.Host, entityPath);
             EventHubClient eventHubClient = new AmqpEventHubClient(
                 endpointAddress,
@@ -257,11 +249,7 @@ namespace Microsoft.Azure.EventHubs
         /// <seealso cref="PartitionSender.SendAsync(EventData)"/>
         public Task SendAsync(EventData eventData)
         {
-            if (eventData == null)
-            {
-                throw Fx.Exception.ArgumentNull(nameof(eventData));
-            }
-
+            Guard.ArgumentNotNull(nameof(eventData), eventData);
             return this.SendAsync(new[] { eventData }, null);
         }
 
@@ -329,9 +317,11 @@ namespace Microsoft.Azure.EventHubs
         /// <seealso cref="PartitionSender.SendAsync(EventData)"/>
         public Task SendAsync(EventData eventData, string partitionKey)
         {
-            if (eventData == null || string.IsNullOrEmpty(partitionKey))
+            Guard.ArgumentNotNull(nameof(eventData), eventData);
+
+            if (string.IsNullOrEmpty(partitionKey))
             {
-                throw Fx.Exception.ArgumentNull(eventData == null ? nameof(eventData) : nameof(partitionKey));
+                throw Fx.Exception.ArgumentNull(nameof(partitionKey));
             }
 
             return this.SendAsync(new[] { eventData }, partitionKey);
@@ -428,11 +418,7 @@ namespace Microsoft.Azure.EventHubs
         /// <seealso cref="PartitionReceiver"/>
         public PartitionReceiver CreateReceiver(string consumerGroupName, string partitionId, EventPosition eventPosition, ReceiverOptions receiverOptions = null)
         {
-            if (eventPosition == null)
-            {
-                throw Fx.Exception.ArgumentNull(nameof(eventPosition));
-            }
-
+            Guard.ArgumentNotNull(nameof(eventPosition), eventPosition);
             return this.OnCreateReceiver(consumerGroupName, partitionId, eventPosition, null, receiverOptions);
         }
 
@@ -453,11 +439,7 @@ namespace Microsoft.Azure.EventHubs
         /// <seealso cref="PartitionReceiver"/>
         public PartitionReceiver CreateEpochReceiver(string consumerGroupName, string partitionId, EventPosition eventPosition, long epoch, ReceiverOptions receiverOptions = null)
         {
-            if (eventPosition == null)
-            {
-                throw Fx.Exception.ArgumentNull(nameof(eventPosition));
-            }
-
+            Guard.ArgumentNotNull(nameof(eventPosition), eventPosition);
             return this.OnCreateReceiver(consumerGroupName, partitionId, eventPosition, epoch, receiverOptions);
         }
 
