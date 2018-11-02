@@ -270,7 +270,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                             ProcessorEventSource.Log.PartitionPumpError(this.host.HostName, possibleLease.PartitionId, "Failure during acquiring lease", e.ToString());
                             this.host.EventProcessorOptions.NotifyOfException(this.host.HostName, possibleLease.PartitionId, e, EventProcessorHostActionStrings.CheckingLeases);
                         }
-                    }));
+                    }, cancellationToken));
                 }
 
                 await Task.WhenAll(checkLeaseTasks);
