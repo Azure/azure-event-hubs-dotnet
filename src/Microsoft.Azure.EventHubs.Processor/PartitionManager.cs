@@ -76,6 +76,9 @@ namespace Microsoft.Azure.EventHubs.Processor
             {
                 await localRunTask.ConfigureAwait(false);
             }
+
+            // once it is closed let's reset the task
+            this.runTask = null;
         }
 
         async Task RunAsync()
