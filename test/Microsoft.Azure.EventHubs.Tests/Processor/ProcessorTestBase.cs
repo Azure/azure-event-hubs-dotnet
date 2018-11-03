@@ -948,6 +948,30 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
             await RunGenericScenario(eventProcessorHost, epo);
         }
 
+        [Fact]
+        [DisplayTestMethodName]
+        async Task ReRegisterEventProcessor()
+        {
+            var eventProcessorHost = new EventProcessorHost(
+                null, // Entity path will be picked from connection string.
+                PartitionReceiver.DefaultConsumerGroupName,
+                TestUtility.EventHubsConnectionString,
+                TestUtility.StorageConnectionString,
+                Guid.NewGuid().ToString());
+
+            // Calling register for the first time should succeed.
+            TestUtility.Log("Registering EventProcessorHost for the first time.");
+            await eventProcessorHost.RegisterEventProcessorAsync<TestEventProcessor>();
+
+            // Unregister event processor should succed
+            TestUtility.Log("Registering EventProcessorHost for the first time.");
+            await eventProcessorHost.UnregisterEventProcessorAsync();
+
+            // Register other event processor
+            TestUtility.Log("Registering other Event Processor in the same host after unregister should succed.");
+            await eventProcessorHost.RegisterEventProcessorAsync<SecondTestEventProcessor>();
+        }
+
         async Task<Dictionary<string, Tuple<string, DateTime>>> DiscoverEndOfStream()
         {
             var ehClient = EventHubClient.CreateFromConnectionString(TestUtility.EventHubsConnectionString);
@@ -1080,7 +1104,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
         public ConcurrentDictionary<string, List<EventData>> ReceivedEvents = new ConcurrentDictionary<string, List<EventData>>();
         public int NumberOfFailures = 0;
 
-        object listLock = new object();
+        readonly object listLock = new object();
 
         public void AddEvents(string partitionId, IEnumerable<EventData> addEvents)
         {
