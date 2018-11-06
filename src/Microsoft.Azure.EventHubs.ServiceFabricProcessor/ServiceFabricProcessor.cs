@@ -95,7 +95,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             if (Interlocked.Exchange(ref this.running, 1) == 1)
             {
                 EventProcessorEventSource.Current.Message("Already running");
-                throw new InvalidOperationException("EventProcessorService.RunAsync already in progress");
+                throw new InvalidOperationException("EventProcessorService.RunAsync has already been called.");
             }
 
             this.internalCanceller = new CancellationTokenSource();
@@ -120,10 +120,6 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 EventProcessorEventSource.Current.Message("THROWING OUT: {0}", e);
                 this.options.NotifyOnShutdown(e);
                 throw e;
-            }
-            finally
-            {
-                Interlocked.Exchange(ref this.running, 0);
             }
         }
 
