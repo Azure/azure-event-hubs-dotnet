@@ -52,9 +52,12 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         /// <param name="stateManager"></param>
         /// <param name="partition"></param>
         /// <param name="userEventProcessor"></param>
+        /// <param name="eventHubConnectionString"></param>
+        /// <param name="eventHubConsumerGroup"></param>
         /// <param name="options"></param>
         /// <param name="checkpointManager"></param>
         public ServiceFabricProcessor(StatefulServiceContext context, IReliableStateManager stateManager, IStatefulServicePartition partition, IEventProcessor userEventProcessor,
+            string eventHubConnectionString, string eventHubConsumerGroup = null,
             EventProcessorOptions options = null, ICheckpointMananger checkpointManager = null)
         {
             this.ServiceContext = context;
@@ -62,6 +65,9 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             this.ServicePartition = partition;
 
             this.userEventProcessor = userEventProcessor;
+
+            this.ehConnectionString = new EventHubsConnectionStringBuilder(eventHubConnectionString);
+            this.consumerGroupName = eventHubConsumerGroup ?? PartitionReceiver.DefaultConsumerGroupName;
 
             this.options = options ?? new EventProcessorOptions();
             this.checkpointManager = checkpointManager ?? new ReliableDictionaryCheckpointMananger(this.ServiceStateManager);
@@ -83,10 +89,8 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         /// Called by Service Fabric.
         /// </summary>
         /// <param name="fabricCancellationToken"></param>
-        /// <param name="eventHubConnectionString"></param>
-        /// <param name="eventHubConsumerGroup"></param>
         /// <returns></returns>
-        public async Task RunAsync(CancellationToken fabricCancellationToken, string eventHubConnectionString = null, string eventHubConsumerGroup = null)
+        public async Task RunAsync(CancellationToken fabricCancellationToken)
         {
             if (Interlocked.Exchange(ref this.running, 1) == 1)
             {
@@ -103,16 +107,6 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 {
                     this.linkedCancellationToken = linkedCanceller.Token;
                     
-                    if (eventHubConnectionString != null)
-                    {
-                        this.ehConnectionString = new EventHubsConnectionStringBuilder(eventHubConnectionString);
-                    }
-                    else
-                    {
-                        this.ehConnectionString = null;
-                    }
-                    this.consumerGroupName = eventHubConsumerGroup;
-
                     await InnerRunAsync();
 
                     this.options.NotifyOnShutdown(null);
@@ -355,25 +349,6 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         {
             // What partition is this? What is the total count of partitions?
             await GetServicePartitionId(cancellationToken);
-
-            if (this.ehConnectionString == null)
-            {
-                // Get event hub connection string from configuration. This is mandatory, cannot proceed without.
-                string rawConnectionString = GetConfigurationValue(Constants.EventHubConnectionStringConfigName, null);
-                if (rawConnectionString == null)
-                {
-                    throw new EventProcessorConfigurationException("Event hub connection string not supplied in configuration section " + Constants.EventProcessorConfigSectionName);
-                }
-                EventProcessorEventSource.Current.Message("Event hub connection string retrieved from config");
-                this.ehConnectionString = new EventHubsConnectionStringBuilder(rawConnectionString);
-            }
-
-            if (this.consumerGroupName == null)
-            {
-                // Get consumer group name. Many users will be using the default consumer group, so for convenience default to that if not supplied.
-                this.consumerGroupName = GetConfigurationValue(Constants.EventHubConsumerGroupConfigName, Constants.EventHubConsumerGroupConfigDefault);
-                EventProcessorEventSource.Current.Message("Consumer group {0}", this.consumerGroupName);
-            }
         }
 
         private async Task CheckpointStartup(CancellationToken cancellationToken)
@@ -426,40 +401,6 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                     EventProcessorEventSource.Current.Message($"Total partitions {this.servicePartitions}");
                 }
             }
-        }
-
-        private string GetConfigurationValue(string configurationValueName, string defaultValue = null)
-        {
-            string value = defaultValue;
-            ConfigurationPackage configurationPackage = this.ServiceContext.CodePackageActivationContext.GetConfigurationPackageObject(Constants.ConfigurationPackageName);
-            try
-            {
-                ConfigurationSection configurationSection = configurationPackage.Settings.Sections[Constants.EventProcessorConfigSectionName];
-                ConfigurationProperty configurationProperty = configurationSection.Parameters[configurationValueName];
-                if (configurationProperty.IsEncrypted)
-                {
-                    using (System.Security.SecureString secureValue = configurationProperty.DecryptValue())
-                    {
-                        // SecureString was designed to store system passwords and pass them to native APIs. No part of Event Hub client supports
-                        // SecureString and even it if did, it would eventually have to extract the contents to a regular string because it calls
-                        // something else that doesn't understand SecureString. So extract it here, the ugly way.
-                        IntPtr ugly = System.Runtime.InteropServices.Marshal.SecureStringToBSTR(secureValue);
-                        value = System.Runtime.InteropServices.Marshal.PtrToStringBSTR(ugly);
-                        System.Runtime.InteropServices.Marshal.ZeroFreeBSTR(ugly);
-                    }
-                }
-                else
-                {
-                    value = configurationProperty.Value;
-                }
-            }
-            catch (KeyNotFoundException)
-            {
-                // If the user has not specified a value in config, drop through and return the default value.
-                // If the caller cannot continue without a user-supplied value, it is up to the caller to detect and handle.
-            }
-            //catch (ArgumentNullException) if configurationValueName is null, that's a code bug, do not catch
-            return value;
         }
 
         private void MetricsHandler()
