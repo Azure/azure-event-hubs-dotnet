@@ -961,15 +961,16 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
 
             // Calling register for the first time should succeed.
             TestUtility.Log("Registering EventProcessorHost for the first time.");
-            await eventProcessorHost.RegisterEventProcessorAsync<TestEventProcessor>();
+            await eventProcessorHost.RegisterEventProcessorAsync<SecondTestEventProcessor>();
 
             // Unregister event processor should succed
             TestUtility.Log("Registering EventProcessorHost for the first time.");
             await eventProcessorHost.UnregisterEventProcessorAsync();
 
-            // Register other event processor
-            TestUtility.Log("Registering other Event Processor in the same host after unregister should succed.");
-            await eventProcessorHost.RegisterEventProcessorAsync<SecondTestEventProcessor>();
+            var epo = await GetOptionsAsync();
+
+            // Run a generic scenario with TestEventProcessor instead
+            await RunGenericScenario(eventProcessorHost, epo);
         }
 
         async Task<Dictionary<string, Tuple<string, DateTime>>> DiscoverEndOfStream()
@@ -1006,7 +1007,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
 
             try
             {
-                TestUtility.Log($"Calling RegisterEventProcessorAsync");
+                TestUtility.Log("Calling RegisterEventProcessorAsync");
                 var processorFactory = new TestEventProcessorFactory();
 
                 processorFactory.OnCreateProcessor += (f, createArgs) =>
@@ -1091,7 +1092,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
         async Task<EventProcessorOptions> GetOptionsAsync()
         {
             var partitions = await DiscoverEndOfStream();
-            return new EventProcessorOptions()
+            return new EventProcessorOptions
             {
                 MaxBatchSize = 100,
                 InitialOffsetProvider = pId => EventPosition.FromOffset(partitions[pId].Item1)
