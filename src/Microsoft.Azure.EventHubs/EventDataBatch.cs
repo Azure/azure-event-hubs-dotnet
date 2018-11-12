@@ -7,6 +7,7 @@ namespace Microsoft.Azure.EventHubs
     using System.Collections.Generic;
     using Microsoft.Azure.Amqp;
     using Microsoft.Azure.EventHubs.Amqp;
+    using Microsoft.Azure.EventHubs.Primitives;
 
     /// <summary>A helper class for creating an IEnumerable&lt;<see cref="Microsoft.Azure.EventHubs.EventData"/>&gt; taking into account the max size limit, so that the IEnumerable&lt;<see cref="Microsoft.Azure.EventHubs.EventData"/>&gt; can be passed to the Send or SendAsync method of an <see cref="Microsoft.Azure.EventHubs.EventHubClient"/> to send the <see cref="Microsoft.Azure.EventHubs.EventData"/> objects as a batch.</summary>
     public class EventDataBatch : IDisposable
@@ -60,10 +61,7 @@ namespace Microsoft.Azure.EventHubs
         /// </remarks>
         public bool TryAdd(EventData eventData)
         {
-            if (eventData == null)
-            {
-                throw new ArgumentNullException(nameof(eventData));
-            }
+            Guard.ArgumentNotNull(nameof(eventData), eventData);
 
             this.ThrowIfDisposed();
             long size = GetEventSizeForBatch(eventData);

@@ -1,6 +1,8 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
+using Microsoft.Azure.EventHubs.Primitives;
+
 namespace Microsoft.Azure.EventHubs
 {
     using System;
@@ -66,10 +68,7 @@ namespace Microsoft.Azure.EventHubs
 
         public static Activity ExtractActivity(this EventData eventData, string activityName = null)
         {
-            if (eventData == null)
-            {
-                throw new ArgumentNullException(nameof(eventData));
-            }
+            Guard.ArgumentNotNull(nameof(eventData), eventData);
 
             if (activityName == null)
             {

@@ -13,7 +13,7 @@ namespace Microsoft.Azure.EventHubs.Primitives
             }
         }
 
-        internal static void ArgumentNotNullOrEmpty(string argumentName, string value)
+        internal static void ArgumentNotNullOrWhiteSpace(string argumentName, string value)
         {
             if (string.IsNullOrWhiteSpace(value))
             {

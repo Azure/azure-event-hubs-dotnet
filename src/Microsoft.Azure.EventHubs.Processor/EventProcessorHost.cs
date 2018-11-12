@@ -100,14 +100,9 @@ namespace Microsoft.Azure.EventHubs.Processor
              ICheckpointManager checkpointManager,
              ILeaseManager leaseManager)
         {
-            if (string.IsNullOrEmpty(consumerGroupName))
-            {
-                throw new ArgumentNullException(nameof(consumerGroupName));
-            }
-            else if (checkpointManager == null || leaseManager == null)
-            {
-                throw new ArgumentNullException(checkpointManager == null ? nameof(checkpointManager) : nameof(leaseManager));
-            }
+            Guard.ArgumentNotNullOrWhiteSpace(nameof(consumerGroupName), consumerGroupName);
+            Guard.ArgumentNotNull(nameof(checkpointManager), checkpointManager);
+            Guard.ArgumentNotNull(nameof(leaseManager), leaseManager);
 
             var csb = new EventHubsConnectionStringBuilder(eventHubConnectionString);
             if (string.IsNullOrEmpty(eventHubPath))
@@ -196,13 +191,13 @@ namespace Microsoft.Azure.EventHubs.Processor
             TimeSpan? operationTimeout = null,
             TransportType transportType = TransportType.Amqp)
         {
-            Guard.ArgumentNotNullOrEmpty(nameof(hostName), hostName);
+            Guard.ArgumentNotNullOrWhiteSpace(nameof(hostName), hostName);
             Guard.ArgumentNotNull(nameof(endpointAddress), endpointAddress);
-            Guard.ArgumentNotNullOrEmpty(nameof(eventHubPath), eventHubPath);
-            Guard.ArgumentNotNullOrEmpty(nameof(consumerGroupName), consumerGroupName);
+            Guard.ArgumentNotNullOrWhiteSpace(nameof(eventHubPath), eventHubPath);
+            Guard.ArgumentNotNullOrWhiteSpace(nameof(consumerGroupName), consumerGroupName);
             Guard.ArgumentNotNull(nameof(tokenProvider), tokenProvider);
             Guard.ArgumentNotNull(nameof(cloudStorageAccount), cloudStorageAccount);
-            Guard.ArgumentNotNullOrEmpty(nameof(leaseContainerName), leaseContainerName);
+            Guard.ArgumentNotNullOrWhiteSpace(nameof(leaseContainerName), leaseContainerName);
 
             this.HostName = hostName;
             this.EndpointAddress = endpointAddress;

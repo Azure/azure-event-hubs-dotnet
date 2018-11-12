@@ -91,8 +91,8 @@ namespace Microsoft.Azure.EventHubs
             TimeSpan operationTimeout)
             : this(endpointAddress, entityPath, operationTimeout)
         {
-            Guard.ArgumentNotNullOrEmpty(nameof(sharedAccessKey), sharedAccessKey);
-            Guard.ArgumentNotNullOrEmpty(nameof(sharedAccessKeyName), sharedAccessKeyName);
+            Guard.ArgumentNotNullOrWhiteSpace(nameof(sharedAccessKey), sharedAccessKey);
+            Guard.ArgumentNotNullOrWhiteSpace(nameof(sharedAccessKeyName), sharedAccessKeyName);
 
             this.SasKey = sharedAccessKey;
             this.SasKeyName = sharedAccessKeyName;
@@ -112,7 +112,7 @@ namespace Microsoft.Azure.EventHubs
             TimeSpan operationTimeout)
             : this(endpointAddress, entityPath, operationTimeout)
         {
-            Guard.ArgumentNotNullOrEmpty(nameof(sharedAccessSignature), sharedAccessSignature);
+            Guard.ArgumentNotNullOrWhiteSpace(nameof(sharedAccessSignature), sharedAccessSignature);
 
             this.SharedAccessSignature = sharedAccessSignature;
         }
@@ -124,7 +124,7 @@ namespace Microsoft.Azure.EventHubs
         /// <param name="connectionString">Event Hubs ConnectionString</param>
         public EventHubsConnectionStringBuilder(string connectionString)
         {
-            Guard.ArgumentNotNullOrEmpty(nameof(connectionString), connectionString);
+            Guard.ArgumentNotNullOrWhiteSpace(nameof(connectionString), connectionString);
 
             // Assign default values.
             this.OperationTimeout = ClientConstants.DefaultOperationTimeout;
@@ -141,7 +141,7 @@ namespace Microsoft.Azure.EventHubs
             TransportType transportType = TransportType.Amqp)
         {
             Guard.ArgumentNotNull(nameof(endpointAddress), endpointAddress);
-            Guard.ArgumentNotNullOrEmpty(nameof(entityPath), entityPath);
+            Guard.ArgumentNotNullOrWhiteSpace(nameof(entityPath), entityPath);
 
             // Replace the scheme. We cannot really make sure that user passed an amps:// scheme to us.
             var uriBuilder = new UriBuilder(endpointAddress.AbsoluteUri)

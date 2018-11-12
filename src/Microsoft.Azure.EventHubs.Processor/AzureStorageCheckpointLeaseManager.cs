@@ -6,6 +6,7 @@ namespace Microsoft.Azure.EventHubs.Processor
     using System;
     using System.Collections.Generic;
     using System.Threading.Tasks;
+    using Microsoft.Azure.EventHubs.Primitives;
     using Newtonsoft.Json;
     using WindowsAzure.Storage;
     using WindowsAzure.Storage.Blob;
@@ -32,10 +33,7 @@ namespace Microsoft.Azure.EventHubs.Processor
 
         internal AzureStorageCheckpointLeaseManager(CloudStorageAccount cloudStorageAccount, string leaseContainerName, string storageBlobPrefix)
         {
-            if (cloudStorageAccount == null)
-            {
-                throw new ArgumentNullException(nameof(cloudStorageAccount));
-            }
+            Guard.ArgumentNotNull(nameof(cloudStorageAccount), cloudStorageAccount);
 
             try
             {
@@ -79,7 +77,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             // Proxy enabled?
             if (this.host.EventProcessorOptions != null && this.host.EventProcessorOptions.WebProxy != null)
             {
-                this.operationContext = new OperationContext()
+                this.operationContext = new OperationContext
                 {
                     Proxy = this.host.EventProcessorOptions.WebProxy
                 };
@@ -89,7 +87,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             // Create storage client and configure max execution time.
             // Max execution time will apply to any storage calls except renew.
             var storageClient = this.cloudStorageAccount.CreateCloudBlobClient();
-            storageClient.DefaultRequestOptions = new BlobRequestOptions()
+            storageClient.DefaultRequestOptions = new BlobRequestOptions
             {
                 MaximumExecutionTime = AzureStorageCheckpointLeaseManager.storageMaximumExecutionTime
             };
@@ -145,9 +143,11 @@ namespace Microsoft.Azure.EventHubs.Processor
 
         public async Task UpdateCheckpointAsync(Lease lease, Checkpoint checkpoint)
         {
-            AzureBlobLease newLease = new AzureBlobLease((AzureBlobLease)lease);
-            newLease.Offset = checkpoint.Offset;
-            newLease.SequenceNumber = checkpoint.SequenceNumber;
+            AzureBlobLease newLease = new AzureBlobLease((AzureBlobLease) lease)
+            {
+                Offset = checkpoint.Offset,
+                SequenceNumber = checkpoint.SequenceNumber
+            };
             await this.UpdateLeaseAsync(newLease).ConfigureAwait(false);
         }
 
@@ -160,21 +160,9 @@ namespace Microsoft.Azure.EventHubs.Processor
         //
         // Lease operations.
         //
-        public TimeSpan LeaseRenewInterval
-        {
-            get
-            {
-                return this.leaseRenewInterval;
-            }
-        }
+        public TimeSpan LeaseRenewInterval => this.leaseRenewInterval;
 
-        public TimeSpan LeaseDuration
-        {
-            get
-            {
-                return this.leaseDuration;
-            }
-        }
+        public TimeSpan LeaseDuration => this.leaseDuration;
 
         public Task<bool> LeaseStoreExistsAsync()
         {

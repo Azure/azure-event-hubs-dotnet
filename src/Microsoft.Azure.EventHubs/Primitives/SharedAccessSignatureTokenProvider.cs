@@ -11,6 +11,7 @@ namespace Microsoft.Azure.EventHubs
     using System.Security.Cryptography;
     using System.Text;
     using System.Threading.Tasks;
+    using Microsoft.Azure.EventHubs.Primitives;
 
     /// <summary>
     /// The SharedAccessSignatureTokenProvider generates tokens using a shared access key or existing signature.
@@ -57,10 +58,7 @@ namespace Microsoft.Azure.EventHubs
         /// <param name="tokenScope"></param>
         protected SharedAccessSignatureTokenProvider(string keyName, string sharedAccessKey, Func<string, byte[]> customKeyEncoder, TimeSpan tokenTimeToLive, TokenScope tokenScope)
         {
-            if (string.IsNullOrEmpty(keyName))
-            {
-                throw new ArgumentNullException(nameof(keyName));
-            }
+            Guard.ArgumentNotNullOrWhiteSpace(nameof(keyName), keyName);
 
             if (keyName.Length > SharedAccessSignatureToken.MaxKeyNameLength)
             {
@@ -69,10 +67,7 @@ namespace Microsoft.Azure.EventHubs
                     Resources.ArgumentStringTooBig.FormatForUser(nameof(keyName), SharedAccessSignatureToken.MaxKeyNameLength));
             }
 
-            if (string.IsNullOrEmpty(sharedAccessKey))
-            {
-                throw new ArgumentNullException(nameof(sharedAccessKey));
-            }
+            Guard.ArgumentNotNullOrWhiteSpace(nameof(sharedAccessKey), sharedAccessKey);
 
             if (sharedAccessKey.Length > SharedAccessSignatureToken.MaxKeyLength)
             {
