@@ -23,10 +23,11 @@ namespace Microsoft.Azure.EventHubs
         internal EventHubClient(EventHubsConnectionStringBuilder csb)
             : base($"{nameof(EventHubClient)}{ClientEntity.GetNextId()}({csb.EntityPath})")
         {
+            this.innerSender = new Lazy<EventDataSender>(() => this.CreateEventSender());
+
             this.ConnectionStringBuilder = csb;
             this.EventHubName = csb.EntityPath;
             this.RetryPolicy = RetryPolicy.Default;
-            this.innerSender = new Lazy<EventDataSender>(() => this.CreateEventSender());
         }
 
         /// <summary>
@@ -527,24 +528,16 @@ namespace Microsoft.Azure.EventHubs
 
         /// <summary> Gets or sets a value indicating whether the runtime metric of a receiver is enabled. </summary>
         /// <value> true if a client wants to access <see cref="ReceiverRuntimeInformation"/> using <see cref="PartitionReceiver"/>. </value>
-        public bool EnableReceiverRuntimeMetric
-        {
-            get;
-            set;
-        }
+        public bool EnableReceiverRuntimeMetric { get; set; }
 
         /// <summary>
         /// Gets or sets the web proxy.
         /// A proxy is applicable only when transport type is set to AmqpWebSockets.
         /// If not set, systemwide proxy settings will be honored.
         /// </summary>
-        public IWebProxy WebProxy
-        {
-            get;
-            set;
-        }
+        public IWebProxy WebProxy { get; set; }
 
-        internal bool CloseCalled { get => this.closeCalled; }
+        internal bool CloseCalled => this.closeCalled;
 
         internal EventDataSender CreateEventSender(string partitionId = null)
         {
