@@ -10,6 +10,7 @@ namespace Microsoft.Azure.EventHubs.Processor
     using System.Linq;
     using System.Threading;
     using System.Threading.Tasks;
+    using Microsoft.Azure.EventHubs.Primitives;
 
     class PartitionManager
     {
@@ -221,9 +222,9 @@ namespace Microsoft.Azure.EventHubs.Processor
                         {
                             ourLeaseCount++;
                             ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, lease.PartitionId, "Trying to renew lease.");
-                            renewLeaseTasks.Add(leaseManager.RenewLeaseAsync(lease).ContinueWith(renewResult =>
+                            renewLeaseTasks.Add(leaseManager.RenewLeaseAsync(lease).ContinueWith(async renewResult =>
                             {
-                                if (renewResult.IsFaulted || !renewResult.Result)
+                                if (renewResult.IsFaulted || !await renewResult.ConfigureAwait(false))
                                 {
                                     // Might have failed due to intermittent error or lease-lost.
                                     // Just log here, expired leases will be picked by same or another host anyway.
