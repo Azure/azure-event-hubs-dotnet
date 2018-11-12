@@ -249,7 +249,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
         AmqpServiceClient CreateAmpqServiceClient()
         {
             var client = new AmqpServiceClient(this, AmqpClientConstants.ManagementAddress);
-            Fx.Assert(string.Equals(this.managementServiceClient.Value.Address, AmqpClientConstants.ManagementAddress, StringComparison.OrdinalIgnoreCase),
+            Fx.Assert(string.Equals(client.Address, AmqpClientConstants.ManagementAddress, StringComparison.OrdinalIgnoreCase),
                 "The address should match the address of managementServiceClient");
             return client;
         }
