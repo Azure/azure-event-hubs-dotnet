@@ -255,7 +255,7 @@ namespace Microsoft.Azure.EventHubs.Processor
         public IEnumerable<Task<Lease>> GetAllLeases()
         {
             IEnumerable<string> partitionIds =
-                Task.Run(() => this.host.PartitionManager.GetPartitionIdsAsync())
+                this.host.PartitionManager.GetPartitionIdsAsync()
                     .ConfigureAwait(false)
                     .GetAwaiter()
                     .GetResult();
