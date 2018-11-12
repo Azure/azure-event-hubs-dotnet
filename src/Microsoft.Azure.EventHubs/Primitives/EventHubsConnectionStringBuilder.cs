@@ -91,10 +91,8 @@ namespace Microsoft.Azure.EventHubs
             TimeSpan operationTimeout)
             : this(endpointAddress, entityPath, operationTimeout)
         {
-            if (string.IsNullOrWhiteSpace(sharedAccessKeyName) || string.IsNullOrWhiteSpace(sharedAccessKey))
-            {
-                throw Fx.Exception.ArgumentNullOrWhiteSpace(string.IsNullOrWhiteSpace(sharedAccessKeyName) ? nameof(sharedAccessKeyName) : nameof(sharedAccessKey));
-            }
+            Guard.ArgumentNotNullOrEmpty(nameof(sharedAccessKey), sharedAccessKey);
+            Guard.ArgumentNotNullOrEmpty(nameof(sharedAccessKeyName), sharedAccessKeyName);
 
             this.SasKey = sharedAccessKey;
             this.SasKeyName = sharedAccessKeyName;
@@ -114,10 +112,7 @@ namespace Microsoft.Azure.EventHubs
             TimeSpan operationTimeout)
             : this(endpointAddress, entityPath, operationTimeout)
         {
-            if (string.IsNullOrWhiteSpace(sharedAccessSignature))
-            {
-                throw Fx.Exception.ArgumentNullOrWhiteSpace(nameof(sharedAccessSignature));
-            }
+            Guard.ArgumentNotNullOrEmpty(nameof(sharedAccessSignature), sharedAccessSignature);
 
             this.SharedAccessSignature = sharedAccessSignature;
         }
@@ -129,10 +124,7 @@ namespace Microsoft.Azure.EventHubs
         /// <param name="connectionString">Event Hubs ConnectionString</param>
         public EventHubsConnectionStringBuilder(string connectionString)
         {
-            if (string.IsNullOrWhiteSpace(connectionString))
-            {
-                throw Fx.Exception.ArgumentNullOrWhiteSpace(nameof(connectionString));
-            }
+            Guard.ArgumentNotNullOrEmpty(nameof(connectionString), connectionString);
 
             // Assign default values.
             this.OperationTimeout = ClientConstants.DefaultOperationTimeout;
@@ -149,10 +141,8 @@ namespace Microsoft.Azure.EventHubs
             TransportType transportType = TransportType.Amqp)
         {
             Guard.ArgumentNotNull(nameof(endpointAddress), endpointAddress);
-            if (string.IsNullOrWhiteSpace(entityPath))
-            {
-                throw Fx.Exception.ArgumentNullOrWhiteSpace(nameof(entityPath));
-            }
+            Guard.ArgumentNotNullOrEmpty(nameof(entityPath), entityPath);
+
             // Replace the scheme. We cannot really make sure that user passed an amps:// scheme to us.
             var uriBuilder = new UriBuilder(endpointAddress.AbsoluteUri)
             {

@@ -196,40 +196,13 @@ namespace Microsoft.Azure.EventHubs.Processor
             TimeSpan? operationTimeout = null,
             TransportType transportType = TransportType.Amqp)
         {
-            if (string.IsNullOrWhiteSpace(hostName))
-            {
-                throw new ArgumentNullException(nameof(hostName));
-            }
-
-            if (endpointAddress == null)
-            {
-                throw new ArgumentNullException(nameof(endpointAddress));
-            }
-
-            if (string.IsNullOrWhiteSpace(eventHubPath))
-            {
-                throw new ArgumentNullException(nameof(eventHubPath));
-            }
-
-            if (string.IsNullOrWhiteSpace(consumerGroupName))
-            {
-                throw new ArgumentNullException(nameof(consumerGroupName));
-            }
-
-            if (tokenProvider == null)
-            {
-                throw new ArgumentNullException(nameof(tokenProvider));
-            }
-
-            if (cloudStorageAccount == null)
-            {
-                throw new ArgumentNullException(nameof(cloudStorageAccount));
-            }
-
-            if (string.IsNullOrWhiteSpace(leaseContainerName))
-            {
-                throw new ArgumentNullException(nameof(leaseContainerName));
-            }
+            Guard.ArgumentNotNullOrEmpty(nameof(hostName), hostName);
+            Guard.ArgumentNotNull(nameof(endpointAddress), endpointAddress);
+            Guard.ArgumentNotNullOrEmpty(nameof(eventHubPath), eventHubPath);
+            Guard.ArgumentNotNullOrEmpty(nameof(consumerGroupName), consumerGroupName);
+            Guard.ArgumentNotNull(nameof(tokenProvider), tokenProvider);
+            Guard.ArgumentNotNull(nameof(cloudStorageAccount), cloudStorageAccount);
+            Guard.ArgumentNotNullOrEmpty(nameof(leaseContainerName), leaseContainerName);
 
             this.HostName = hostName;
             this.EndpointAddress = endpointAddress;

@@ -7,12 +7,18 @@ namespace Microsoft.Azure.EventHubs.Primitives
     {
         internal static void ArgumentNotNull(string argumentName, object value)
         {
-            if (value == null) Fx.Exception.ArgumentNull(argumentName);
+            if (value == null)
+            {
+                Fx.Exception.ArgumentNull(argumentName);
+            }
         }
 
         internal static void ArgumentNotNullOrEmpty(string argumentName, string value)
         {
-            if (string.IsNullOrWhiteSpace(value)) Fx.Exception.ArgumentNull(argumentName);
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                Fx.Exception.ArgumentNull(argumentName);
+            }
         }
     }
 }

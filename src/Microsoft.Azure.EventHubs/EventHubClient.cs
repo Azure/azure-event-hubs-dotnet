@@ -47,10 +47,7 @@ namespace Microsoft.Azure.EventHubs
         /// <returns></returns>
         public static EventHubClient CreateFromConnectionString(string connectionString)
         {
-            if (string.IsNullOrWhiteSpace(connectionString))
-            {
-                throw Fx.Exception.ArgumentNullOrWhiteSpace(nameof(connectionString));
-            }
+            Guard.ArgumentNotNullOrEmpty(nameof(connectionString), connectionString);
 
             var csb = new EventHubsConnectionStringBuilder(connectionString);
             return Create(csb);
@@ -74,10 +71,8 @@ namespace Microsoft.Azure.EventHubs
         {
             Guard.ArgumentNotNull(nameof(endpointAddress), endpointAddress);
             Guard.ArgumentNotNull(nameof(tokenProvider), tokenProvider);
-            if (string.IsNullOrWhiteSpace(entityPath))
-            {
-                throw Fx.Exception.ArgumentNullOrWhiteSpace(nameof(entityPath));
-            }
+            Guard.ArgumentNotNullOrEmpty(nameof(entityPath), entityPath);
+
             EventHubsEventSource.Log.EventHubClientCreateStart(endpointAddress.Host, entityPath);
             EventHubClient eventHubClient = new AmqpEventHubClient(
                 endpointAddress,
@@ -199,10 +194,8 @@ namespace Microsoft.Azure.EventHubs
 
         static EventHubClient Create(EventHubsConnectionStringBuilder csb)
         {
-            if (string.IsNullOrWhiteSpace(csb.EntityPath))
-            {
-                throw Fx.Exception.ArgumentNullOrWhiteSpace(nameof(csb.EntityPath));
-            }
+            Guard.ArgumentNotNull(nameof(csb), csb);
+            Guard.ArgumentNotNullOrEmpty(nameof(csb.EntityPath), csb.EntityPath);
 
             EventHubsEventSource.Log.EventHubClientCreateStart(csb.Endpoint.Host, csb.EntityPath);
             EventHubClient eventHubClient = new AmqpEventHubClient(csb);
@@ -394,11 +387,7 @@ namespace Microsoft.Azure.EventHubs
         /// <seealso cref="PartitionSender"/>
         public PartitionSender CreatePartitionSender(string partitionId)
         {
-            if (string.IsNullOrWhiteSpace(partitionId))
-            {
-                throw Fx.Exception.ArgumentNullOrWhiteSpace(nameof(partitionId));
-            }
-
+            Guard.ArgumentNotNullOrEmpty(nameof(partitionId), partitionId);
             return new PartitionSender(this, partitionId);
         }
 
@@ -466,11 +455,7 @@ namespace Microsoft.Azure.EventHubs
         /// <returns>Returns <see cref="EventHubPartitionRuntimeInformation" />.</returns>
         public async Task<EventHubPartitionRuntimeInformation> GetPartitionRuntimeInformationAsync(string partitionId)
         {
-            if (string.IsNullOrWhiteSpace(partitionId))
-            {
-                throw Fx.Exception.ArgumentNullOrWhiteSpace(nameof(partitionId));
-            }
-
+            Guard.ArgumentNotNullOrEmpty(nameof(partitionId), partitionId);
             EventHubsEventSource.Log.GetEventHubPartitionRuntimeInformationStart(this.ClientId, partitionId);
 
             try
