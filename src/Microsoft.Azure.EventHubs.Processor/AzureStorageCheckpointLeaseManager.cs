@@ -18,7 +18,7 @@ namespace Microsoft.Azure.EventHubs.Processor
 
         static readonly TimeSpan storageMaximumExecutionTime = TimeSpan.FromMinutes(2);
         readonly CloudStorageAccount cloudStorageAccount;
-        readonly string leaseContainerName = null;
+        readonly string leaseContainerName;
         readonly string storageBlobPrefix;
         BlobRequestOptions renewRequestOptions;
         OperationContext operationContext = null;
