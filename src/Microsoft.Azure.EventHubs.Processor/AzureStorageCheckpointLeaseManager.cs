@@ -256,17 +256,10 @@ namespace Microsoft.Azure.EventHubs.Processor
         public IEnumerable<Task<Lease>> GetAllLeases()
         {
             List<Task<Lease>> leaseFutures = new List<Task<Lease>>();
-
-            TaskFactory factory = new TaskFactory(CancellationToken.None,
-                    TaskCreationOptions.None,
-                    TaskContinuationOptions.None,
-                    TaskScheduler.Default);
-
             IEnumerable<string> partitionIds =
-                factory.StartNew(() => this.host.PartitionManager.GetPartitionIdsAsync())
-                .Unwrap()
-                .GetAwaiter()
-                .GetResult();
+                Task.Run(async () => await this.host.PartitionManager.GetPartitionIdsAsync().ConfigureAwait(false))
+                    .GetAwaiter()
+                    .GetResult();
 
             foreach (string id in partitionIds)
             {
