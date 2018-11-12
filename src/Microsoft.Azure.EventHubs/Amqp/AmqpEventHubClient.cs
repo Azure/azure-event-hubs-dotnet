@@ -14,42 +14,37 @@ namespace Microsoft.Azure.EventHubs.Amqp
     sealed class AmqpEventHubClient : EventHubClient
     {
         const string CbsSaslMechanismName = "MSSBCBS";
-        AmqpServiceClient managementServiceClient; // serviceClient that handles management calls
+        readonly Lazy<AmqpServiceClient> managementServiceClient; // serviceClient that handles management calls
 
         public AmqpEventHubClient(EventHubsConnectionStringBuilder csb)
+            : this(csb,
+                !string.IsNullOrWhiteSpace(csb.SharedAccessSignature)
+                ? TokenProvider.CreateSharedAccessSignatureTokenProvider(csb.SharedAccessSignature)
+                : TokenProvider.CreateSharedAccessSignatureTokenProvider(csb.SasKeyName, csb.SasKey))
+        {
+        }
+
+        public AmqpEventHubClient(
+            Uri endpointAddress,
+            string entityPath,
+            ITokenProvider tokenProvider,
+            TimeSpan operationTimeout,
+            EventHubs.TransportType transportType)
+            : this(new EventHubsConnectionStringBuilder(endpointAddress, entityPath, operationTimeout, transportType), tokenProvider)
+        {
+        }
+
+        private AmqpEventHubClient(EventHubsConnectionStringBuilder csb, ITokenProvider tokenProvider)
             : base(csb)
         {
             this.ContainerId = Guid.NewGuid().ToString("N");
             this.AmqpVersion = new Version(1, 0, 0, 0);
             this.MaxFrameSize = AmqpConstants.DefaultMaxFrameSize;
-
-            if (!string.IsNullOrWhiteSpace(csb.SharedAccessSignature))
-            {
-                this.InternalTokenProvider = TokenProvider.CreateSharedAccessSignatureTokenProvider(csb.SharedAccessSignature);
-            }
-            else
-            {
-                this.InternalTokenProvider = TokenProvider.CreateSharedAccessSignatureTokenProvider(csb.SasKeyName, csb.SasKey);
-            }
-
-            this.CbsTokenProvider = new TokenProviderAdapter(this);
-            this.ConnectionManager = new FaultTolerantAmqpObject<AmqpConnection>(this.CreateConnectionAsync, this.CloseConnection);
-        }
-
-        public AmqpEventHubClient(
-            Uri endpointAddress, 
-            string entityPath, 
-            ITokenProvider tokenProvider, 
-            TimeSpan operationTimeout,
-            EventHubs.TransportType transportType)
-            : base(new EventHubsConnectionStringBuilder(endpointAddress, entityPath, operationTimeout, transportType))
-        {
-            this.ContainerId = Guid.NewGuid().ToString("N");
-            this.AmqpVersion = new Version(1, 0, 0, 0);
-            this.MaxFrameSize = AmqpConstants.DefaultMaxFrameSize;
             this.InternalTokenProvider = tokenProvider;
+
             this.CbsTokenProvider = new TokenProviderAdapter(this);
-            this.ConnectionManager = new FaultTolerantAmqpObject<AmqpConnection>(this.CreateConnectionAsync, this.CloseConnection);
+            this.ConnectionManager = new FaultTolerantAmqpObject<AmqpConnection>(this.CreateConnectionAsync, CloseConnection);
+            this.managementServiceClient = new Lazy<AmqpServiceClient>(this.CreateAmpqServiceClient);
         }
 
         internal ICbsTokenProvider CbsTokenProvider { get; }
@@ -93,51 +88,25 @@ namespace Microsoft.Azure.EventHubs.Amqp
             return this.ConnectionManager.CloseAsync();
         }
 
-        protected override async Task<EventHubRuntimeInformation> OnGetRuntimeInformationAsync()
+        protected override Task<EventHubRuntimeInformation> OnGetRuntimeInformationAsync()
         {
-            var serviceClient = this.GetManagementServiceClient();
-            var eventHubRuntimeInformation = await serviceClient.GetRuntimeInformationAsync().ConfigureAwait(false);
-
-            return eventHubRuntimeInformation;
+            return this.managementServiceClient.Value.GetRuntimeInformationAsync();
         }
 
-        protected override async Task<EventHubPartitionRuntimeInformation> OnGetPartitionRuntimeInformationAsync(string partitionId)
+        protected override Task<EventHubPartitionRuntimeInformation> OnGetPartitionRuntimeInformationAsync(string partitionId)
         {
-            var serviceClient = this.GetManagementServiceClient();
-            var eventHubPartitionRuntimeInformation = await serviceClient.
-                GetPartitionRuntimeInformationAsync(partitionId).ConfigureAwait(false);
-
-            return eventHubPartitionRuntimeInformation;
+            return this.managementServiceClient.Value.GetPartitionRuntimeInformationAsync(partitionId);
         }
 
-        internal AmqpServiceClient GetManagementServiceClient()
-        {
-            if (this.managementServiceClient == null)
-            {
-                lock (ThisLock)
-                {
-                    if (this.managementServiceClient == null)
-                    {
-                        this.managementServiceClient = new AmqpServiceClient(this, AmqpClientConstants.ManagementAddress);
-                    }
-
-                    Fx.Assert(string.Equals(this.managementServiceClient.Address, AmqpClientConstants.ManagementAddress, StringComparison.OrdinalIgnoreCase),
-                        "The address should match the address of managementServiceClient");
-                }
-            }
-
-            return this.managementServiceClient;
-        }
-
-        internal static AmqpSettings CreateAmqpSettings(
-            Version amqpVersion,
-            bool useSslStreamSecurity,
-            bool hasTokenProvider,
-            string sslHostName = null,
-            bool useWebSockets = false,
-            bool sslStreamUpgrade = false,
-            NetworkCredential networkCredential = null,
-            bool forceTokenProvider = true)
+        static AmqpSettings CreateAmqpSettings(
+           Version amqpVersion,
+           bool useSslStreamSecurity,
+           bool hasTokenProvider,
+           string sslHostName = null,
+           bool useWebSockets = false,
+           bool sslStreamUpgrade = false,
+           NetworkCredential networkCredential = null,
+           bool forceTokenProvider = true)
         {
             var settings = new AmqpSettings();
             if (useSslStreamSecurity && !useWebSockets && sslStreamUpgrade)
@@ -211,13 +180,13 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 Scheme = AmqpClientConstants.UriSchemeWss,
                 Port = -1 // Port will be assigned on transport listener.
             };
-            var ts = new WebSocketTransportSettings()
+            var ts = new WebSocketTransportSettings
             {
                 Uri = uriBuilder.Uri
             };
 
             // Proxy Uri provided?
-            if(webProxy != null)
+            if (webProxy != null)
             {
                 ts.Proxy = webProxy;
             }
@@ -242,7 +211,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
         {
             string hostName = this.ConnectionStringBuilder.Endpoint.Host;
             int port = this.ConnectionStringBuilder.Endpoint.Port;
-            bool useWebSockets = this.ConnectionStringBuilder.TransportType == Microsoft.Azure.EventHubs.TransportType.AmqpWebSockets;
+            bool useWebSockets = this.ConnectionStringBuilder.TransportType == EventHubs.TransportType.AmqpWebSockets;
 
             var timeoutHelper = new TimeoutHelper(timeout);
             var amqpSettings = CreateAmqpSettings(
@@ -251,15 +220,9 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 hasTokenProvider: true,
                 useWebSockets: useWebSockets);
 
-            TransportSettings tpSettings = null;
-            if (useWebSockets)
-            {
-                tpSettings = CreateWebSocketsTransportSettings(hostName, this.WebProxy);
-            }
-            else
-            {
-                tpSettings = CreateTcpTlsTransportSettings(hostName, port);
-            }
+            TransportSettings tpSettings = useWebSockets
+                ? CreateWebSocketsTransportSettings(hostName, this.WebProxy)
+                : CreateTcpTlsTransportSettings(hostName, port);
 
             var initiator = new AmqpTransportInitiator(amqpSettings, tpSettings);
             var transport = await initiator.ConnectTaskAsync(timeoutHelper.RemainingTime()).ConfigureAwait(false);
@@ -278,9 +241,17 @@ namespace Microsoft.Azure.EventHubs.Amqp
             return connection;
         }
 
-        void CloseConnection(AmqpConnection connection)
+        static void CloseConnection(AmqpConnection connection)
         {
             connection.SafeClose();
+        }
+
+        AmqpServiceClient CreateAmpqServiceClient()
+        {
+            var client = new AmqpServiceClient(this, AmqpClientConstants.ManagementAddress);
+            Fx.Assert(string.Equals(client.Address, AmqpClientConstants.ManagementAddress, StringComparison.OrdinalIgnoreCase),
+                "The address should match the address of managementServiceClient");
+            return client;
         }
 
         /// <summary>
