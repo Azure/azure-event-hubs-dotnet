@@ -14,7 +14,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
     sealed class AmqpEventHubClient : EventHubClient
     {
         const string CbsSaslMechanismName = "MSSBCBS";
-        AmqpServiceClient managementServiceClient; // serviceClient that handles management calls
+        readonly Lazy<AmqpServiceClient> managementServiceClient; // serviceClient that handles management calls
 
         public AmqpEventHubClient(EventHubsConnectionStringBuilder csb)
             : base(csb)
@@ -23,23 +23,19 @@ namespace Microsoft.Azure.EventHubs.Amqp
             this.AmqpVersion = new Version(1, 0, 0, 0);
             this.MaxFrameSize = AmqpConstants.DefaultMaxFrameSize;
 
-            if (!string.IsNullOrWhiteSpace(csb.SharedAccessSignature))
-            {
-                this.InternalTokenProvider = TokenProvider.CreateSharedAccessSignatureTokenProvider(csb.SharedAccessSignature);
-            }
-            else
-            {
-                this.InternalTokenProvider = TokenProvider.CreateSharedAccessSignatureTokenProvider(csb.SasKeyName, csb.SasKey);
-            }
+            this.InternalTokenProvider = !string.IsNullOrWhiteSpace(csb.SharedAccessSignature)
+                ? TokenProvider.CreateSharedAccessSignatureTokenProvider(csb.SharedAccessSignature)
+                : TokenProvider.CreateSharedAccessSignatureTokenProvider(csb.SasKeyName, csb.SasKey);
 
             this.CbsTokenProvider = new TokenProviderAdapter(this);
             this.ConnectionManager = new FaultTolerantAmqpObject<AmqpConnection>(this.CreateConnectionAsync, this.CloseConnection);
+            this.managementServiceClient = new Lazy<AmqpServiceClient>(this.CreateAmpqServiceClient);
         }
 
         public AmqpEventHubClient(
-            Uri endpointAddress, 
-            string entityPath, 
-            ITokenProvider tokenProvider, 
+            Uri endpointAddress,
+            string entityPath,
+            ITokenProvider tokenProvider,
             TimeSpan operationTimeout,
             EventHubs.TransportType transportType)
             : base(new EventHubsConnectionStringBuilder(endpointAddress, entityPath, operationTimeout, transportType))
@@ -48,8 +44,10 @@ namespace Microsoft.Azure.EventHubs.Amqp
             this.AmqpVersion = new Version(1, 0, 0, 0);
             this.MaxFrameSize = AmqpConstants.DefaultMaxFrameSize;
             this.InternalTokenProvider = tokenProvider;
+
             this.CbsTokenProvider = new TokenProviderAdapter(this);
             this.ConnectionManager = new FaultTolerantAmqpObject<AmqpConnection>(this.CreateConnectionAsync, this.CloseConnection);
+            this.managementServiceClient = new Lazy<AmqpServiceClient>(this.CreateAmpqServiceClient);
         }
 
         internal ICbsTokenProvider CbsTokenProvider { get; }
@@ -112,21 +110,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
         internal AmqpServiceClient GetManagementServiceClient()
         {
-            if (this.managementServiceClient == null)
-            {
-                lock (ThisLock)
-                {
-                    if (this.managementServiceClient == null)
-                    {
-                        this.managementServiceClient = new AmqpServiceClient(this, AmqpClientConstants.ManagementAddress);
-                    }
-
-                    Fx.Assert(string.Equals(this.managementServiceClient.Address, AmqpClientConstants.ManagementAddress, StringComparison.OrdinalIgnoreCase),
-                        "The address should match the address of managementServiceClient");
-                }
-            }
-
-            return this.managementServiceClient;
+            return this.managementServiceClient.Value;
         }
 
         internal static AmqpSettings CreateAmqpSettings(
@@ -217,7 +201,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
             };
 
             // Proxy Uri provided?
-            if(webProxy != null)
+            if (webProxy != null)
             {
                 ts.Proxy = webProxy;
             }
@@ -281,6 +265,14 @@ namespace Microsoft.Azure.EventHubs.Amqp
         void CloseConnection(AmqpConnection connection)
         {
             connection.SafeClose();
+        }
+
+        AmqpServiceClient CreateAmpqServiceClient()
+        {
+            var client = new AmqpServiceClient(this, AmqpClientConstants.ManagementAddress);
+            Fx.Assert(string.Equals(this.managementServiceClient.Value.Address, AmqpClientConstants.ManagementAddress, StringComparison.OrdinalIgnoreCase),
+                "The address should match the address of managementServiceClient");
+            return client;
         }
 
         /// <summary>

@@ -17,7 +17,7 @@ namespace Microsoft.Azure.EventHubs
     /// </summary>
     public abstract class EventHubClient : ClientEntity
     {
-        EventDataSender innerSender;
+        readonly Lazy<EventDataSender> innerSender;
         bool closeCalled = false;
 
         internal EventHubClient(EventHubsConnectionStringBuilder csb)
@@ -26,6 +26,7 @@ namespace Microsoft.Azure.EventHubs
             this.ConnectionStringBuilder = csb;
             this.EventHubName = csb.EntityPath;
             this.RetryPolicy = RetryPolicy.Default;
+            this.innerSender = new Lazy<EventDataSender>(() => this.CreateEventSender());
         }
 
         /// <summary>
@@ -35,27 +36,7 @@ namespace Microsoft.Azure.EventHubs
 
         internal EventHubsConnectionStringBuilder ConnectionStringBuilder { get; }
 
-        /// <summary></summary>
-        protected object ThisLock { get; } = new object();
-
-        EventDataSender InnerSender
-        {
-            get
-            {
-                if (this.innerSender == null)
-                {
-                    lock (this.ThisLock)
-                    {
-                        if (this.innerSender == null)
-                        {
-                            this.innerSender = this.CreateEventSender();
-                        }
-                    }
-                }
-
-                return this.innerSender;
-            }
-        }
+        EventDataSender InnerSender => this.innerSender.Value;
 
         /// <summary>
         /// Creates a new instance of the Event Hubs client using the specified connection string. You can populate the EntityPath property with the name of the Event Hub.
@@ -83,10 +64,10 @@ namespace Microsoft.Azure.EventHubs
         /// <param name="transportType">Transport type on connection.</param>
         /// <returns></returns>
         public static EventHubClient Create(
-            Uri endpointAddress, 
-            string entityPath, 
-            ITokenProvider tokenProvider, 
-            TimeSpan? operationTimeout = null, 
+            Uri endpointAddress,
+            string entityPath,
+            ITokenProvider tokenProvider,
+            TimeSpan? operationTimeout = null,
             TransportType transportType = TransportType.Amqp)
         {
             if (endpointAddress == null)
@@ -109,7 +90,7 @@ namespace Microsoft.Azure.EventHubs
                 endpointAddress,
                 entityPath,
                 tokenProvider,
-                operationTimeout?? ClientConstants.DefaultOperationTimeout,
+                operationTimeout ?? ClientConstants.DefaultOperationTimeout,
                 transportType);
             EventHubsEventSource.Log.EventHubClientCreateStop(eventHubClient.ClientId);
             return eventHubClient;
@@ -126,16 +107,16 @@ namespace Microsoft.Azure.EventHubs
         /// <param name="transportType">Transport type on connection.</param>
         /// <returns></returns>
         public static EventHubClient Create(
-            Uri endpointAddress, 
-            string entityPath, 
+            Uri endpointAddress,
+            string entityPath,
             AuthenticationContext authContext,
             ClientCredential clientCredential,
             TimeSpan? operationTimeout = null,
             TransportType transportType = TransportType.Amqp)
         {
             return Create(
-                endpointAddress, 
-                entityPath, 
+                endpointAddress,
+                entityPath,
                 TokenProvider.CreateAadTokenProvider(authContext, clientCredential),
                 operationTimeout,
                 transportType);
@@ -534,7 +515,7 @@ namespace Microsoft.Azure.EventHubs
         {
             return this.CreateBatch(new BatchOptions());
         }
-        
+
         /// <summary>Creates a batch where event data objects can be added for later SendAsync call.</summary>
         /// <param name="options"><see cref="BatchOptions" /> to define partition key and max message size.</param>
         /// <returns>Returns <see cref="EventDataBatch" />.</returns>
@@ -599,10 +580,9 @@ namespace Microsoft.Azure.EventHubs
         /// </summary>
         protected override void OnRetryPolicyUpdate()
         {
-            // Propagate retry policy updates to inner sender if there is any.
-            if (this.innerSender != null)
+            if (this.innerSender.IsValueCreated)
             {
-                this.innerSender.RetryPolicy = this.RetryPolicy.Clone();
+                this.innerSender.Value.RetryPolicy = this.RetryPolicy.Clone();
             }
         }
     }
