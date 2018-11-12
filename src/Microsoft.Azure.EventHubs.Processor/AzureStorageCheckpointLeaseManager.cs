@@ -254,18 +254,16 @@ namespace Microsoft.Azure.EventHubs.Processor
 
         public IEnumerable<Task<Lease>> GetAllLeases()
         {
-            List<Task<Lease>> leaseFutures = new List<Task<Lease>>();
             IEnumerable<string> partitionIds =
-                Task.Run(async () => await this.host.PartitionManager.GetPartitionIdsAsync().ConfigureAwait(false))
+                Task.Run(() => this.host.PartitionManager.GetPartitionIdsAsync())
+                    .ConfigureAwait(false)
                     .GetAwaiter()
                     .GetResult();
 
             foreach (string id in partitionIds)
             {
-                leaseFutures.Add(GetLeaseAsync(id));
+                yield return GetLeaseAsync(id);
             }
-
-            return leaseFutures;
         }
 
         public async Task<Lease> CreateLeaseIfNotExistsAsync(string partitionId) // throws URISyntaxException, IOException, StorageException
