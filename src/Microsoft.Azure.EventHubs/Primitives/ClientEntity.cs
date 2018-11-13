@@ -46,10 +46,7 @@ namespace Microsoft.Azure.EventHubs
         /// </summary>
         public RetryPolicy RetryPolicy
         {
-            get
-            {
-                return this.retryPolicy;
-            }
+            get => this.retryPolicy;
 
             set
             {

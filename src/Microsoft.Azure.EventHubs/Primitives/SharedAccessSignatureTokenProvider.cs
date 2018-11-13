@@ -17,8 +17,6 @@ namespace Microsoft.Azure.EventHubs
     /// </summary>
     public class SharedAccessSignatureTokenProvider : TokenProvider
     {
-        const TokenScope DefaultTokenScope = TokenScope.Entity;
-
         internal static readonly TimeSpan DefaultTokenTimeout = TimeSpan.FromMinutes(60);
 
         /// <summary>

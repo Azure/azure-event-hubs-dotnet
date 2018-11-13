@@ -4,7 +4,6 @@
 namespace Microsoft.Azure.EventHubs
 {
     using System;
-    using System.Collections.Concurrent;
     using System.Net.Sockets;
     using System.Threading.Tasks;
 
@@ -19,13 +18,7 @@ namespace Microsoft.Azure.EventHubs
         static readonly TimeSpan DefaultRetryMinBackoff = TimeSpan.Zero;
         static readonly TimeSpan DefaultRetryMaxBackoff = TimeSpan.FromSeconds(30);
 
-        object serverBusySync;
-
-        /// <summary></summary>
-        protected RetryPolicy()
-        {
-            this.serverBusySync = new Object();
-        }
+        readonly object serverBusySync = new object();
 
         /// <summary>
         /// Determines whether or not the exception can be retried.
@@ -79,24 +72,12 @@ namespace Microsoft.Azure.EventHubs
         /// <summary>
         /// Returns the default retry policy, <see cref="RetryExponential"/>.
         /// </summary>
-        public static RetryPolicy Default
-        {
-            get
-            {
-                return new RetryExponential(DefaultRetryMinBackoff, DefaultRetryMaxBackoff, DefaultRetryMaxCount);
-            }
-        }
+        public static RetryPolicy Default => new RetryExponential(DefaultRetryMinBackoff, DefaultRetryMaxBackoff, DefaultRetryMaxCount);
 
         /// <summary>
         /// Returns the default retry policy, <see cref="NoRetry"/>.
         /// </summary>
-        public static RetryPolicy NoRetry
-        {
-            get
-            {
-                return new RetryExponential(TimeSpan.Zero, TimeSpan.Zero, 0);
-            }
-        }
+        public static RetryPolicy NoRetry => new RetryExponential(TimeSpan.Zero, TimeSpan.Zero, 0);
 
         /// <summary></summary>
         /// <param name="lastException"></param>
