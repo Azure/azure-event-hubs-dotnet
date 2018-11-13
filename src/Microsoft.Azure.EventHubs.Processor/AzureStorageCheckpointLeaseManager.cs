@@ -1,8 +1,6 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
-using Microsoft.Azure.EventHubs.Primitives;
-
 namespace Microsoft.Azure.EventHubs.Processor
 {
     using System;
@@ -10,6 +8,7 @@ namespace Microsoft.Azure.EventHubs.Processor
     using System.Threading.Tasks;
     using Microsoft.Azure.EventHubs.Primitives;
     using Newtonsoft.Json;
+    using Microsoft.Azure.EventHubs.Primitives;
     using WindowsAzure.Storage;
     using WindowsAzure.Storage.Blob;
 
