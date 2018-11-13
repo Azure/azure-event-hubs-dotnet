@@ -89,9 +89,9 @@ namespace Microsoft.Azure.EventHubs
 
             // Calculate overhead depending on the message size. 
             // Overhead is smaller for messages smaller than 256 bytes.
-            long overHead = eventData.AmqpMessage.SerializedMessageSize < 256 ? 5 : 8;
+            long overhead = eventData.AmqpMessage.SerializedMessageSize < 256 ? 5 : 8;
 
-            return eventData.AmqpMessage.SerializedMessageSize + overHead;
+            return eventData.AmqpMessage.SerializedMessageSize + overhead;
         }
 
         /// <summary>
