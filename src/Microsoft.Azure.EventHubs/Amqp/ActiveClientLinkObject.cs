@@ -16,7 +16,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
         DateTime authorizationValidToUtc;
 
         protected ActiveClientLinkObject(
-            AmqpObject amqpLinkObject, 
+            AmqpObject amqpLinkObject,
             string audience,
             string endpointUri,
             string[] requiredClaims,
@@ -31,43 +31,22 @@ namespace Microsoft.Azure.EventHubs.Amqp
             this.authorizationValidToUtc = authorizationValidToUtc;
         }
 
-        public bool IsClientToken
-        {
-            get { return this.isClientToken; }
-        }
+        public bool IsClientToken => this.isClientToken;
 
-        public string Audience
-        {
-            get { return this.audience; }
-        }
+        public string Audience => this.audience;
 
-        public string EndpointUri
-        {
-            get { return this.endpointUri; }
-        }
+        public string EndpointUri => this.endpointUri;
 
-        public string[] RequiredClaims
-        {
-            get { return (string[])this.requiredClaims.Clone(); }
-        }
+        public string[] RequiredClaims => (string[])this.requiredClaims.Clone();
 
         public DateTime AuthorizationValidToUtc
         {
-            get { return this.authorizationValidToUtc; }
-            set { this.authorizationValidToUtc = value; }
+            get => this.authorizationValidToUtc;
+            set => this.authorizationValidToUtc = value;
         }
 
-        public AmqpObject LinkObject
-        {
-            get
-            {
-                return this.amqpLinkObject;
-            }
-        }
+        public AmqpObject LinkObject => this.amqpLinkObject;
 
-        public abstract AmqpConnection Connection
-        {
-            get;
-        }
+        public abstract AmqpConnection Connection { get; }
     }
 }
