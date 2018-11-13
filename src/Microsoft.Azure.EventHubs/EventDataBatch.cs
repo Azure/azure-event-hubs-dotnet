@@ -78,10 +78,7 @@ namespace Microsoft.Azure.EventHubs
             return true;
         }
 
-        internal string PartitionKey
-        {
-            get; set;
-        }
+        internal string PartitionKey { get; set; }
 
         long GetEventSizeForBatch(EventData eventData)
         {
@@ -91,15 +88,10 @@ namespace Microsoft.Azure.EventHubs
             eventData.AmqpMessage = amqpMessage;
 
             // Calculate overhead depending on the message size. 
-            if (eventData.AmqpMessage.SerializedMessageSize < 256)
-            {
-                // Overhead is smaller for messages smaller than 256 bytes.
-                return eventData.AmqpMessage.SerializedMessageSize + 5;
-            }
-            else
-            {
-                return eventData.AmqpMessage.SerializedMessageSize + 8;
-            }
+            // Overhead is smaller for messages smaller than 256 bytes.
+            long overHead = eventData.AmqpMessage.SerializedMessageSize < 256 ? 5 : 8;
+
+            return eventData.AmqpMessage.SerializedMessageSize + overHead;
         }
 
         /// <summary>

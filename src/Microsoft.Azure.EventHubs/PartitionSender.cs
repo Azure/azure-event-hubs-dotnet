@@ -46,7 +46,7 @@ namespace Microsoft.Azure.EventHubs
         {
             return this.CreateBatch(new BatchOptions());
         }
-        
+
         /// <summary>Creates a batch where event data objects can be added for later SendAsync call.</summary>
         /// <param name="options"><see cref="BatchOptions" /> to define partition key and max message size.</param>
         /// <returns>Returns <see cref="EventDataBatch" />.</returns>
@@ -178,11 +178,11 @@ namespace Microsoft.Azure.EventHubs
 
             await this.SendAsync(eventDataBatch.ToEnumerable());
         }
-        
+
         /// <summary>
-                 /// Closes and releases resources for the <see cref="PartitionSender"/>.
-                 /// </summary>
-                 /// <returns>An asynchronous operation</returns>
+        /// Closes and releases resources for the <see cref="PartitionSender"/>.
+        /// </summary>
+        /// <returns>An asynchronous operation</returns>
         public override async Task CloseAsync()
         {
             EventHubsEventSource.Log.ClientCloseStart(this.ClientId);

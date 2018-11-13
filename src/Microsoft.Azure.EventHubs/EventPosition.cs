@@ -39,7 +39,7 @@ namespace Microsoft.Azure.EventHubs
         {
             return EventPosition.FromOffset(EndOfStream);
         }
-        
+
         /// <summary>
         /// Creates a position at the given offset.
         /// </summary>
@@ -53,7 +53,7 @@ namespace Microsoft.Azure.EventHubs
                 throw new ArgumentNullException(nameof(offset));
             }
 
-            return new EventPosition() { Offset = offset, IsInclusive = inclusive };
+            return new EventPosition { Offset = offset, IsInclusive = inclusive };
         }
 
         /// <summary>
@@ -64,7 +64,7 @@ namespace Microsoft.Azure.EventHubs
         /// <returns>An <see cref="EventPosition"/> object.</returns>
         public static EventPosition FromSequenceNumber(long sequenceNumber, bool inclusive = false)
         {
-            return new EventPosition() { SequenceNumber = sequenceNumber, IsInclusive = inclusive };
+            return new EventPosition { SequenceNumber = sequenceNumber, IsInclusive = inclusive };
         }
 
         /// <summary>
@@ -74,45 +74,32 @@ namespace Microsoft.Azure.EventHubs
         /// <returns>An <see cref="EventPosition"/> object.</returns>
         public static EventPosition FromEnqueuedTime(DateTime enqueuedTimeUtc)
         {
-            return new EventPosition() { EnqueuedTimeUtc = enqueuedTimeUtc };
+            return new EventPosition { EnqueuedTimeUtc = enqueuedTimeUtc };
         }
 
         /// <summary>
         /// Gets the offset of the event at the position. It can be null if the position is just created
         /// from a sequence number or an enqueued time.
         /// </summary>
-        internal string Offset
-        {
-            get; set;
-        }
+        internal string Offset { get; set; }
 
         /// <summary>
         /// Indicates if the current event at the specified offset is included or not.
         /// It is only applicable if offset is set.
         /// </summary>
-        internal bool IsInclusive
-        {
-            get; set;
-        }
+        internal bool IsInclusive { get; set; }
 
         /// <summary>
         /// Gets the enqueued time of the event at the position. It can be null if the position is just created
         /// from an offset or a sequence number.
         /// </summary>
-        internal DateTime? EnqueuedTimeUtc
-        {
-            get; set;
-        }
+        internal DateTime? EnqueuedTimeUtc { get; set; }
 
         /// <summary>
         /// Gets the sequence number of the event at the position. It can be null if the position is just created
         /// from an offset or an enqueued time.
         /// </summary>
-        public long? SequenceNumber
-        {
-            get;
-            internal set;
-        }
+        public long? SequenceNumber { get; internal set; }
 
         internal string GetExpression()
         {
