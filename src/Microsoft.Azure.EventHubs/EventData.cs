@@ -152,7 +152,7 @@ namespace Microsoft.Azure.EventHubs
                     object value;
                     if (this.TryGetValue(ClientConstants.OffsetName, out value))
                     {
-                        return value.ToString();
+                        return (string)value;
                     }
 
                     throw new ArgumentException(Resources.MissingSystemProperty.FormatForUser(ClientConstants.OffsetName));
