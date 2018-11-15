@@ -193,7 +193,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             try
             {
                 TestUtility.Log("Sending large event via EventHubClient.SendAsync(EventData)");
-                var eventData = new EventData(new byte[300000]);
+                var eventData = new EventData(new byte[1100000]);
                 await this.EventHubClient.SendAsync(eventData);
                 throw new InvalidOperationException("Send should have failed with " +
                     typeof(MessageSizeExceededException).Name);
