@@ -6,6 +6,7 @@ namespace Microsoft.Azure.EventHubs
     using System;
     using Microsoft.Azure.Amqp;
     using Microsoft.Azure.EventHubs.Amqp;
+    using Microsoft.Azure.EventHubs.Primitives;
 
     /// <summary>
     /// Represents options can be set during the creation of a event hub receiver.
@@ -48,12 +49,8 @@ namespace Microsoft.Azure.EventHubs
         /// <returns>An <see cref="EventPosition"/> object.</returns>
         public static EventPosition FromOffset(string offset, bool inclusive = false)
         {
-            if (string.IsNullOrEmpty(offset))
-            {
-                throw new ArgumentNullException(nameof(offset));
-            }
-
-            return new EventPosition() { Offset = offset, IsInclusive = inclusive };
+            Guard.ArgumentNotNullOrWhiteSpace(nameof(offset), offset);
+            return new EventPosition { Offset = offset, IsInclusive = inclusive };
         }
 
         /// <summary>
@@ -64,7 +61,7 @@ namespace Microsoft.Azure.EventHubs
         /// <returns>An <see cref="EventPosition"/> object.</returns>
         public static EventPosition FromSequenceNumber(long sequenceNumber, bool inclusive = false)
         {
-            return new EventPosition() { SequenceNumber = sequenceNumber, IsInclusive = inclusive };
+            return new EventPosition { SequenceNumber = sequenceNumber, IsInclusive = inclusive };
         }
 
         /// <summary>
@@ -74,35 +71,26 @@ namespace Microsoft.Azure.EventHubs
         /// <returns>An <see cref="EventPosition"/> object.</returns>
         public static EventPosition FromEnqueuedTime(DateTime enqueuedTimeUtc)
         {
-            return new EventPosition() { EnqueuedTimeUtc = enqueuedTimeUtc };
+            return new EventPosition { EnqueuedTimeUtc = enqueuedTimeUtc };
         }
 
         /// <summary>
         /// Gets the offset of the event at the position. It can be null if the position is just created
         /// from a sequence number or an enqueued time.
         /// </summary>
-        internal string Offset
-        {
-            get; set;
-        }
+        internal string Offset { get; set; }
 
         /// <summary>
         /// Indicates if the current event at the specified offset is included or not.
         /// It is only applicable if offset is set.
         /// </summary>
-        internal bool IsInclusive
-        {
-            get; set;
-        }
+        internal bool IsInclusive { get; set; }
 
         /// <summary>
         /// Gets the enqueued time of the event at the position. It can be null if the position is just created
         /// from an offset or a sequence number.
         /// </summary>
-        internal DateTime? EnqueuedTimeUtc
-        {
-            get; set;
-        }
+        internal DateTime? EnqueuedTimeUtc { get; set; }
 
         /// <summary>
         /// Gets the sequence number of the event at the position. It can be null if the position is just created
@@ -140,9 +128,8 @@ namespace Microsoft.Azure.EventHubs
             throw new ArgumentException("No starting position was set");
         }
 
-
         // This is equivalent to Microsoft.Azure.Amqp's internal API TimeStampEncoding.GetMilliseconds
-        long TimeStampEncodingGetMilliseconds(DateTime value)
+        static long TimeStampEncodingGetMilliseconds(DateTime value)
         {
             DateTime utcValue = value.ToUniversalTime();
             double milliseconds = (utcValue - AmqpConstants.StartOfEpoch).TotalMilliseconds;
