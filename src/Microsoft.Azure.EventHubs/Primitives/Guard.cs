@@ -9,7 +9,7 @@ namespace Microsoft.Azure.EventHubs.Primitives
         {
             if (value == null)
             {
-                Fx.Exception.ArgumentNull(argumentName);
+                throw Fx.Exception.ArgumentNull(argumentName);
             }
         }
 
@@ -17,7 +17,7 @@ namespace Microsoft.Azure.EventHubs.Primitives
         {
             if (string.IsNullOrWhiteSpace(value))
             {
-                Fx.Exception.ArgumentNull(argumentName);
+                throw Fx.Exception.ArgumentNull(argumentName);
             }
         }
     }
