@@ -130,7 +130,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             invalidPartitions = new List<string>() { "", " ", null };
             foreach (var invalidPartitionId in invalidPartitions)
             {
-                await Assert.ThrowsAsync<ArgumentException>(async () =>
+                await Assert.ThrowsAsync<ArgumentNullException>(async () =>
                 {
                     TestUtility.Log($"Sending to invalid partition {invalidPartitionId}");
                     sender = this.EventHubClient.CreatePartitionSender(invalidPartitionId);
@@ -162,7 +162,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             invalidPartitions = new List<string>() { "", " ", null };
             foreach (var invalidPartitionId in invalidPartitions)
             {
-                await Assert.ThrowsAsync<ArgumentException>(async () =>
+                await Assert.ThrowsAsync<ArgumentNullException>(async () =>
                 {
                     TestUtility.Log($"Getting partition information from invalid partition {invalidPartitionId}");
                     await this.EventHubClient.GetPartitionRuntimeInformationAsync(invalidPartitionId);
@@ -179,7 +179,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             var csb = new EventHubsConnectionStringBuilder(TestUtility.EventHubsConnectionString);
             csb.EntityPath = null;
 
-            return Assert.ThrowsAsync<ArgumentException>(() =>
+            return Assert.ThrowsAsync<ArgumentNullException>(() =>
             {
                 EventHubClient.CreateFromConnectionString(csb.ToString());
                 throw new Exception("Entity path wasn't provided in the connection string and this new call was supposed to fail");
