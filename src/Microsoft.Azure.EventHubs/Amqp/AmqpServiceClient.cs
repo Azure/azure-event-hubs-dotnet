@@ -127,9 +127,9 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
 
             return new EventHubPartitionRuntimeInformation()
             {
-                Type = (string)infoMap[new MapKey("type")],
-                Path = (string)infoMap[new MapKey("name")],
-                PartitionId = (string)infoMap[new MapKey("partition")],
+                Type = (string)infoMap[new MapKey(AmqpClientConstants.EntityTypeName)],
+                Path = (string)infoMap[new MapKey(AmqpClientConstants.EntityNameKey)],
+                PartitionId = (string)infoMap[new MapKey(AmqpClientConstants.PartitionNameKey)],
                 BeginSequenceNumber = (long)infoMap[new MapKey(AmqpClientConstants.ManagementPartitionBeginSequenceNumber)],
                 LastEnqueuedSequenceNumber = (long)infoMap[new MapKey(AmqpClientConstants.ManagementPartitionLastEnqueuedSequenceNumber)],
                 LastEnqueuedOffset = (string)infoMap[new MapKey(AmqpClientConstants.ManagementPartitionLastEnqueuedOffset)],
