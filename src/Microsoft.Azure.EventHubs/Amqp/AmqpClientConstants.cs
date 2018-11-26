@@ -72,7 +72,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
         public const string ManagementPartitionLastEnqueuedOffset = "last_enqueued_offset";
         public const string ManagementPartitionLastEnqueuedTimeUtc = "last_enqueued_time_utc";
         public const string ManagementPartitionRuntimeInfoRetrievalTimeUtc = "runtime_info_retrieval_time_utc";
-        public const string ManagementPartitionRuntimeInfoPartitionIsEmpty = "is_partition_empty";
+        public const string ManagementPartitionRuntimeInfoPartitionIsEmpty = "is_emtpy";
 
         // Response codes
         public const string ResponseStatusCode = "status-code";
