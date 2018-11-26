@@ -130,10 +130,11 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
                 Type = (string)infoMap[new MapKey("type")],
                 Path = (string)infoMap[new MapKey("name")],
                 PartitionId = (string)infoMap[new MapKey("partition")],
-                BeginSequenceNumber = (long)infoMap[new MapKey("begin_sequence_number")],
-                LastEnqueuedSequenceNumber = (long)infoMap[new MapKey("last_enqueued_sequence_number")],
-                LastEnqueuedOffset = (string)infoMap[new MapKey("last_enqueued_offset")],
-                LastEnqueuedTimeUtc = (DateTime)infoMap[new MapKey("last_enqueued_time_utc")]
+                BeginSequenceNumber = (long)infoMap[new MapKey(AmqpClientConstants.ManagementPartitionBeginSequenceNumber)],
+                LastEnqueuedSequenceNumber = (long)infoMap[new MapKey(AmqpClientConstants.ManagementPartitionLastEnqueuedSequenceNumber)],
+                LastEnqueuedOffset = (string)infoMap[new MapKey(AmqpClientConstants.ManagementPartitionLastEnqueuedOffset)],
+                LastEnqueuedTimeUtc = (DateTime)infoMap[new MapKey(AmqpClientConstants.ManagementPartitionLastEnqueuedTimeUtc)],
+                IsEmpty = (bool)infoMap[new MapKey(AmqpClientConstants.ManagementPartitionRuntimeInfoPartitionIsEmpty)]
             };
         }
 
