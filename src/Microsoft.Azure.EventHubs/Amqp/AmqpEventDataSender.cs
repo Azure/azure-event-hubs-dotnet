@@ -18,14 +18,9 @@ namespace Microsoft.Azure.EventHubs.Amqp
         internal AmqpEventDataSender(AmqpEventHubClient eventHubClient, string partitionId)
             : base(eventHubClient, partitionId)
         {
-            if (!string.IsNullOrEmpty(partitionId))
-            {
-                this.Path = $"{eventHubClient.EventHubName}/Partitions/{partitionId}";
-            }
-            else
-            {
-                this.Path = eventHubClient.EventHubName;
-            }
+            this.Path = !string.IsNullOrEmpty(partitionId)
+                ? $"{eventHubClient.EventHubName}/Partitions/{partitionId}"
+                : eventHubClient.EventHubName;
 
             this.SendLinkManager = new FaultTolerantAmqpObject<SendingAmqpLink>(this.CreateLinkAsync, this.CloseSession);
             this.clientLinkManager = new ActiveClientLinkManager((AmqpEventHubClient)this.EventHubClient);
@@ -47,7 +42,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
             bool shouldRetry;
             int retryCount = 0;
 
-            var timeoutHelper = new TimeoutHelper(this.EventHubClient.ConnectionStringBuilder.OperationTimeout, true);
+            var timeoutHelper = new TimeoutHelper(this.EventHubClient.ConnectionStringBuilder.OperationTimeout, startTimeout: true);
 
             do
             {
@@ -72,8 +67,8 @@ namespace Microsoft.Azure.EventHubs.Amqp
                             }
 
                             Outcome outcome = await amqpLink.SendMessageAsync(
-                                amqpMessage, 
-                                this.GetNextDeliveryTag(), 
+                                amqpMessage,
+                                this.GetNextDeliveryTag(),
                                 AmqpConstants.NullBinary,
                                 timeoutHelper.RemainingTime()).ConfigureAwait(false);
                             if (outcome.DescriptorCode != Accepted.Code)
@@ -127,9 +122,9 @@ namespace Microsoft.Azure.EventHubs.Amqp
             string resource = address.AbsoluteUri;
             var expiresAt = await cbsLink.SendTokenAsync(
                 cbsTokenProvider,
-                address, 
+                address,
                 audience,
-                resource, 
+                resource,
                 new[] { ClaimConstants.Send },
                 timeoutHelper.RemainingTime()).ConfigureAwait(false);
 
@@ -165,9 +160,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     expiresAt);
 
                 this.MaxMessageSize = (long)activeClientLink.Link.Settings.MaxMessageSize();
-
                 this.clientLinkManager.SetActiveLink(activeClientLink);
-
                 return link;
             }
             catch

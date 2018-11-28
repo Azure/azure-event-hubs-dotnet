@@ -17,9 +17,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
             this.Value = sqlExpression;
         }
 
-        public string SqlExpression
-        {
-            get { return (string)this.Value; }
-        }
+        public string SqlExpression => this.Value?.ToString();
     }
 }

@@ -15,7 +15,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
         Byte, SByte, Char, Int16, UInt16, Int32, UInt32, Int64, UInt64, Single, Double, Decimal, // Numeric types
         Boolean, Guid, String, Uri, DateTime, DateTimeOffset, TimeSpan,
         Stream,
-        Unknown,
+        Unknown
     }
 
     class SerializationUtilities
