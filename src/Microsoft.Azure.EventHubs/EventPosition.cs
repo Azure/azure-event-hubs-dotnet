@@ -6,6 +6,7 @@ namespace Microsoft.Azure.EventHubs
     using System;
     using Microsoft.Azure.Amqp;
     using Microsoft.Azure.EventHubs.Amqp;
+    using Microsoft.Azure.EventHubs.Primitives;
 
     /// <summary>
     /// Represents options can be set during the creation of a event hub receiver.
@@ -48,11 +49,8 @@ namespace Microsoft.Azure.EventHubs
         /// <returns>An <see cref="EventPosition"/> object.</returns>
         public static EventPosition FromOffset(string offset, bool inclusive = false)
         {
-            if (string.IsNullOrEmpty(offset))
-            {
-                throw new ArgumentNullException(nameof(offset));
-            }
-
+            Guard.ArgumentNotNullOrWhiteSpace(nameof(offset), offset);
+          
             return new EventPosition { Offset = offset, IsInclusive = inclusive };
         }
 
@@ -127,9 +125,8 @@ namespace Microsoft.Azure.EventHubs
             throw new ArgumentException("No starting position was set");
         }
 
-
         // This is equivalent to Microsoft.Azure.Amqp's internal API TimeStampEncoding.GetMilliseconds
-        long TimeStampEncodingGetMilliseconds(DateTime value)
+        static long TimeStampEncodingGetMilliseconds(DateTime value)
         {
             DateTime utcValue = value.ToUniversalTime();
             double milliseconds = (utcValue - AmqpConstants.StartOfEpoch).TotalMilliseconds;

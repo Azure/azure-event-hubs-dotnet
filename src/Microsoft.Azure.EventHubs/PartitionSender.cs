@@ -7,6 +7,7 @@ namespace Microsoft.Azure.EventHubs
     using System.Collections.Generic;
     using System.Diagnostics;
     using System.Threading.Tasks;
+    using Microsoft.Azure.EventHubs.Primitives;
 
     /// <summary>
     /// This sender class is a logical representation of sending events to a specific EventHub partition. Do not use this class
@@ -77,11 +78,7 @@ namespace Microsoft.Azure.EventHubs
         /// <exception cref="EventHubsException">Event Hubs service encountered problems during the operation.</exception>
         public Task SendAsync(EventData eventData)
         {
-            if (eventData == null)
-            {
-                throw Fx.Exception.ArgumentNull(nameof(eventData));
-            }
-
+            Guard.ArgumentNotNull(nameof(eventData), eventData);
             return this.SendAsync(new[] { eventData });
         }
 
@@ -126,10 +123,7 @@ namespace Microsoft.Azure.EventHubs
         /// <exception cref="EventHubsException">Event Hubs service encountered problems during the operation.</exception>
         public async Task SendAsync(IEnumerable<EventData> eventDatas)
         {
-            if (eventDatas == null)
-            {
-                throw Fx.Exception.ArgumentNull(nameof(eventDatas));
-            }
+            Guard.ArgumentNotNull(nameof(eventDatas), eventDatas);
 
             if (eventDatas is EventDataBatch && !string.IsNullOrEmpty(((EventDataBatch)eventDatas).PartitionKey))
             {

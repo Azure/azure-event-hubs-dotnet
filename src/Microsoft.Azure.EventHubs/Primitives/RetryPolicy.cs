@@ -6,6 +6,7 @@ namespace Microsoft.Azure.EventHubs
     using System;
     using System.Net.Sockets;
     using System.Threading.Tasks;
+    using Microsoft.Azure.EventHubs.Primitives;
 
     /// <summary>
     /// Represents an abstraction for retrying messaging operations. Users should not 
@@ -27,44 +28,30 @@ namespace Microsoft.Azure.EventHubs
         /// <returns>A bool indicating whether or not the operation can be retried.</returns>
         public static bool IsRetryableException(Exception exception)
         {
-            if (exception == null)
-            {
-                throw new ArgumentNullException("exception");
-            }
+            Guard.ArgumentNotNull(nameof(exception), exception);
 
             if (exception is EventHubsException)
             {
                 return ((EventHubsException)exception).IsTransient;
             }
-            else if (exception is TaskCanceledException)
-            {
-                if (exception.InnerException != null)
-                {
-                    return IsRetryableException(exception.InnerException);
-                }
 
-                return true;
+            if (exception is TaskCanceledException)
+            {
+                return exception.InnerException == null || IsRetryableException(exception.InnerException);
             }
 
             // Flatten AggregateException
-            else if (exception is AggregateException)
+            if (exception is AggregateException)
             {
                 var fltAggException = (exception as AggregateException).Flatten();
-                if (fltAggException.InnerException != null)
-                {
-                    return IsRetryableException(fltAggException.InnerException);
-                }
-
-                return false;
+                return fltAggException.InnerException != null && IsRetryableException(fltAggException.InnerException);
             }
 
             // Other retryable exceptions here.
-            else if (exception is OperationCanceledException ||
-                exception is SocketException)
+            if (exception is OperationCanceledException || exception is SocketException)
             {
                 return true;
             }
-
 
             return false;
         }
@@ -97,7 +84,7 @@ namespace Microsoft.Azure.EventHubs
         public TimeSpan? GetNextRetryInterval(Exception lastException, TimeSpan remainingTime, int retryCount)
         {
             int baseWaitTime = 0;
-            lock(this.serverBusySync)
+            lock (this.serverBusySync)
             {
                 if (lastException != null &&
                         (lastException is ServerBusyException || (lastException.InnerException != null && lastException.InnerException is ServerBusyException)))
@@ -109,7 +96,7 @@ namespace Microsoft.Azure.EventHubs
             var retryAfter = this.OnGetNextRetryInterval(lastException, remainingTime, baseWaitTime, retryCount);
 
             // Don't retry if remaining time isn't enough.
-            if (retryAfter == null || 
+            if (retryAfter == null ||
                 remainingTime.TotalSeconds < Math.Max(retryAfter.Value.TotalSeconds, ClientConstants.TimerToleranceInSeconds))
             {
                 return null;

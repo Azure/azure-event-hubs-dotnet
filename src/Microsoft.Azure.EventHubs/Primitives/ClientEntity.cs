@@ -90,6 +90,7 @@ namespace Microsoft.Azure.EventHubs
             {
                 return;
             }
+
             if (string.IsNullOrWhiteSpace(pluginName))
             {
                 throw new ArgumentNullException(nameof(pluginName), Resources.ArgumentNullOrWhiteSpace.FormatForUser(nameof(pluginName)));

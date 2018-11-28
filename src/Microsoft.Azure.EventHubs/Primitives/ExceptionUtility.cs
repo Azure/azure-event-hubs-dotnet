@@ -7,10 +7,6 @@ namespace Microsoft.Azure.EventHubs
 
     class ExceptionUtility
     {
-        internal ExceptionUtility()
-        {
-        }
-
         public ArgumentException Argument(string paramName, string message)
         {
             return new ArgumentException(message, paramName);

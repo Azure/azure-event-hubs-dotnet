@@ -12,6 +12,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
     using Microsoft.Azure.Amqp;
     using Microsoft.Azure.Amqp.Encoding;
     using Microsoft.Azure.Amqp.Framing;
+    using Microsoft.Azure.EventHubs.Primitives;
 
     static class AmqpMessageConverter
     {
@@ -27,11 +28,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
         public static EventData AmqpMessageToEventData(AmqpMessage amqpMessage)
         {
-            if (amqpMessage == null)
-            {
-                throw Fx.Exception.ArgumentNull("amqpMessage");
-            }
-
+            Guard.ArgumentNotNull(nameof(amqpMessage), amqpMessage);
             EventData eventData = new EventData(StreamToBytes(amqpMessage.BodyStream));
             UpdateEventDataHeaderAndProperties(amqpMessage, eventData);
             return eventData;
@@ -39,10 +36,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
         public static AmqpMessage EventDatasToAmqpMessage(IEnumerable<EventData> eventDatas, string partitionKey)
         {
-            if (eventDatas == null)
-            {
-                throw new ArgumentNullException(nameof(eventDatas));
-            }
+            Guard.ArgumentNotNull(nameof(eventDatas), eventDatas);
 
             AmqpMessage returnMessage = null;
             var dataCount = eventDatas.Count();
@@ -107,7 +101,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
         public static AmqpMessage EventDataToAmqpMessage(EventData eventData)
         {
-            AmqpMessage amqpMessage  = AmqpMessage.Create(new Data { Value = eventData.Body });
+            AmqpMessage amqpMessage = AmqpMessage.Create(new Data { Value = eventData.Body });
             UpdateAmqpMessageHeadersAndProperties(amqpMessage, null, eventData, true);
 
             return amqpMessage;
@@ -174,25 +168,25 @@ namespace Microsoft.Azure.EventHubs.Amqp
             if ((sections & SectionFlag.DeliveryAnnotations) != 0)
             {
                 long lastSequenceNumber;
-                if (amqpMessage.DeliveryAnnotations.Map.TryGetValue<long>(AmqpClientConstants.ManagementPartitionLastEnqueuedSequenceNumber, out lastSequenceNumber))
+                if (amqpMessage.DeliveryAnnotations.Map.TryGetValue(AmqpClientConstants.ManagementPartitionLastEnqueuedSequenceNumber, out lastSequenceNumber))
                 {
                     data.LastSequenceNumber = lastSequenceNumber;
                 }
 
                 string lastEnqueuedOffset;
-                if (amqpMessage.DeliveryAnnotations.Map.TryGetValue<string>(AmqpClientConstants.ManagementPartitionLastEnqueuedOffset, out lastEnqueuedOffset))
+                if (amqpMessage.DeliveryAnnotations.Map.TryGetValue(AmqpClientConstants.ManagementPartitionLastEnqueuedOffset, out lastEnqueuedOffset))
                 {
                     data.LastEnqueuedOffset = lastEnqueuedOffset;
                 }
 
                 DateTime lastEnqueuedTime;
-                if (amqpMessage.DeliveryAnnotations.Map.TryGetValue<DateTime>(AmqpClientConstants.ManagementPartitionLastEnqueuedTimeUtc, out lastEnqueuedTime))
+                if (amqpMessage.DeliveryAnnotations.Map.TryGetValue(AmqpClientConstants.ManagementPartitionLastEnqueuedTimeUtc, out lastEnqueuedTime))
                 {
                     data.LastEnqueuedTime = lastEnqueuedTime;
                 }
 
                 DateTime retrievalTime;
-                if (amqpMessage.DeliveryAnnotations.Map.TryGetValue<DateTime>(AmqpClientConstants.ManagementPartitionRuntimeInfoRetrievalTimeUtc, out retrievalTime))
+                if (amqpMessage.DeliveryAnnotations.Map.TryGetValue(AmqpClientConstants.ManagementPartitionRuntimeInfoRetrievalTimeUtc, out retrievalTime))
                 {
                     data.RetrievalTime = retrievalTime;
                 }
