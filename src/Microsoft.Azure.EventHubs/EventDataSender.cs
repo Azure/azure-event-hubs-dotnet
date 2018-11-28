@@ -89,10 +89,6 @@ namespace Microsoft.Azure.EventHubs
             return processedEventList;
         }
 
-        internal long MaxMessageSize
-        {
-            get;
-            set;
-        }
+        internal long MaxMessageSize { get; set; }
     }
 }

@@ -6,6 +6,7 @@ namespace Microsoft.Azure.EventHubs
     using System;
     using System.Collections.Generic;
     using System.Diagnostics;
+    using Microsoft.Azure.EventHubs.Primitives;
 
     /// <summary>
     /// Diagnostic extension methods for <see cref="EventData"/>.
@@ -66,10 +67,7 @@ namespace Microsoft.Azure.EventHubs
 
         public static Activity ExtractActivity(this EventData eventData, string activityName = null)
         {
-            if (eventData == null)
-            {
-                throw new ArgumentNullException(nameof(eventData));
-            }
+            Guard.ArgumentNotNull(nameof(eventData), eventData);
 
             if (activityName == null)
             {
