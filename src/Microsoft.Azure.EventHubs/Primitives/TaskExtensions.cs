@@ -18,12 +18,7 @@ namespace Microsoft.Azure.EventHubs.Primitives
         /// <param name="task">The task. May not be <c>null</c>.</param>
         public static void WaitAndUnwrapException(this Task task)
         {
-            // todo : use guard here
-            if (task == null)
-            {
-                throw new ArgumentNullException(nameof(task));
-            }
-
+            Guard.ArgumentNotNull(nameof(task), task);
             task.ConfigureAwait(false).GetAwaiter().GetResult();
         }
 
@@ -35,11 +30,7 @@ namespace Microsoft.Azure.EventHubs.Primitives
         /// <exception cref="OperationCanceledException">The <paramref name="cancellationToken"/> was cancelled before the <paramref name="task"/> completed, or the <paramref name="task"/> raised an <see cref="OperationCanceledException"/>.</exception>
         public static void WaitAndUnwrapException(this Task task, CancellationToken cancellationToken)
         {
-            // todo : use guard here
-            if (task == null)
-            {
-                throw new ArgumentNullException(nameof(task));
-            }
+            Guard.ArgumentNotNull(nameof(task), task);
 
             try
             {
@@ -59,12 +50,7 @@ namespace Microsoft.Azure.EventHubs.Primitives
         /// <returns>The result of the task.</returns>
         public static TResult WaitAndUnwrapException<TResult>(this Task<TResult> task)
         {
-            // todo : use guard here
-            if (task == null)
-            {
-                throw new ArgumentNullException(nameof(task));
-            }
-
+            Guard.ArgumentNotNull(nameof(task), task);
             return task.ConfigureAwait(false).GetAwaiter().GetResult();
         }
 
@@ -78,11 +64,7 @@ namespace Microsoft.Azure.EventHubs.Primitives
         /// <exception cref="OperationCanceledException">The <paramref name="cancellationToken"/> was cancelled before the <paramref name="task"/> completed, or the <paramref name="task"/> raised an <see cref="OperationCanceledException"/>.</exception>
         public static TResult WaitAndUnwrapException<TResult>(this Task<TResult> task, CancellationToken cancellationToken)
         {
-            // todo : use guard here
-            if (task == null)
-            {
-                throw new ArgumentNullException(nameof(task));
-            }
+            Guard.ArgumentNotNull(nameof(task), task);
 
             try
             {
@@ -101,11 +83,7 @@ namespace Microsoft.Azure.EventHubs.Primitives
         /// <param name="task">The task. May not be <c>null</c>.</param>
         public static void WaitWithoutException(this Task task)
         {
-            // todo : use guard here
-            if (task == null)
-            {
-                throw new ArgumentNullException(nameof(task));
-            }
+            Guard.ArgumentNotNull(nameof(task), task);
 
             try
             {
@@ -124,11 +102,7 @@ namespace Microsoft.Azure.EventHubs.Primitives
         /// <exception cref="OperationCanceledException">The <paramref name="cancellationToken"/> was cancelled before the <paramref name="task"/> completed.</exception>
         public static void WaitWithoutException(this Task task, CancellationToken cancellationToken)
         {
-            // todo : use guard here
-            if (task == null)
-            {
-                throw new ArgumentNullException(nameof(task));
-            }
+            Guard.ArgumentNotNull(nameof(task), task);
 
             try
             {
