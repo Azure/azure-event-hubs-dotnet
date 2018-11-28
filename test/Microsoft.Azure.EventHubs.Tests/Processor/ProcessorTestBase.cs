@@ -672,7 +672,9 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
                         };
                 };
 
-                await eventProcessorHost.RegisterEventProcessorFactoryAsync(processorFactory);
+                var epo = EventProcessorOptions.DefaultOptions;
+                epo.ReceiveTimeout = TimeSpan.FromSeconds(15);
+                await eventProcessorHost.RegisterEventProcessorFactoryAsync(processorFactory, epo);
 
                 // Wait 15 seconds then create a new epoch receiver.
                 // This will trigger ReceiverDisconnectedExcetion in the host.
