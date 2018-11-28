@@ -8,7 +8,6 @@ namespace Microsoft.Azure.EventHubs.Processor
     using System.Threading.Tasks;
     using Microsoft.Azure.EventHubs.Primitives;
     using Newtonsoft.Json;
-    using Microsoft.Azure.EventHubs.Primitives;
     using WindowsAzure.Storage;
     using WindowsAzure.Storage.Blob;
 
