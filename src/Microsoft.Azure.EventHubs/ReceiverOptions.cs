@@ -15,17 +15,14 @@ namespace Microsoft.Azure.EventHubs
         /// <exception cref="System.ArgumentException">Thrown if the length of the value is greater than the maximum length of 64.</exception>
         public string Identifier
         {
-            get
-            {
-                return this.identifier;
-            }
+            get => this.identifier;
             set
             {
                 ReceiverOptions.ValidateReceiverIdentifier(value);
                 this.identifier = value;
             }
         }
-        
+
         /// <summary> Gets or sets a value indicating whether the runtime metric of a receiver is enabled. </summary>
         /// <value> true if a client wants to access <see cref="ReceiverRuntimeInformation"/> using <see cref="PartitionReceiver"/>. </value>
         public bool EnableReceiverRuntimeMetric

@@ -10,13 +10,7 @@ namespace Microsoft.Azure.EventHubs
     {
         private static readonly Lazy<ExceptionUtility> exceptionUtility = new Lazy<ExceptionUtility>(() => new ExceptionUtility());
 
-        public static ExceptionUtility Exception
-        {
-            get
-            {
-                return exceptionUtility.Value;
-            }
-        }
+        public static ExceptionUtility Exception => exceptionUtility.Value;
 
         [Conditional("DEBUG")]
         public static void Assert(bool condition, string message)

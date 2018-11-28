@@ -40,7 +40,7 @@ namespace Microsoft.Azure.EventHubs
         {
             return EventPosition.FromOffset(EndOfStream);
         }
-        
+
         /// <summary>
         /// Creates a position at the given offset.
         /// </summary>
@@ -50,6 +50,7 @@ namespace Microsoft.Azure.EventHubs
         public static EventPosition FromOffset(string offset, bool inclusive = false)
         {
             Guard.ArgumentNotNullOrWhiteSpace(nameof(offset), offset);
+          
             return new EventPosition { Offset = offset, IsInclusive = inclusive };
         }
 
@@ -96,11 +97,7 @@ namespace Microsoft.Azure.EventHubs
         /// Gets the sequence number of the event at the position. It can be null if the position is just created
         /// from an offset or an enqueued time.
         /// </summary>
-        public long? SequenceNumber
-        {
-            get;
-            internal set;
-        }
+        public long? SequenceNumber { get; internal set; }
 
         internal string GetExpression()
         {

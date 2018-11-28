@@ -4,11 +4,6 @@
 namespace Microsoft.Azure.EventHubs.Amqp.Management
 {
     using System;
-    using System.Collections.Concurrent;
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Reflection;
-    using System.Runtime.Serialization;
     using System.Threading.Tasks;
     using Microsoft.Azure.Amqp;
     using Microsoft.Azure.Amqp.Encoding;
@@ -29,7 +24,7 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
         {
             this.eventHubClient = eventHubClient;
             this.Address = address;
-            this.link = new FaultTolerantAmqpObject<RequestResponseAmqpLink>(t => this.OpenLinkAsync(t), rrlink => rrlink.CloseAsync(TimeSpan.FromSeconds(10)));
+            this.link = new FaultTolerantAmqpObject<RequestResponseAmqpLink>(this.OpenLinkAsync, rrlink => rrlink.CloseAsync(TimeSpan.FromSeconds(10)));
         }
 
         AmqpMessage CreateGetRuntimeInformationRequest()
@@ -228,7 +223,6 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
             {
                 // Aborting the session will cleanup the link as well.
                 session?.Abort();
-
                 throw;
             }
         }
