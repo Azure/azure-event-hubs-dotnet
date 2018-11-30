@@ -10,6 +10,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
     using System.Text;
     using System.Threading;
     using System.Threading.Tasks;
+    using Microsoft.Azure.EventHubs.Primitives;
     using Microsoft.Azure.EventHubs.Processor;
     using Microsoft.IdentityModel.Clients.ActiveDirectory;
     using Microsoft.WindowsAzure.Storage;
@@ -30,7 +31,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
             // Discover partition ids.
             TestUtility.Log("Discovering partitions on eventhub");
             var ehClient = EventHubClient.CreateFromConnectionString(TestUtility.EventHubsConnectionString);
-            var eventHubInfo = ehClient.GetRuntimeInformationAsync().Result;
+            var eventHubInfo = ehClient.GetRuntimeInformationAsync().WaitAndUnwrapException();
             this.PartitionIds = eventHubInfo.PartitionIds;
             TestUtility.Log($"EventHub has {PartitionIds.Length} partitions");
         }
