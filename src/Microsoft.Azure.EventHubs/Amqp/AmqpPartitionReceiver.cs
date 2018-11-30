@@ -301,11 +301,17 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     }
                     catch (Exception e)
                     {
-                        EventHubsEventSource.Log.ReceiveHandlerExitingWithError(this.ClientId, this.PartitionId, e.Message);
-                        await this.ReceiveHandlerProcessErrorAsync(e).ConfigureAwait(false);
+                        // Omit any failures at exception handling. Pump should continue until cancellation is triggered.
+                        try
+                        {
+                            EventHubsEventSource.Log.ReceiveHandlerExitingWithError(this.ClientId, this.PartitionId, e.Message);
+                            await this.ReceiveHandlerProcessErrorAsync(e).ConfigureAwait(false);
 
-                        // Avoid tight loop if Receieve call keeps faling.
-                        await Task.Delay(100, cancellationToken).ConfigureAwait(false);
+                            // Avoid tight loop if Receieve call keeps faling.
+                            await Task.Delay(100, cancellationToken).ConfigureAwait(false);
+                        }
+                        catch { }
+
                         continue;
                     }
 
