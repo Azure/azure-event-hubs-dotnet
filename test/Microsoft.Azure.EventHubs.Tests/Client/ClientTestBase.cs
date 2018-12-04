@@ -1,12 +1,14 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
+
 namespace Microsoft.Azure.EventHubs.Tests.Client
 {
     using System;
     using System.Collections.Generic;
     using System.Linq;
     using System.Threading.Tasks;
+    using Microsoft.Azure.EventHubs.Primitives;
     using Xunit;
 
     public class ClientTestBase : IDisposable
@@ -20,7 +22,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
             this.EventHubClient = EventHubClient.CreateFromConnectionString(TestUtility.EventHubsConnectionString);
 
             // Discover partition ids.
-            var eventHubInfo = this.EventHubClient.GetRuntimeInformationAsync().Result;
+            var eventHubInfo = this.EventHubClient.GetRuntimeInformationAsync().WaitAndUnwrapException();
             this.PartitionIds = eventHubInfo.PartitionIds;
             TestUtility.Log($"EventHub has {PartitionIds.Length} partitions");
         }
