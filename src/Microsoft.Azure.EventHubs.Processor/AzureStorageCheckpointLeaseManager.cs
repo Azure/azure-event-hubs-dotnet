@@ -226,27 +226,21 @@ namespace Microsoft.Azure.EventHubs.Processor
             return retval;
         }
 
-        public async Task<Lease> GetLeaseAsync(string partitionId) // throws URISyntaxException, IOException, StorageException
+        public Task<Lease> GetLeaseAsync(string partitionId) // throws URISyntaxException, IOException, StorageException
         {
-            AzureBlobLease retval = null;
-
             CloudBlockBlob leaseBlob = GetBlockBlobReference(partitionId);
 
-            if (await leaseBlob.ExistsAsync(null, this.operationContext).ConfigureAwait(false))
-            {
-                retval = await DownloadLeaseAsync(partitionId, leaseBlob).ConfigureAwait(false);
-            }
-
-            return retval;
+            return DownloadLeaseAsync(partitionId, leaseBlob);
         }
 
         public IEnumerable<Task<Lease>> GetAllLeases()
         {
-            IEnumerable<string> partitionIds = this.host.PartitionManager.GetPartitionIdsAsync().WaitAndUnwrapException();
+            // ListBlobsSegmentedAsync returns first 5000 blobs so no need to check for pagination.
+            var leaseBlobsResult = this.consumerGroupDirectory.ListBlobsSegmentedAsync(null).WaitAndUnwrapException();
 
-            foreach (string id in partitionIds)
+            foreach (var leaseBlob in leaseBlobsResult.Results)
             {
-                yield return GetLeaseAsync(id);
+                yield return DownloadLeaseAsync(string.Empty, (CloudBlockBlob)leaseBlob);
             }
         }
 
@@ -478,7 +472,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             return true;
         }
 
-        async Task<AzureBlobLease> DownloadLeaseAsync(string partitionId, CloudBlockBlob blob) // throws StorageException, IOException
+        async Task<Lease> DownloadLeaseAsync(string partitionId, CloudBlockBlob blob) // throws StorageException, IOException
         {
             string jsonLease = await blob.DownloadTextAsync().ConfigureAwait(false);
 
@@ -513,15 +507,7 @@ namespace Microsoft.Azure.EventHubs.Processor
 
         CloudBlockBlob GetBlockBlobReference(string partitionId)
         {
-            CloudBlockBlob leaseBlob = this.consumerGroupDirectory.GetBlockBlobReference(partitionId);
-
-            // Fixed, keeping workaround commented until full validation.
-            // GetBlockBlobReference creates a new ServiceClient thus resets options.
-            // Because of this we lose settings like MaximumExecutionTime on the client.
-            // Until storage addresses the issue we need to override it here once more.
-            // Tracking bug: https://github.com/Azure/azure-storage-net/issues/398
-            // leaseBlob.ServiceClient.DefaultRequestOptions = this.storageClient.DefaultRequestOptions;
-            return leaseBlob;
+            return this.consumerGroupDirectory.GetBlockBlobReference(partitionId);
         }
     }
 }
