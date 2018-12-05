@@ -240,7 +240,7 @@ namespace Microsoft.Azure.EventHubs.Processor
 
             foreach (var leaseBlob in leaseBlobsResult.Results)
             {
-                yield return DownloadLeaseAsync(string.Empty, (CloudBlockBlob)leaseBlob);
+                yield return DownloadLeaseAsync("N/A", (CloudBlockBlob)leaseBlob);
             }
         }
 
