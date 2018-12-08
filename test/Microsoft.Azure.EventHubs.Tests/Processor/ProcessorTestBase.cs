@@ -673,7 +673,9 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
                         };
                 };
 
-                await eventProcessorHost.RegisterEventProcessorFactoryAsync(processorFactory);
+                var epo = EventProcessorOptions.DefaultOptions;
+                epo.ReceiveTimeout = TimeSpan.FromSeconds(10);
+                await eventProcessorHost.RegisterEventProcessorFactoryAsync(processorFactory, epo);
 
                 // Wait 15 seconds then create a new epoch receiver.
                 // This will trigger ReceiverDisconnectedExcetion in the host.
@@ -685,7 +687,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
                     targetPartition, EventPosition.FromStart(), 2);
                 await externalReceiver.ReceiveAsync(100, TimeSpan.FromSeconds(5));
 
-                // Give another 1 minute for host to recover then do the validatins.
+                // Give another 1 minute for host to recover then do the validations.
                 await Task.Delay(60000);
 
                 TestUtility.Log("Verifying that host was able to receive ReceiverDisconnectedException");
