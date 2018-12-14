@@ -131,6 +131,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
 
             var message = messages.Single();
 
+            Assert.False(pInfo.IsEmpty, $"pInfo.IsEmpty == {pInfo.IsEmpty}");
             Assert.True(partitionReceiver.RuntimeInfo.LastEnqueuedOffset == pInfo.LastEnqueuedOffset,
                 $"FAILED partitionReceiver.RuntimeInfo.LastEnqueuedOffset == {partitionReceiver.RuntimeInfo.LastEnqueuedOffset}");
             Assert.True(partitionReceiver.RuntimeInfo.LastEnqueuedTimeUtc == pInfo.LastEnqueuedTimeUtc,
