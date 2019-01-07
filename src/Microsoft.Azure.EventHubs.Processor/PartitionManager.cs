@@ -229,7 +229,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                         continue;
                     }
 
-                    // First thing is first, renew owned leases.
+                    // First things first, renew owned leases.
                     foreach (var lease in downloadedLeases)
                     {
                         try
