@@ -5,6 +5,7 @@ namespace Microsoft.Azure.EventHubs.Processor
 {
     using System;
     using System.Collections.Generic;
+    using System.Linq;
     using System.Threading.Tasks;
     using Microsoft.Azure.EventHubs.Primitives;
     using Newtonsoft.Json;
@@ -13,6 +14,8 @@ namespace Microsoft.Azure.EventHubs.Processor
 
     class AzureStorageCheckpointLeaseManager : ICheckpointManager, ILeaseManager
     {
+        static string MetaDataOwnerName = "OWNINGHOST";
+            
         EventProcessorHost host;
         TimeSpan leaseDuration;
         TimeSpan leaseRenewInterval;
@@ -107,7 +110,9 @@ namespace Microsoft.Azure.EventHubs.Processor
 
         public Task<bool> CreateCheckpointStoreIfNotExistsAsync()
         {
-            return CreateLeaseStoreIfNotExistsAsync();
+            // Because we control the caller, we know that this method will only be called after createLeaseStoreIfNotExists.
+            // In this implementation, it's the same store, so the store will always exist if execution reaches here.
+            return Task.FromResult(true);
         }
 
         public async Task<Checkpoint> GetCheckpointAsync(string partitionId)
@@ -126,19 +131,10 @@ namespace Microsoft.Azure.EventHubs.Processor
             return checkpoint;
         }
 
-        [Obsolete("Use UpdateCheckpointAsync(Lease lease, Checkpoint checkpoint) instead", true)]
-        public Task UpdateCheckpointAsync(Checkpoint checkpoint)
-        {
-            throw new NotImplementedException();
-        }
-
-        public async Task<Checkpoint> CreateCheckpointIfNotExistsAsync(string partitionId)
+        public Task<Checkpoint> CreateCheckpointIfNotExistsAsync(string partitionId)
         {
             // Normally the lease will already be created, checkpoint store is initialized after lease store.
-            AzureBlobLease lease = (AzureBlobLease)await CreateLeaseIfNotExistsAsync(partitionId).ConfigureAwait(false);
-            Checkpoint checkpoint = new Checkpoint(partitionId, lease.Offset, lease.SequenceNumber);
-
-            return checkpoint;
+            return Task.FromResult<Checkpoint>(null);
         }
 
         public async Task UpdateCheckpointAsync(Lease lease, Checkpoint checkpoint)
@@ -233,15 +229,39 @@ namespace Microsoft.Azure.EventHubs.Processor
             return DownloadLeaseAsync(partitionId, leaseBlob);
         }
 
-        public IEnumerable<Task<Lease>> GetAllLeases()
+        public async Task<IEnumerable<Lease>> GetAllLeasesAsync()
         {
-            // ListBlobsSegmentedAsync returns first 5000 blobs so no need to check for pagination.
-            var leaseBlobsResult = this.consumerGroupDirectory.ListBlobsSegmentedAsync(null).WaitAndUnwrapException();
+            var leaseList = new List<Lease>();
 
-            foreach (var leaseBlob in leaseBlobsResult.Results)
+            // Fetch first page of blobs.
+            var leaseBlobsResult = await this.consumerGroupDirectory.ListBlobsSegmentedAsync(null);
+
+            while (true)
             {
-                yield return DownloadLeaseAsync("N/A", (CloudBlockBlob)leaseBlob);
+                foreach (CloudBlockBlob leaseBlob in leaseBlobsResult.Results)
+                {
+                    // Try getting owner name from existing blob. 
+                    // This might return null when run on the existing lease after SDK upgrade.
+                    string owner;
+                    leaseBlob.Metadata.TryGetValue(MetaDataOwnerName, out owner);
+
+                    // Discover partition id from URI path of the blob.
+                    var partitionId = leaseBlob.Uri.AbsolutePath.Split('/').Last();
+
+                    leaseList.Add(new AzureBlobLease(partitionId, owner, leaseBlob.Properties.LeaseState == LeaseState.Leased, leaseBlob));
+                }
+
+                // Yield break if there is not other page to return.
+                if (leaseBlobsResult.ContinuationToken == null)
+                {
+                    break;
+                }
+
+                // Fetch next page.
+                leaseBlobsResult = await this.consumerGroupDirectory.ListBlobsSegmentedAsync(leaseBlobsResult.ContinuationToken);
             }
+
+            return leaseList;
         }
 
         public async Task<Lease> CreateLeaseIfNotExistsAsync(string partitionId) // throws URISyntaxException, IOException, StorageException
@@ -352,9 +372,18 @@ namespace Microsoft.Azure.EventHubs.Processor
                 lease.Token = newToken;
                 lease.Owner = this.host.HostName;
                 lease.IncrementEpoch(); // Increment epoch each time lease is acquired or stolen by a new host
+
                 await leaseBlob.UploadTextAsync(
                     JsonConvert.SerializeObject(lease),
                     null,
+                    AccessCondition.GenerateLeaseCondition(lease.Token),
+                    null,
+                    this.operationContext).ConfigureAwait(false);
+
+                // Update owner in the metadata.
+                Console.WriteLine($"Updating owner on lease for partition {partitionId}");
+                lease.Blob.Metadata[MetaDataOwnerName] = lease.Owner;
+                await lease.Blob.SetMetadataAsync(
                     AccessCondition.GenerateLeaseCondition(lease.Token),
                     null,
                     this.operationContext).ConfigureAwait(false);
@@ -419,6 +448,13 @@ namespace Microsoft.Azure.EventHubs.Processor
                     null,
                     this.operationContext).ConfigureAwait(false);
                 await leaseBlob.ReleaseLeaseAsync(AccessCondition.GenerateLeaseCondition(leaseId)).ConfigureAwait(false);
+
+                // Remove owner in the metadata.
+                lease.Blob.Metadata.Remove(MetaDataOwnerName);
+                await lease.Blob.SetMetadataAsync(
+                    AccessCondition.GenerateLeaseCondition(leaseId),
+                    null,
+                    this.operationContext);
             }
             catch (StorageException se)
             {
@@ -508,6 +544,12 @@ namespace Microsoft.Azure.EventHubs.Processor
         CloudBlockBlob GetBlockBlobReference(string partitionId)
         {
             return this.consumerGroupDirectory.GetBlockBlobReference(partitionId);
+        }
+
+        [Obsolete("GetAllLeases is deprecated, please use GetAllLeasesAsync instead.", true)]
+        public IEnumerable<Task<Lease>> GetAllLeases()
+        {
+            throw new NotImplementedException();
         }
     }
 }

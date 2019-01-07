@@ -137,7 +137,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
                 // We will send a thousand messages where each message is 1K.
                 var totalSent = 0;
                 var rnd = new Random();
-                TestUtility.Log($"Starting to send.");
+                TestUtility.Log("Starting to send.");
                 do
                 {
                     // Send random body size.

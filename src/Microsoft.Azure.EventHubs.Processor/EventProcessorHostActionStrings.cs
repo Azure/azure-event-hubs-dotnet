@@ -5,6 +5,7 @@ namespace Microsoft.Azure.EventHubs.Processor
 {
     internal static class EventProcessorHostActionStrings
     {
+        internal static readonly string DownloadingLeases = "Downloading Leases";
         internal static readonly string CheckingLeases = "Checking Leases";
         internal static readonly string RenewingLease = "Renewing Lease";
         internal static readonly string StealingLease = "Stealing Lease";
