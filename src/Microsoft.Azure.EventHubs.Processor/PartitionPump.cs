@@ -23,7 +23,7 @@ namespace Microsoft.Azure.EventHubs.Processor
 
         protected EventProcessorHost Host { get; }
 
-        protected Lease Lease { get; }
+        protected internal Lease Lease { get; }
 
         protected IEventProcessor Processor { get; private set; }
 

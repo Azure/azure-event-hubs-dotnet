@@ -234,7 +234,13 @@ namespace Microsoft.Azure.EventHubs.Processor
             var leaseList = new List<Lease>();
 
             // Fetch first page of blobs.
-            var leaseBlobsResult = await this.consumerGroupDirectory.ListBlobsSegmentedAsync(null);
+            var leaseBlobsResult = await this.consumerGroupDirectory.ListBlobsSegmentedAsync(
+                true,
+                BlobListingDetails.Metadata,
+                null,
+                null,
+                null,
+                this.operationContext);
 
             while (true)
             {
@@ -242,8 +248,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                 {
                     // Try getting owner name from existing blob. 
                     // This might return null when run on the existing lease after SDK upgrade.
-                    string owner;
-                    leaseBlob.Metadata.TryGetValue(MetaDataOwnerName, out owner);
+                    leaseBlob.Metadata.TryGetValue(MetaDataOwnerName, out var owner);
 
                     // Discover partition id from URI path of the blob.
                     var partitionId = leaseBlob.Uri.AbsolutePath.Split('/').Last();
@@ -258,7 +263,13 @@ namespace Microsoft.Azure.EventHubs.Processor
                 }
 
                 // Fetch next page.
-                leaseBlobsResult = await this.consumerGroupDirectory.ListBlobsSegmentedAsync(leaseBlobsResult.ContinuationToken);
+                leaseBlobsResult = await this.consumerGroupDirectory.ListBlobsSegmentedAsync(
+                    true,
+                    BlobListingDetails.Metadata,
+                    null,
+                    leaseBlobsResult.ContinuationToken,
+                    null,
+                    this.operationContext);
             }
 
             return leaseList;
