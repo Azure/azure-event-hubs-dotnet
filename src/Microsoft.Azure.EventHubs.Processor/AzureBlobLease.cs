@@ -19,13 +19,14 @@ namespace Microsoft.Azure.EventHubs.Processor
 	    internal AzureBlobLease(string partitionId, CloudBlockBlob blob) : base(partitionId)
 		{
 			this.Blob = blob;
-		}
+            this.isOwned = blob.Properties.LeaseState == LeaseState.Leased;
+        }
 
-        internal AzureBlobLease(string partitionId, string owner, bool isOwned, CloudBlockBlob blob) : base(partitionId)
+        internal AzureBlobLease(string partitionId, string owner, CloudBlockBlob blob) : base(partitionId)
         {
             this.Blob = blob;
             this.Owner = owner;
-            this.isOwned = isOwned;
+            this.isOwned = blob.Properties.LeaseState == LeaseState.Leased;
         }
 
         internal AzureBlobLease(AzureBlobLease source)
@@ -34,6 +35,7 @@ namespace Microsoft.Azure.EventHubs.Processor
 			this.Offset = source.Offset;
 			this.SequenceNumber = source.SequenceNumber;
 			this.Blob = source.Blob;
+            this.isOwned = source.isOwned;
 		}
 
 	    internal AzureBlobLease(AzureBlobLease source, CloudBlockBlob blob) : base(source)
@@ -41,6 +43,7 @@ namespace Microsoft.Azure.EventHubs.Processor
 			this.Offset = source.Offset;
 			this.SequenceNumber = source.SequenceNumber;
 			this.Blob = blob;
+            this.isOwned = blob.Properties.LeaseState == LeaseState.Leased;
 		}
 
 	    // do not serialize

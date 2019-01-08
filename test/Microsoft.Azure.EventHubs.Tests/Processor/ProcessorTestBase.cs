@@ -152,7 +152,9 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
             // Prepare host trackers.
             var hostReceiveEvents = new ConcurrentDictionary<string, AsyncAutoResetEvent>();
 
+            var containerName = Guid.NewGuid().ToString();
             var hosts = new List<EventProcessorHost>();
+
             try
             {
                 for (int hostId = 0; hostId < hostCount; hostId++)
@@ -163,11 +165,11 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
                     TestUtility.Log("Creating EventProcessorHost");
                     var eventProcessorHost = new EventProcessorHost(
                         thisHostName,
-                        string.Empty, // Passing empty as entity path here rsince path is already in EH connection string.
+                        string.Empty, // Passing empty as entity path here since path is already in EH connection string.
                         PartitionReceiver.DefaultConsumerGroupName,
                         TestUtility.EventHubsConnectionString,
                         TestUtility.StorageConnectionString,
-                        Guid.NewGuid().ToString());
+                        containerName);
                     hosts.Add(eventProcessorHost);
                     TestUtility.Log($"Calling RegisterEventProcessorAsync");
                     var processorOptions = new EventProcessorOptions

@@ -222,11 +222,13 @@ namespace Microsoft.Azure.EventHubs.Processor
             return retval;
         }
 
-        public Task<Lease> GetLeaseAsync(string partitionId) // throws URISyntaxException, IOException, StorageException
+        public async Task<Lease> GetLeaseAsync(string partitionId) // throws URISyntaxException, IOException, StorageException
         {
             CloudBlockBlob leaseBlob = GetBlockBlobReference(partitionId);
 
-            return DownloadLeaseAsync(partitionId, leaseBlob);
+            await leaseBlob.FetchAttributesAsync().ConfigureAwait(false);
+
+            return await DownloadLeaseAsync(partitionId, leaseBlob).ConfigureAwait(false);
         }
 
         public async Task<IEnumerable<Lease>> GetAllLeasesAsync()
@@ -253,7 +255,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                     // Discover partition id from URI path of the blob.
                     var partitionId = leaseBlob.Uri.AbsolutePath.Split('/').Last();
 
-                    leaseList.Add(new AzureBlobLease(partitionId, owner, leaseBlob.Properties.LeaseState == LeaseState.Leased, leaseBlob));
+                    leaseList.Add(new AzureBlobLease(partitionId, owner, leaseBlob));
                 }
 
                 // Yield break if there is not other page to return.
