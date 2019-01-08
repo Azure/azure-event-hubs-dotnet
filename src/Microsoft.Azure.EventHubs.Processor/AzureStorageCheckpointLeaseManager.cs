@@ -392,7 +392,6 @@ namespace Microsoft.Azure.EventHubs.Processor
                     this.operationContext).ConfigureAwait(false);
 
                 // Update owner in the metadata.
-                Console.WriteLine($"Updating owner on lease for partition {partitionId}");
                 lease.Blob.Metadata[MetaDataOwnerName] = lease.Owner;
                 await lease.Blob.SetMetadataAsync(
                     AccessCondition.GenerateLeaseCondition(lease.Token),

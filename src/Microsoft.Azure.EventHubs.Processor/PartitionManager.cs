@@ -237,25 +237,25 @@ namespace Microsoft.Azure.EventHubs.Processor
                             allLeases[lease.PartitionId] = lease;
                             if (lease.Owner == this.host.HostName && this.partitionPumps.TryGetValue(lease.PartitionId, out var capturedPump))
                             {
-                                var ownedLease = capturedPump.Lease;
+                                lease.Token = capturedPump.Lease.Token;
                                 ourLeaseCount++;
 
-                                ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, ownedLease.PartitionId, "Trying to renew lease.");
-                                renewLeaseTasks.Add(leaseManager.RenewLeaseAsync(ownedLease).ContinueWith(renewResult =>
+                                ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, lease.PartitionId, "Trying to renew lease.");
+                                renewLeaseTasks.Add(leaseManager.RenewLeaseAsync(lease).ContinueWith(renewResult =>
                                 {
                                     if (renewResult.IsFaulted || !renewResult.WaitAndUnwrapException())
                                     {
                                         // Might have failed due to intermittent error or lease-lost.
                                         // Just log here, expired leases will be picked by same or another host anyway.
                                         ProcessorEventSource.Log.PartitionPumpError(
-                                            this.host.HostName, 
-                                            ownedLease.PartitionId, 
+                                            this.host.HostName,
+                                            lease.PartitionId, 
                                             "Failed to renew lease.", 
                                             renewResult.Exception?.Message);
 
                                         this.host.EventProcessorOptions.NotifyOfException(
                                             this.host.HostName,
-                                            ownedLease.PartitionId,
+                                            lease.PartitionId,
                                             renewResult.Exception,
                                             EventProcessorHostActionStrings.RenewingLease);
                                     }
