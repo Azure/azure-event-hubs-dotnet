@@ -35,5 +35,8 @@ namespace Microsoft.Azure.EventHubs
         /// <summary>Gets the enqueued UTC time of the last event.</summary>
         /// <value>The enqueued time of the last event.</value>
         public DateTime LastEnqueuedTimeUtc { get; set; }
+
+        /// <summary>Gets whether partition is empty or not.</summary>
+        public bool IsEmpty { get; set; }
     }
 }

@@ -21,7 +21,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
         public ActiveClientLinkManager(AmqpEventHubClient eventHubClient)
         {
             this.eventHubClient = eventHubClient;
-            this.validityTimer = new Timer(s => OnLinkExpiration(s), this, Timeout.Infinite, Timeout.Infinite);
+            this.validityTimer = new Timer(OnLinkExpiration, this, Timeout.Infinite, Timeout.Infinite);
             this.syncRoot = new object();
         }
 
@@ -30,7 +30,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
             lock (this.syncRoot)
             {
                 this.activeClientLink = activeClientLink;
-                this.activeClientLink.LinkObject.Closed += new EventHandler(this.OnLinkClosed);
+                this.activeClientLink.LinkObject.Closed += this.OnLinkClosed;
                 if (this.activeClientLink.LinkObject.State == AmqpObjectState.Opened &&
                     this.activeClientLink.IsClientToken)
                 {
@@ -68,7 +68,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     ActiveClientLinkManager.SendTokenTimeout).ConfigureAwait(false);
 
                 //DNX_TODO: MessagingClientEtwProvider.Provider.EventWriteAmqpManageLink("After SendToken", thisPtr.activeClientLink.LinkObject, validTo.ToString(CultureInfo.InvariantCulture));
-
                 lock (thisPtr.syncRoot)
                 {
                     thisPtr.activeClientLink.AuthorizationValidToUtc = validTo;

@@ -59,6 +59,29 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
         }
     }
 
+    class SecondTestEventProcessor : IEventProcessor
+    {
+        Task IEventProcessor.CloseAsync(PartitionContext context, CloseReason reason)
+        {
+            return Task.CompletedTask;
+        }
+
+        Task IEventProcessor.ProcessErrorAsync(PartitionContext context, Exception error)
+        {
+            return Task.CompletedTask;
+        }
+
+        Task IEventProcessor.ProcessEventsAsync(PartitionContext context, IEnumerable<EventData> events)
+        {
+            return Task.CompletedTask;
+        }
+
+        Task IEventProcessor.OpenAsync(PartitionContext context)
+        {
+            return Task.CompletedTask;
+        }
+    }
+
     class TestEventProcessorFactory : IEventProcessorFactory
     {
         public event EventHandler<Tuple<PartitionContext, TestEventProcessor>> OnCreateProcessor;

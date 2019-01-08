@@ -4,11 +4,6 @@
 namespace Microsoft.Azure.EventHubs.Amqp.Management
 {
     using System;
-    using System.Collections.Concurrent;
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Reflection;
-    using System.Runtime.Serialization;
     using System.Threading.Tasks;
     using Microsoft.Azure.Amqp;
     using Microsoft.Azure.Amqp.Encoding;
@@ -29,7 +24,7 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
         {
             this.eventHubClient = eventHubClient;
             this.Address = address;
-            this.link = new FaultTolerantAmqpObject<RequestResponseAmqpLink>(t => this.OpenLinkAsync(t), rrlink => rrlink.CloseAsync(TimeSpan.FromSeconds(10)));
+            this.link = new FaultTolerantAmqpObject<RequestResponseAmqpLink>(this.OpenLinkAsync, rrlink => rrlink.CloseAsync(TimeSpan.FromSeconds(10)));
         }
 
         AmqpMessage CreateGetRuntimeInformationRequest()
@@ -127,13 +122,14 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
 
             return new EventHubPartitionRuntimeInformation()
             {
-                Type = (string)infoMap[new MapKey("type")],
-                Path = (string)infoMap[new MapKey("name")],
-                PartitionId = (string)infoMap[new MapKey("partition")],
-                BeginSequenceNumber = (long)infoMap[new MapKey("begin_sequence_number")],
-                LastEnqueuedSequenceNumber = (long)infoMap[new MapKey("last_enqueued_sequence_number")],
-                LastEnqueuedOffset = (string)infoMap[new MapKey("last_enqueued_offset")],
-                LastEnqueuedTimeUtc = (DateTime)infoMap[new MapKey("last_enqueued_time_utc")]
+                Type = (string)infoMap[new MapKey(AmqpClientConstants.EntityTypeName)],
+                Path = (string)infoMap[new MapKey(AmqpClientConstants.EntityNameKey)],
+                PartitionId = (string)infoMap[new MapKey(AmqpClientConstants.PartitionNameKey)],
+                BeginSequenceNumber = (long)infoMap[new MapKey(AmqpClientConstants.ManagementPartitionBeginSequenceNumber)],
+                LastEnqueuedSequenceNumber = (long)infoMap[new MapKey(AmqpClientConstants.ManagementPartitionLastEnqueuedSequenceNumber)],
+                LastEnqueuedOffset = (string)infoMap[new MapKey(AmqpClientConstants.ManagementPartitionLastEnqueuedOffset)],
+                LastEnqueuedTimeUtc = (DateTime)infoMap[new MapKey(AmqpClientConstants.ManagementPartitionLastEnqueuedTimeUtc)],
+                IsEmpty = (bool)infoMap[new MapKey(AmqpClientConstants.ManagementPartitionRuntimeInfoPartitionIsEmpty)]
             };
         }
 
@@ -227,7 +223,6 @@ namespace Microsoft.Azure.EventHubs.Amqp.Management
             {
                 // Aborting the session will cleanup the link as well.
                 session?.Abort();
-
                 throw;
             }
         }
