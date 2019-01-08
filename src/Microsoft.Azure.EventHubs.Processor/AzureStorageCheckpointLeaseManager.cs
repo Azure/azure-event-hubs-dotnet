@@ -371,7 +371,12 @@ namespace Microsoft.Azure.EventHubs.Processor
 
                     try
                     {
-                        newToken = await leaseBlob.AcquireLeaseAsync(leaseDuration, newLeaseId, null, null, this.operationContext).ConfigureAwait(false);
+                        newToken = await leaseBlob.AcquireLeaseAsync(
+                            leaseDuration, 
+                            newLeaseId, 
+                            null, 
+                            null,
+                            this.operationContext).ConfigureAwait(false);
                     }
                     catch (StorageException se)
                         when (se.RequestInformation != null

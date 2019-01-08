@@ -322,16 +322,25 @@ namespace Microsoft.Azure.EventHubs.Processor
                         {
                             try
                             {
-                                ProcessorEventSource.Log.PartitionPumpStealLeaseStart(this.host.HostName, stealThisLease.PartitionId);
-                                if (await leaseManager.AcquireLeaseAsync(stealThisLease).ConfigureAwait(false))
+                                // Get fresh content of lease subject to acquire.
+                                var downloadedLease = await leaseManager.GetLeaseAsync(stealThisLease.PartitionId).ConfigureAwait(false);
+                                allLeases[stealThisLease.PartitionId] = downloadedLease;
+
+                                // Don't attempt to steal if lease is already expired.
+                                // Expired leases are picked by other hosts quickly.
+                                if (!await downloadedLease.IsExpired().ConfigureAwait(false))
                                 {
-                                    // Succeeded in stealing lease
-                                    ProcessorEventSource.Log.PartitionPumpStealLeaseStop(this.host.HostName, stealThisLease.PartitionId);
-                                }
-                                else
-                                {
-                                    ProcessorEventSource.Log.EventProcessorHostWarning(this.host.HostName,
-                                        "Failed to steal lease for partition " + stealThisLease.PartitionId, null);
+                                    ProcessorEventSource.Log.PartitionPumpStealLeaseStart(this.host.HostName, downloadedLease.PartitionId);
+                                    if (await leaseManager.AcquireLeaseAsync(downloadedLease).ConfigureAwait(false))
+                                    {
+                                        // Succeeded in stealing lease
+                                        ProcessorEventSource.Log.PartitionPumpStealLeaseStop(this.host.HostName, downloadedLease.PartitionId);
+                                    }
+                                    else
+                                    {
+                                        ProcessorEventSource.Log.EventProcessorHostWarning(this.host.HostName,
+                                            "Failed to steal lease for partition " + downloadedLease.PartitionId, null);
+                                    }
                                 }
                             }
                             catch (Exception e)
