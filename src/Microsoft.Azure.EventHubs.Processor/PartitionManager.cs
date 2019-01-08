@@ -125,8 +125,8 @@ namespace Microsoft.Azure.EventHubs.Processor
             // Now make sure the leases exist
             foreach (string id in await this.GetPartitionIdsAsync().ConfigureAwait(false))
             {
-                await RetryAsync(() => leaseManager.CreateLeaseIfNotExistsAsync(id), id, "Failure creating lease for partition, retrying",
-                        "Out of retries creating lease for partition", EventProcessorHostActionStrings.CreatingLease, 5).ConfigureAwait(false);
+                await RetryAsync(() => leaseManager.CreateLeaseIfNotExistsAsync(id), id, $"Failure creating lease for partition {id}, retrying",
+                        $"Out of retries creating lease for partition {id}", EventProcessorHostActionStrings.CreatingLease, 5).ConfigureAwait(false);
             }
 
             // Make sure the checkpoint store exists
@@ -142,8 +142,8 @@ namespace Microsoft.Azure.EventHubs.Processor
             // Now make sure the checkpoints exist
             foreach (string id in await this.GetPartitionIdsAsync().ConfigureAwait(false))
             {
-                await RetryAsync(() => checkpointManager.CreateCheckpointIfNotExistsAsync(id), id, "Failure creating checkpoint for partition, retrying",
-                        "Out of retries creating checkpoint blob for partition", EventProcessorHostActionStrings.CreatingCheckpoint, 5).ConfigureAwait(false);
+                await RetryAsync(() => checkpointManager.CreateCheckpointIfNotExistsAsync(id), id, $"Failure creating checkpoint for partition {id}, retrying",
+                        $"Out of retries creating checkpoint for partition {id}", EventProcessorHostActionStrings.CreatingCheckpoint, 5).ConfigureAwait(false);
             }
         }
 
@@ -202,7 +202,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                 loopStopwatch.Restart();
 
                 ILeaseManager leaseManager = this.host.LeaseManager;
-                Dictionary<string, Lease> allLeases = new Dictionary<string, Lease>();
+                var allLeases = new ConcurrentDictionary<string, Lease>();
 
                 // Inspect all leases.
                 // Acquire any expired leases.
@@ -288,10 +288,14 @@ namespace Microsoft.Azure.EventHubs.Processor
                             {
                                 if (await possibleLease.IsExpired().ConfigureAwait(false))
                                 {
+                                    // Download content of lease subject to acquire.
+                                    var downloadedLease = await leaseManager.GetLeaseAsync(possibleLease.PartitionId).ConfigureAwait(false);
+                                    allLeases[possibleLease.PartitionId] = downloadedLease;
+
                                     ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, possibleLease.PartitionId, "Trying to acquire lease.");
-                                    if (await leaseManager.AcquireLeaseAsync(possibleLease).ConfigureAwait(false))
+                                    if (await leaseManager.AcquireLeaseAsync(downloadedLease).ConfigureAwait(false))
                                     {
-                                        ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, possibleLease.PartitionId, "Acquired lease.");
+                                        ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, downloadedLease.PartitionId, "Acquired lease.");
                                     }
                                 }
                             }
@@ -314,16 +318,20 @@ namespace Microsoft.Azure.EventHubs.Processor
                         {
                             try
                             {
-                                ProcessorEventSource.Log.PartitionPumpStealLeaseStart(this.host.HostName, stealThisLease.PartitionId);
-                                if (await leaseManager.AcquireLeaseAsync(stealThisLease).ConfigureAwait(false))
+                                // Download content of lease subject to acquire.
+                                var downloadedLease = await leaseManager.GetLeaseAsync(stealThisLease.PartitionId).ConfigureAwait(false);
+                                allLeases[downloadedLease.PartitionId] = downloadedLease;
+
+                                ProcessorEventSource.Log.PartitionPumpStealLeaseStart(this.host.HostName, downloadedLease.PartitionId);
+                                if (await leaseManager.AcquireLeaseAsync(downloadedLease).ConfigureAwait(false))
                                 {
                                     // Succeeded in stealing lease
-                                    ProcessorEventSource.Log.PartitionPumpStealLeaseStop(this.host.HostName, stealThisLease.PartitionId);
+                                    ProcessorEventSource.Log.PartitionPumpStealLeaseStop(this.host.HostName, downloadedLease.PartitionId);
                                 }
                                 else
                                 {
                                     ProcessorEventSource.Log.EventProcessorHostWarning(this.host.HostName,
-                                        "Failed to steal lease for partition " + stealThisLease.PartitionId, null);
+                                        "Failed to steal lease for partition " + downloadedLease.PartitionId, null);
                                 }
                             }
                             catch (Exception e)
