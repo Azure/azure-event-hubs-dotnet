@@ -31,9 +31,9 @@ namespace Microsoft.Azure.EventHubs.Processor
 
         protected AsyncLock ProcessingAsyncLock { get; }
 
-        internal void SetLease(Lease newLease)
+        internal void SetLeaseToken(string newToken)
         {
-            this.PartitionContext.Lease = newLease;
+            this.PartitionContext.Lease.Token = newToken;
         }
 
         public async Task OpenAsync()

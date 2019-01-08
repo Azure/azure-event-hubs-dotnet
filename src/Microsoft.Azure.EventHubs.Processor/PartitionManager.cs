@@ -261,7 +261,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                                     }
                                 }, cancellationToken));
                             }
-                            else
+                            else if (!await lease.IsExpired())
                             {
                                 leasesOwnedByOthers.Add(lease);
                             }
@@ -409,9 +409,9 @@ namespace Microsoft.Azure.EventHubs.Processor
                 }
                 else
                 {
-                    // Pump is working, just replace the lease.
-                    ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, partitionId, "Updating lease for pump");
-                    capturedPump.SetLease(lease);
+                    // Pump is working, just replace the lease token.
+                    ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, partitionId, "Updating lease token for pump");
+                    capturedPump.SetLeaseToken(lease.Token);
                 }
             }
             else
