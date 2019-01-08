@@ -451,6 +451,14 @@ namespace Microsoft.Azure.EventHubs.Processor
                     Token = string.Empty,
                     Owner = string.Empty
                 };
+
+                // Remove owner in the metadata.
+                leaseBlob.Metadata.Remove(MetaDataOwnerName);
+                await leaseBlob.SetMetadataAsync(
+                    AccessCondition.GenerateLeaseCondition(leaseId),
+                    null,
+                    this.operationContext);
+
                 await leaseBlob.UploadTextAsync(
                     JsonConvert.SerializeObject(releasedCopy),
                     null,
@@ -458,13 +466,6 @@ namespace Microsoft.Azure.EventHubs.Processor
                     null,
                     this.operationContext).ConfigureAwait(false);
                 await leaseBlob.ReleaseLeaseAsync(AccessCondition.GenerateLeaseCondition(leaseId)).ConfigureAwait(false);
-
-                // Remove owner in the metadata.
-                lease.Blob.Metadata.Remove(MetaDataOwnerName);
-                await lease.Blob.SetMetadataAsync(
-                    AccessCondition.GenerateLeaseCondition(leaseId),
-                    null,
-                    this.operationContext);
             }
             catch (StorageException se)
             {
