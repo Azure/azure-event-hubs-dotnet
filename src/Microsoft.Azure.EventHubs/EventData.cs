@@ -14,7 +14,7 @@ namespace Microsoft.Azure.EventHubs
     public class EventData : IDisposable
     {
         bool disposed;
-        private SystemPropertiesCollection innerSystemProperties;
+        //private SystemPropertiesCollection innerSystemProperties;
 
         /// <summary>
         /// Construct EventData to send to EventHub.
@@ -53,7 +53,7 @@ namespace Microsoft.Azure.EventHubs
         {
             this.Body = arraySegment;
             this.Properties = new Dictionary<string, object>();
-            this.innerSystemProperties = null;
+            //this.innerSystemProperties = null;
         }
 
         /// <summary>
@@ -72,6 +72,11 @@ namespace Microsoft.Azure.EventHubs
         /// As these are populated by Service, they are only present on a Received EventData.
         /// </summary>
         public SystemPropertiesCollection SystemProperties { get; internal set; }
+        /// <summary>
+        /// NEED TO FIX THIS BEFORE SFP IS RELEASED
+        /// </summary>
+        /// <param name="blah"></param>
+        public void ForceSystemProperties(SystemPropertiesCollection blah) { this.SystemProperties = blah; }
 
         internal AmqpMessage AmqpMessage { get; set; }
 

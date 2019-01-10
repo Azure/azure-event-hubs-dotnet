@@ -27,11 +27,9 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         private readonly EventProcessorOptions options;
         private readonly ICheckpointMananger checkpointManager;
 
-        // Initialized by first call to RunAsync -- do not need to rediscover
+        // Initialized during RunAsync startup
         private int fabricPartitionOrdinal = -1;
         private int servicePartitions = -1;
-
-        // Initialized during RunAsync startup
         private string hubPartitionId;
         private PartitionContext partitionContext;
         private string initialOffset;
@@ -46,16 +44,19 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
 
 
         /// <summary>
-        /// Constructor required by Service Fabric.
+        /// Constructor. Arguments break down into three groups: (1) Service Fabric objects so this library can access
+        /// Service Fabric facilities, (2) Event Hub-related arguments which indicate what event hub to receive from and
+        /// how to process the events, and (3) advanced, which right now consists only of the ability to replace the default
+        /// reliable dictionary-based checkpoint manager with a user-provided implementation.
         /// </summary>
-        /// <param name="context"></param>
-        /// <param name="stateManager"></param>
-        /// <param name="partition"></param>
-        /// <param name="userEventProcessor"></param>
-        /// <param name="eventHubConnectionString"></param>
-        /// <param name="eventHubConsumerGroup"></param>
-        /// <param name="options"></param>
-        /// <param name="checkpointManager"></param>
+        /// <param name="context">Service Fabric-provided context structure</param>
+        /// <param name="stateManager">Service Fabric-provided state manager, provides access to reliable dictionaries</param>
+        /// <param name="partition">Service Fabric-provided partition information</param>
+        /// <param name="userEventProcessor">User's event processor implementation</param>
+        /// <param name="eventHubConnectionString">Connection string for user's event hub</param>
+        /// <param name="eventHubConsumerGroup">Optional: Name of event hub consumer group to receive from, defaults to "$Default"</param>
+        /// <param name="options">Optional: Options structure for ServiceFabricProcessor library</param>
+        /// <param name="checkpointManager">Very advanced/optional: user-provided checkpoint manager implementation</param>
         public ServiceFabricProcessor(StatefulServiceContext context, IReliableStateManager stateManager, IStatefulServicePartition partition, IEventProcessor userEventProcessor,
             string eventHubConnectionString, string eventHubConsumerGroup = null,
             EventProcessorOptions options = null, ICheckpointMananger checkpointManager = null)
@@ -86,10 +87,10 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         public bool TestMode { get; set; }
 
         /// <summary>
-        /// Called by Service Fabric.
+        /// Starts processing of events.
         /// </summary>
-        /// <param name="fabricCancellationToken"></param>
-        /// <returns></returns>
+        /// <param name="fabricCancellationToken">Cancellation token provided by Service Fabric, assumed to indicate instance shutdown when cancelled.</param>
+        /// <returns>Task that completes when event processing shuts down.</returns>
         public async Task RunAsync(CancellationToken fabricCancellationToken)
         {
             if (Interlocked.Exchange(ref this.running, 1) == 1)
@@ -131,9 +132,9 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             try
             {
                 //
-                // General startup tasks.
+                // Get Service Fabric partition information.
                 //
-                await PartitionStartup(this.linkedCancellationToken);
+                await GetServicePartitionId(this.linkedCancellationToken);
 
                 //
                 // Create EventHubClient and check partition count.
@@ -169,8 +170,8 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 }
                 else if (ehInfo.PartitionCount != this.servicePartitions)
                 {
-                    EventProcessorEventSource.Current.Message("Service partition count {0} does not match event hub partition count {1}", this.servicePartitions, ehInfo.PartitionCount);
-                    throw new EventProcessorConfigurationException("Service partition count " + this.servicePartitions + " does not match event hub partition count " + ehInfo.PartitionCount);
+                    EventProcessorEventSource.Current.Message($"Service partition count {this.servicePartitions} does not match event hub partition count {ehInfo.PartitionCount}");
+                    throw new EventProcessorConfigurationException($"Service partition count {this.servicePartitions} does not match event hub partition count {ehInfo.PartitionCount}");
                 }
                 this.hubPartitionId = ehInfo.PartitionIds[this.fabricPartitionOrdinal];
 
@@ -191,7 +192,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 EventPosition initialPosition = null;
                 if (this.initialOffset != null)
                 {
-                    EventProcessorEventSource.Current.Message("Initial position from checkpoint, offset {0}", this.initialOffset);
+                    EventProcessorEventSource.Current.Message($"Initial position from checkpoint, offset {this.initialOffset}");
                     initialPosition = EventPosition.FromOffset(this.initialOffset);
                 }
                 else
@@ -321,7 +322,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
 
         Task IPartitionReceiveHandler.ProcessErrorAsync(Exception error)
         {
-            EventProcessorEventSource.Current.Message("RECEIVE EXCEPTION on {0}: {1}", this.hubPartitionId, error);
+            EventProcessorEventSource.Current.Message($"RECEIVE EXCEPTION on {this.hubPartitionId}: {error}");
             this.userEventProcessor.ProcessErrorAsync(this.partitionContext, error);
             if (error is EventHubsException)
             {
@@ -341,12 +342,6 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             return Task.CompletedTask;
         }
 
-        private async Task PartitionStartup(CancellationToken cancellationToken)
-        {
-            // What partition is this? What is the total count of partitions?
-            await GetServicePartitionId(cancellationToken);
-        }
-
         private async Task CheckpointStartup(CancellationToken cancellationToken)
         {
             // Set up store and get checkpoint, if any.
@@ -361,14 +356,14 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             else if (checkpoint.Version == 1)
             {
                 this.initialOffset = checkpoint.Offset;
-                EventProcessorEventSource.Current.Message("Checkpoint says to start at {0}", this.initialOffset);
+                EventProcessorEventSource.Current.Message($"Checkpoint provides initial offset {this.initialOffset}");
             }
             else
             {
                 // It's actually a later-version checkpoint but we don't know the details.
                 // Access it via the V1 interface and hope it does something sensible.
                 this.initialOffset = checkpoint.Offset;
-                EventProcessorEventSource.Current.Message("Checkpoint version error");
+                EventProcessorEventSource.Current.Message($"Unexpected checkpoint version {checkpoint.Version}, provided initial offset {this.initialOffset}");
             }
         }
 
@@ -381,10 +376,10 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                     ServicePartitionList partitionList =
                         await fabricClient.QueryManager.GetPartitionListAsync(this.ServiceContext.ServiceName);
 
-                    //Set the number of partitions
+                    // Set the number of partitions
                     this.servicePartitions = partitionList.Count;
 
-                    //Which partition is this one?
+                    // Which partition is this one?
                     for (int a = 0; a < partitionList.Count; a++)
                     {
                         if (partitionList[a].PartitionInformation.Id == this.ServiceContext.PartitionId)
@@ -412,7 +407,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                     List<LoadMetric> reportableMetrics = new List<LoadMetric>();
                     foreach (KeyValuePair<string, int> metric in userMetrics)
                     {
-                        EventProcessorEventSource.Current.Message("METRIC {0} for partition {1} is {2}", metric.Key, this.partitionContext.PartitionId, metric.Value);
+                        EventProcessorEventSource.Current.Message($"METRIC {metric.Key} for partition {this.partitionContext.PartitionId} is {metric.Value}");
                         reportableMetrics.Add(new LoadMetric(metric.Key, metric.Value));
                     }
                     this.ServicePartition.ReportLoad(reportableMetrics);
@@ -420,7 +415,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 }
                 catch (Exception e)
                 {
-                    EventProcessorEventSource.Current.Message("METRIC partition {0} exception {1}", this.partitionContext.PartitionId, e);
+                    EventProcessorEventSource.Current.Message($"METRIC partition {this.partitionContext.PartitionId} exception {e}");
                 }
             }
 

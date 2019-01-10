@@ -53,12 +53,12 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                     this.sequenceNumber++;
                     byte[] body = new byte[] { 0x4D, 0x4F, 0x43, 0x4B, 0x42, 0x4F, 0x44, 0x59 }; // M O C K B O D Y
                     EventData e = new EventData(body);
-                    e.SystemProperties = new EventData.SystemPropertiesCollection(this.sequenceNumber, DateTime.UtcNow, (this.sequenceNumber * 100).ToString(), "");
+                    e.ForceSystemProperties(new EventData.SystemPropertiesCollection(this.sequenceNumber, DateTime.UtcNow, (this.sequenceNumber * 100).ToString(), ""));
                     e.Properties.Add("userkey", "uservalue");
                     events.Add(e);
                 }
                 Thread.Sleep(5000);
-                EventProcessorEventSource.Current.Message("MOCK ReceiveAsync returning {0} events for partition {1} ending at {2}", maxEventCount, this.partitionId, this.sequenceNumber);
+                EventProcessorEventSource.Current.Message($"MOCK ReceiveAsync returning {maxEventCount} events for partition {this.partitionId} ending at {this.sequenceNumber}");
                 return Task.FromResult<IEnumerable<EventData>>(events);
             }
 
@@ -143,7 +143,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                     ehri.PartitionIds[i] = i.ToString();
                 }
                 ehri.Path = csb.EntityPath;
-                EventProcessorEventSource.Current.Message("MOCK GetRuntimeInformationAsync for {0}", ehri.Path);
+                EventProcessorEventSource.Current.Message($"MOCK GetRuntimeInformationAsync for {ehri.Path}");
                 return Task.FromResult<EventHubRuntimeInformation>(ehri);
             }
 
@@ -159,8 +159,8 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             /// <returns></returns>
             public EventHubWrappers.IPartitionReceiver CreateEpochReceiver(string consumerGroupName, string partitionId, EventPosition eventPosition, string offset, long epoch, ReceiverOptions receiverOptions)
             {
-                EventProcessorEventSource.Current.Message("MOCK CreateEpochReceiver(CG {0}, part {1}, offset {2} epoch {3})", consumerGroupName, partitionId, offset, epoch);
-                // TODO Mock does not implement epoch semantics
+                EventProcessorEventSource.Current.Message($"MOCK CreateEpochReceiver(CG {consumerGroupName}, part {partitionId}, offset {offset} epoch {epoch})");
+                // TODO implement epoch semantics
                 long startSeq = (offset != null) ? (long.Parse(offset) / 100L) : 0L;
                 return new PartitionReceiverMock(partitionId, startSeq, this.token);
             }
@@ -199,7 +199,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             /// <returns></returns>
             public EventHubWrappers.IEventHubClient CreateFromConnectionString(string connectionString)
             {
-                EventProcessorEventSource.Current.Message("MOCK Creating IEventHubClient {0} with {1} partitions", connectionString, this.partitionCount);
+                EventProcessorEventSource.Current.Message($"MOCK Creating IEventHubClient {connectionString} with {this.partitionCount} partitions");
                 return new EventHubClientMock(this.partitionCount, new EventHubsConnectionStringBuilder(connectionString));
             }
         }

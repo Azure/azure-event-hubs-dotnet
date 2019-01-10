@@ -16,7 +16,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         /// <summary>
         /// Construct an instance.
         /// </summary>
-        /// <param name="cancellationToken">CancellationToken that the event processor should respect.</param>
+        /// <param name="cancellationToken">CancellationToken that the event processor should respect. Same as token passed to IEventProcessor methods.</param>
         /// <param name="partitionId">Id of the partition for which the event processor is handling events.</param>
         /// <param name="eventHubPath">Name of the event hub which is the source of events.</param>
         /// <param name="consumerGroupName">Name of the consumer group on the event hub.</param>

@@ -17,7 +17,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         /// Create an uninitialized checkpoint of the given version.
         /// </summary>
         /// <param name="version"></param>
-        public Checkpoint(int version)
+        internal Checkpoint(int version)
         {
             this.Version = version;
             this.Valid = false;
@@ -100,7 +100,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                         break;
 
                     default:
-                        throw new NotImplementedException("Unrecognized checkpoint version " + result.Version);
+                        throw new NotImplementedException($"Unrecognized checkpoint version {result.Version}");
                 }
             }
 
