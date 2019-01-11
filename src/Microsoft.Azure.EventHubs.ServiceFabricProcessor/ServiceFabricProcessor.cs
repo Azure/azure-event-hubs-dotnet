@@ -119,6 +119,10 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 // Catch it here just long enough to log and notify, then rethrow.
 
                 EventProcessorEventSource.Current.Message("THROWING OUT: {0}", e);
+                if (e.InnerException != null)
+                {
+                    EventProcessorEventSource.Current.Message("THROWING OUT INNER: {0}", e.InnerException);
+                }
                 this.options.NotifyOnShutdown(e);
                 throw e;
             }
@@ -150,7 +154,8 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 EventProcessorEventSource.Current.Message("Event hub client OK");
                 EventProcessorEventSource.Current.Message("Getting event hub info");
                 EventHubRuntimeInformation ehInfo = null;
-                lastException = RetryWrapper(async () => { ehInfo = await ehclient.GetRuntimeInformationAsync(); });
+                // Lambda MUST be synchronous to work with RetryWrapper!
+                lastException = RetryWrapper(() => { ehInfo = ehclient.GetRuntimeInformationAsync().Result; });
                 if (ehInfo == null)
                 {
                     EventProcessorEventSource.Current.Message("Out of retries getting event hub info");
