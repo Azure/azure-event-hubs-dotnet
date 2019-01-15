@@ -327,8 +327,10 @@ namespace Microsoft.Azure.EventHubs.Processor
                                 allLeases[stealThisLease.PartitionId] = downloadedLease;
 
                                 // Don't attempt to steal if lease is already expired.
-                                // Expired leases are picked by other hosts quickly.
-                                if (!await downloadedLease.IsExpired().ConfigureAwait(false))
+                                // Expired leases are picked up by other hosts quickly.
+                                // Don't attempt to steal if owner has changed from the calculation time to refresh time.
+                                if (!await downloadedLease.IsExpired().ConfigureAwait(false)
+                                    || downloadedLease.Owner != stealThisLease.Owner)
                                 {
                                     ProcessorEventSource.Log.PartitionPumpStealLeaseStart(this.host.HostName, downloadedLease.PartitionId);
                                     if (await leaseManager.AcquireLeaseAsync(downloadedLease).ConfigureAwait(false))
