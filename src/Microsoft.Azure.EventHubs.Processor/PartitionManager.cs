@@ -421,9 +421,18 @@ namespace Microsoft.Azure.EventHubs.Processor
                 }
                 else
                 {
-                    // Pump is working, just replace the lease token.
-                    ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, partitionId, "Updating lease token for pump");
-                    capturedPump.SetLeaseToken(lease.Token);
+                    // Lease token can show up empty here if lease content download has failed.
+                    // Don't update the token if so.
+                    if (!string.IsNullOrWhiteSpace(lease.Token))
+                    {
+                        // Pump is working, just replace the lease token.
+                        ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, partitionId, "Updating lease token for pump");
+                        capturedPump.SetLeaseToken(lease.Token);
+                    }
+                    else
+                    {
+                        ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, partitionId, "Skipping to update lease token for pump");
+                    }
                 }
             }
             else
