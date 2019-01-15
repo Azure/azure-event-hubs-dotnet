@@ -243,7 +243,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                                 ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, lease.PartitionId, "Trying to renew lease.");
                                 renewLeaseTasks.Add(leaseManager.RenewLeaseAsync(lease).ContinueWith(renewResult =>
                                 {
-                                    if (renewResult.IsFaulted || !renewResult.WaitAndUnwrapException())
+                                    if (renewResult.IsFaulted)
                                     {
                                         // Might have failed due to intermittent error or lease-lost.
                                         // Just log here, expired leases will be picked by same or another host anyway.
@@ -258,6 +258,13 @@ namespace Microsoft.Azure.EventHubs.Processor
                                             lease.PartitionId,
                                             renewResult.Exception,
                                             EventProcessorHostActionStrings.RenewingLease);
+
+                                        // Nullify the owner on the lease in case this host lost it.
+                                        // This helps to remove pump earlier reducing dupliate receives.
+                                        if (renewResult.Exception?.GetBaseException() is LeaseLostException)
+                                        {
+                                            lease.Owner = null;
+                                        }
                                     }
                                 }, cancellationToken));
                             }
