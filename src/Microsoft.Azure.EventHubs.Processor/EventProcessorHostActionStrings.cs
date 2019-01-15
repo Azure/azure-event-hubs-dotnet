@@ -8,6 +8,7 @@ namespace Microsoft.Azure.EventHubs.Processor
         internal static readonly string DownloadingLeases = "Downloading Leases";
         internal static readonly string CheckingLeases = "Checking Leases";
         internal static readonly string RenewingLease = "Renewing Lease";
+        internal static readonly string ReleasingLease = "Releasing Lease";
         internal static readonly string StealingLease = "Stealing Lease";
         internal static readonly string CreatingLease = "Creating Lease";
         internal static readonly string ClosingEventProcessor = "Closing Event Processor";
