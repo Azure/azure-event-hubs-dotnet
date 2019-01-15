@@ -203,12 +203,12 @@ namespace Microsoft.Azure.EventHubs.Processor
 
                 ILeaseManager leaseManager = this.host.LeaseManager;
                 var allLeases = new ConcurrentDictionary<string, Lease>();
+                var leasesOwnedByOthers = new ConcurrentDictionary<string, Lease>();
 
                 // Inspect all leases.
                 // Acquire any expired leases.
                 // Renew any leases that currently belong to us.
                 IEnumerable<Lease> downloadedLeases;
-                var leasesOwnedByOthers = new List<Lease>();
                 var renewLeaseTasks = new List<Task>();
                 int ourLeaseCount = 0;
 
@@ -263,7 +263,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                             }
                             else if (!await lease.IsExpired().ConfigureAwait(false))
                             {
-                                leasesOwnedByOthers.Add(lease);
+                                leasesOwnedByOthers[lease.PartitionId] = lease;
                             }
                         }
                         catch (Exception e)
@@ -299,6 +299,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                                         if (await leaseManager.AcquireLeaseAsync(downloadedLease).ConfigureAwait(false))
                                         {
                                             ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, downloadedLease.PartitionId, "Acquired lease.");
+                                            leasesOwnedByOthers.TryRemove(downloadedLease.PartitionId, out var removedLease);
                                         }
                                     }
                                 }
@@ -317,7 +318,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                     // Grab more leases if available and needed for load balancing
                     if (leasesOwnedByOthers.Count > 0)
                     {
-                        Lease stealThisLease = WhichLeaseToSteal(leasesOwnedByOthers, ourLeaseCount);
+                        Lease stealThisLease = WhichLeaseToSteal(leasesOwnedByOthers.Values, ourLeaseCount);
                         if (stealThisLease != null)
                         {
                             try
@@ -465,7 +466,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             return Task.WhenAll(tasks);
         }
 
-        Lease WhichLeaseToSteal(List<Lease> stealableLeases, int haveLeaseCount)
+        Lease WhichLeaseToSteal(IEnumerable<Lease> stealableLeases, int haveLeaseCount)
         {
             IDictionary<string, int> countsByOwner = CountLeasesByOwner(stealableLeases);
 
