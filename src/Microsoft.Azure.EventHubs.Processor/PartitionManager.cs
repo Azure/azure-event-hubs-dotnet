@@ -429,7 +429,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                 }
                 else
                 {
-                    // Lease token can show up empty here if lease content download has failed.
+                    // Lease token can show up empty here if lease content download has failed or not recently acquired.
                     // Don't update the token if so.
                     if (!string.IsNullOrWhiteSpace(lease.Token))
                     {
