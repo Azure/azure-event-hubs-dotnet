@@ -235,9 +235,8 @@ namespace Microsoft.Azure.EventHubs.Processor
                         try
                         {
                             allLeases[lease.PartitionId] = lease;
-                            if (lease.Owner == this.host.HostName && this.partitionPumps.TryGetValue(lease.PartitionId, out var capturedPump))
+                            if (lease.Owner == this.host.HostName)
                             {
-                                lease.Token = capturedPump.Lease.Token;
                                 ourLeaseCount++;
 
                                 ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, lease.PartitionId, "Trying to renew lease.");
