@@ -369,7 +369,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                     var createRemovePumpTasks = new List<Task>();
                     foreach (string partitionId in allLeases.Keys)
                     {
-                        checkLeaseTasks.Add(Task.Run(async () =>
+                        createRemovePumpTasks.Add(Task.Run(async () =>
                         {
                             try
                             {
