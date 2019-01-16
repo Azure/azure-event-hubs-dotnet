@@ -239,8 +239,16 @@ namespace Microsoft.Azure.EventHubs.Processor
                             {
                                 ourLeaseCount++;
 
-                                ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, lease.PartitionId, "Trying to renew lease.");
-                                renewLeaseTasks.Add(leaseManager.RenewLeaseAsync(lease).ContinueWith(renewResult =>
+                                // Get lease from partition since we need the token at this point.
+                                if (!this.partitionPumps.TryGetValue(lease.PartitionId, out var capturedPump))
+                                {
+                                    continue;
+                                }
+
+                                var capturedLease = capturedPump.Lease;
+
+                                ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, capturedLease.PartitionId, "Trying to renew lease.");
+                                renewLeaseTasks.Add(leaseManager.RenewLeaseAsync(capturedLease).ContinueWith(renewResult =>
                                 {
                                     if (renewResult.IsFaulted)
                                     {
@@ -248,13 +256,13 @@ namespace Microsoft.Azure.EventHubs.Processor
                                         // Just log here, expired leases will be picked by same or another host anyway.
                                         ProcessorEventSource.Log.PartitionPumpError(
                                             this.host.HostName,
-                                            lease.PartitionId, 
+                                            capturedLease.PartitionId, 
                                             "Failed to renew lease.", 
                                             renewResult.Exception?.Message);
 
                                         this.host.EventProcessorOptions.NotifyOfException(
                                             this.host.HostName,
-                                            lease.PartitionId,
+                                            capturedLease.PartitionId,
                                             renewResult.Exception,
                                             EventProcessorHostActionStrings.RenewingLease);
 
@@ -262,7 +270,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                                         // This helps to remove pump earlier reducing dupliate receives.
                                         if (renewResult.Exception?.GetBaseException() is LeaseLostException)
                                         {
-                                            lease.Owner = null;
+                                            capturedLease.Owner = null;
                                         }
                                     }
                                 }, cancellationToken));
@@ -429,7 +437,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                 }
                 else
                 {
-                    // Lease token can show up empty here if lease content download has failed.
+                    // Lease token can show up empty here if lease content download has failed or not recently acquired.
                     // Don't update the token if so.
                     if (!string.IsNullOrWhiteSpace(lease.Token))
                     {
