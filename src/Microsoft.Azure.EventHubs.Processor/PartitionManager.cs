@@ -307,6 +307,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                                         {
                                             ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, downloadedLease.PartitionId, "Acquired lease.");
                                             leasesOwnedByOthers.TryRemove(downloadedLease.PartitionId, out var removedLease);
+                                            Interlocked.Increment(ref ourLeaseCount);
                                         }
                                     }
                                 }
@@ -345,6 +346,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                                     {
                                         // Succeeded in stealing lease
                                         ProcessorEventSource.Log.PartitionPumpStealLeaseStop(this.host.HostName, downloadedLease.PartitionId);
+                                        ourLeaseCount++;
                                     }
                                     else
                                     {
