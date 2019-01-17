@@ -368,23 +368,12 @@ namespace Microsoft.Azure.EventHubs.Processor
                 else
                 {
                     ProcessorEventSource.Log.AzureStorageManagerInfo(this.host.HostName, lease.PartitionId, "Need to AcquireLease");
-
-                    try
-                    {
-                        newToken = await leaseBlob.AcquireLeaseAsync(
-                            leaseDuration, 
-                            newLeaseId, 
-                            null, 
-                            null,
-                            this.operationContext).ConfigureAwait(false);
-                    }
-                    catch (StorageException se)
-                        when (se.RequestInformation != null
-                        && se.RequestInformation.ErrorCode.Equals(BlobErrorCodeStrings.LeaseAlreadyPresent, StringComparison.OrdinalIgnoreCase))
-                    {
-                        // Either some other host grabbed the lease or checkpoint call renewed it.
-                        return false;
-                    }
+                    newToken = await leaseBlob.AcquireLeaseAsync(
+                        leaseDuration, 
+                        newLeaseId, 
+                        null, 
+                        null,
+                        this.operationContext).ConfigureAwait(false);
                 }
 
                 lease.Token = newToken;
