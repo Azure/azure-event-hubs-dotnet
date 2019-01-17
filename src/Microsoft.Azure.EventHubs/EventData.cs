@@ -58,18 +58,12 @@ namespace Microsoft.Azure.EventHubs
         /// Get the actual Payload/Data wrapped by EventData.
         /// This is intended to be used after receiving EventData using <see cref="PartitionReceiver"/>.
         /// </summary>
-        public ArraySegment<byte> Body
-        {
-            get;
-        }
+        public ArraySegment<byte> Body { get; }
 
         /// <summary>
         /// Application property bag
         /// </summary>
-        public IDictionary<string, object> Properties
-        {
-            get; internal set;
-        }
+        public IDictionary<string, object> Properties { get; internal set; }
 
         /// <summary>
         /// SystemProperties that are populated by EventHubService.
@@ -104,10 +98,7 @@ namespace Microsoft.Azure.EventHubs
             {
                 if (disposing)
                 {
-                    if (this.AmqpMessage != null)
-                    {
-                        this.AmqpMessage.Dispose();
-                    }
+                    AmqpMessage?.Dispose();
                 }
 
                 disposed = true;
@@ -133,10 +124,8 @@ namespace Microsoft.Azure.EventHubs
                     {
                         return (long)value;
                     }
-                    else
-                    {
-                        throw new ArgumentException(Resources.MissingSystemProperty.FormatForUser(ClientConstants.SequenceNumberName));
-                    }
+
+                    throw new ArgumentException(Resources.MissingSystemProperty.FormatForUser(ClientConstants.SequenceNumberName));
                 }
             }
 
@@ -151,10 +140,8 @@ namespace Microsoft.Azure.EventHubs
                     {
                         return (DateTime)value;
                     }
-                    else
-                    {
-                        throw new ArgumentException(Resources.MissingSystemProperty.FormatForUser(ClientConstants.EnqueuedTimeUtcName));
-                    }
+
+                    throw new ArgumentException(Resources.MissingSystemProperty.FormatForUser(ClientConstants.EnqueuedTimeUtcName));
                 }
             }
 
@@ -170,10 +157,8 @@ namespace Microsoft.Azure.EventHubs
                     {
                         return (string)value;
                     }
-                    else
-                    {
-                        throw new ArgumentException(Resources.MissingSystemProperty.FormatForUser(ClientConstants.OffsetName));
-                    }
+
+                    throw new ArgumentException(Resources.MissingSystemProperty.FormatForUser(ClientConstants.OffsetName));
                 }
             }
 
@@ -187,12 +172,11 @@ namespace Microsoft.Azure.EventHubs
                     {
                         return (string)value;
                     }
-                    else
-                    {
-                        return null;
-                    }
+
+                    return null;
                 }
             }
         }
     }
 }
+

@@ -3,7 +3,6 @@
 
 namespace Microsoft.Azure.EventHubs.Core
 {
-    using System.Collections.Generic;
     using System.Threading.Tasks;
 
     /// <summary>

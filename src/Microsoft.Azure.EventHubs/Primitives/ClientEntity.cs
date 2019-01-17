@@ -46,10 +46,7 @@ namespace Microsoft.Azure.EventHubs
         /// </summary>
         public RetryPolicy RetryPolicy
         {
-            get
-            {
-                return this.retryPolicy;
-            }
+            get => this.retryPolicy;
 
             set
             {
@@ -93,6 +90,7 @@ namespace Microsoft.Azure.EventHubs
             {
                 return;
             }
+
             if (string.IsNullOrWhiteSpace(pluginName))
             {
                 throw new ArgumentNullException(nameof(pluginName), Resources.ArgumentNullOrWhiteSpace.FormatForUser(nameof(pluginName)));

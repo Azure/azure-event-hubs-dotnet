@@ -6,7 +6,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
     using System;
     using System.Collections.Generic;
     using System.Text.RegularExpressions;
-
     using Microsoft.Azure.Amqp;
     using Microsoft.Azure.Amqp.Encoding;
     using Microsoft.Azure.Amqp.Framing;
@@ -59,12 +58,9 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
         public static Exception ToMessagingContract(Error error, bool connectionError = false)
         {
-            if (error == null)
-            {
-                return new EventHubsException(true, "Unknown error.");
-            }
-
-            return ToMessagingContract(error.Condition.Value, error.Description, connectionError);
+            return error == null ?
+                new EventHubsException(true, "Unknown error.") 
+                : ToMessagingContract(error.Condition.Value, error.Description, connectionError);
         }
 
         public static Exception ToMessagingContract(string condition, string message, bool connectionError = false)

@@ -16,20 +16,8 @@ namespace Microsoft.Azure.EventHubs.Amqp
             this.link = link;
         }
 
-        public AmqpLink Link
-        { 
-            get
-            {
-                return this.link;
-            }
-        }
+        public AmqpLink Link => this.link;
 
-        public override AmqpConnection Connection
-        {
-            get 
-            {
-                return this.link.Session.Connection;
-            }
-        }
+        public override AmqpConnection Connection => this.link.Session.Connection;
     }
 }

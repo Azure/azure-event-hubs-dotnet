@@ -10,13 +10,15 @@ namespace Microsoft.Azure.EventHubs.Processor
     using System.Linq;
     using System.Threading;
     using System.Threading.Tasks;
+    using Microsoft.Azure.EventHubs.Primitives;
 
     class PartitionManager
     {
         readonly EventProcessorHost host;
-        readonly CancellationTokenSource cancellationTokenSource;
         readonly ConcurrentDictionary<string, PartitionPump> partitionPumps;
+
         IList<string> partitionIds;
+        CancellationTokenSource cancellationTokenSource;
         Task runTask;
 
         internal PartitionManager(EventProcessorHost host)
@@ -39,7 +41,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                     this.partitionIds = runtimeInfo.PartitionIds.ToList();
                 }
                 catch (Exception e)
-        	    {
+                {
                     throw new EventProcessorConfigurationException("Encountered error while fetching the list of EventHub PartitionIds", e);
                 }
                 finally
@@ -76,6 +78,10 @@ namespace Microsoft.Azure.EventHubs.Processor
             {
                 await localRunTask.ConfigureAwait(false);
             }
+
+            // once it is closed let's reset the task
+            this.runTask = null;
+            this.cancellationTokenSource = new CancellationTokenSource();
         }
 
         async Task RunAsync()
@@ -97,7 +103,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                 await this.RemoveAllPumpsAsync(CloseReason.Shutdown).ConfigureAwait(false);
             }
             catch (Exception e)
-	    	{
+            {
                 ProcessorEventSource.Log.EventProcessorHostError(this.host.HostName, "Failure during shutdown", e.ToString());
                 this.host.EventProcessorOptions.NotifyOfException(this.host.HostName, "N/A", e, EventProcessorHostActionStrings.PartitionManagerCleanup);
             }
@@ -110,16 +116,16 @@ namespace Microsoft.Azure.EventHubs.Processor
             if (!await leaseManager.LeaseStoreExistsAsync().ConfigureAwait(false))
             {
                 await RetryAsync(() => leaseManager.CreateLeaseStoreIfNotExistsAsync(), null, "Failure creating lease store for this Event Hub, retrying",
-        			    "Out of retries creating lease store for this Event Hub", EventProcessorHostActionStrings.CreatingLeaseStore, 5).ConfigureAwait(false);
+                        "Out of retries creating lease store for this Event Hub", EventProcessorHostActionStrings.CreatingLeaseStore, 5).ConfigureAwait(false);
             }
             // else
             //	lease store already exists, no work needed
-        
+
             // Now make sure the leases exist
             foreach (string id in await this.GetPartitionIdsAsync().ConfigureAwait(false))
             {
                 await RetryAsync(() => leaseManager.CreateLeaseIfNotExistsAsync(id), id, "Failure creating lease for partition, retrying",
-        			    "Out of retries creating lease for partition", EventProcessorHostActionStrings.CreatingLease, 5).ConfigureAwait(false);
+                        "Out of retries creating lease for partition", EventProcessorHostActionStrings.CreatingLease, 5).ConfigureAwait(false);
             }
 
             // Make sure the checkpoint store exists
@@ -127,26 +133,26 @@ namespace Microsoft.Azure.EventHubs.Processor
             if (!await checkpointManager.CheckpointStoreExistsAsync().ConfigureAwait(false))
             {
                 await RetryAsync(() => checkpointManager.CreateCheckpointStoreIfNotExistsAsync(), null, "Failure creating checkpoint store for this Event Hub, retrying",
-        			    "Out of retries creating checkpoint store for this Event Hub", EventProcessorHostActionStrings.CreatingCheckpointStore, 5).ConfigureAwait(false);
+                        "Out of retries creating checkpoint store for this Event Hub", EventProcessorHostActionStrings.CreatingCheckpointStore, 5).ConfigureAwait(false);
             }
             // else
             //	checkpoint store already exists, no work needed
-        
+
             // Now make sure the checkpoints exist
             foreach (string id in await this.GetPartitionIdsAsync().ConfigureAwait(false))
             {
                 await RetryAsync(() => checkpointManager.CreateCheckpointIfNotExistsAsync(id), id, "Failure creating checkpoint for partition, retrying",
-        			    "Out of retries creating checkpoint blob for partition", EventProcessorHostActionStrings.CreatingCheckpoint, 5).ConfigureAwait(false);
+                        "Out of retries creating checkpoint blob for partition", EventProcessorHostActionStrings.CreatingCheckpoint, 5).ConfigureAwait(false);
             }
         }
-    
+
         // Throws if it runs out of retries. If it returns, action succeeded.
         async Task RetryAsync(Func<Task> lambda, string partitionId, string retryMessage, string finalFailureMessage, string action, int maxRetries) // throws ExceptionWithAction
         {
             Exception finalException = null;
             bool createdOK = false;
-    	    int retryCount = 0;
-    	    do
+            int retryCount = 0;
+            do
             {
                 try
                 {
@@ -200,8 +206,8 @@ namespace Microsoft.Azure.EventHubs.Processor
                 // Inspect all leases.
                 // Acquire any expired leases.
                 // Renew any leases that currently belong to us.
-                IEnumerable<Task<Lease>> gettingAllLeases = leaseManager.GetAllLeases();
-                List<Lease> leasesOwnedByOthers = new List<Lease>();
+                var gettingAllLeases = leaseManager.GetAllLeases();
+                var leasesOwnedByOthers = new List<Lease>();
                 var renewLeaseTasks = new List<Task>();
                 int ourLeaseCount = 0;
 
@@ -209,7 +215,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                 foreach (Task<Lease> getLeaseTask in gettingAllLeases)
                 {
                     try
-                    { 
+                    {
                         var lease = await getLeaseTask.ConfigureAwait(false);
                         allLeases[lease.PartitionId] = lease;
                         if (lease.Owner == this.host.HostName)
@@ -218,15 +224,15 @@ namespace Microsoft.Azure.EventHubs.Processor
                             ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, lease.PartitionId, "Trying to renew lease.");
                             renewLeaseTasks.Add(leaseManager.RenewLeaseAsync(lease).ContinueWith(renewResult =>
                             {
-                                if (renewResult.IsFaulted || !renewResult.Result)
+                                if (renewResult.IsFaulted || !renewResult.WaitAndUnwrapException())
                                 {
                                     // Might have failed due to intermittent error or lease-lost.
                                     // Just log here, expired leases will be picked by same or another host anyway.
                                     ProcessorEventSource.Log.PartitionPumpError(this.host.HostName, lease.PartitionId, "Failed to renew lease.", renewResult.Exception?.Message);
                                     this.host.EventProcessorOptions.NotifyOfException(
-                                        this.host.HostName, 
-                                        lease.PartitionId, 
-                                        renewResult.Exception, 
+                                        this.host.HostName,
+                                        lease.PartitionId,
+                                        renewResult.Exception,
                                         EventProcessorHostActionStrings.RenewingLease);
                                 }
                             }, cancellationToken));
@@ -245,36 +251,35 @@ namespace Microsoft.Azure.EventHubs.Processor
 
                 // Wait until we are done with renewing our own leases here.
                 // In theory, this should never throw, error are logged and notified in the renew tasks.
-                await Task.WhenAll(renewLeaseTasks.ToArray()).ConfigureAwait(false);
+                await Task.WhenAll(renewLeaseTasks).ConfigureAwait(false);
                 ProcessorEventSource.Log.EventProcessorHostInfo(this.host.HostName, "Lease renewal is finished.");
 
                 // Check any expired leases that we can grab here.
-                foreach (var possibleLease in allLeases.Values)
-                { 
-                    try
+                var checkLeaseTasks = new List<Task>();
+                foreach (var possibleLease in allLeases.Values.Where(lease => lease.Owner != this.host.HostName))
+                {
+                    checkLeaseTasks.Add(Task.Run(async () =>
                     {
-                        if (await possibleLease.IsExpired().ConfigureAwait(false))
+                        try
                         {
-                            bool isExpiredLeaseOwned = possibleLease.Owner == this.host.HostName;
-                            ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, possibleLease.PartitionId, "Trying to acquire lease.");
-                            if (await leaseManager.AcquireLeaseAsync(possibleLease).ConfigureAwait(false))
+                            if (await possibleLease.IsExpired().ConfigureAwait(false))
                             {
-                                ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, possibleLease.PartitionId, "Acquired lease.");
-
-                                // Don't double count if we have already counted this lease at the beginning of the loop.
-                                if (!isExpiredLeaseOwned)
+                                ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, possibleLease.PartitionId, "Trying to acquire lease.");
+                                if (await leaseManager.AcquireLeaseAsync(possibleLease).ConfigureAwait(false))
                                 {
-                                    ourLeaseCount++;
+                                    ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, possibleLease.PartitionId, "Acquired lease.");
                                 }
                             }
                         }
-                    }
-                    catch (Exception e)
-                    {
-                        ProcessorEventSource.Log.PartitionPumpError(this.host.HostName, possibleLease.PartitionId, "Failure during acquiring lease", e.ToString());
-                        this.host.EventProcessorOptions.NotifyOfException(this.host.HostName, possibleLease.PartitionId, e, EventProcessorHostActionStrings.CheckingLeases);
-                    }
+                        catch (Exception e)
+                        {
+                            ProcessorEventSource.Log.PartitionPumpError(this.host.HostName, possibleLease.PartitionId, "Failure during acquiring lease", e.ToString());
+                            this.host.EventProcessorOptions.NotifyOfException(this.host.HostName, possibleLease.PartitionId, e, EventProcessorHostActionStrings.CheckingLeases);
+                        }
+                    }, cancellationToken));
                 }
+
+                await Task.WhenAll(checkLeaseTasks);
 
                 // Grab more leases if available and needed for load balancing
                 if (leasesOwnedByOthers.Count > 0)
@@ -445,7 +450,8 @@ namespace Microsoft.Azure.EventHubs.Processor
 
         Dictionary<string, int> CountLeasesByOwner(IEnumerable<Lease> leases)
         {
-            var counts = leases.GroupBy(lease => lease.Owner).Select(group => new {
+            var counts = leases.GroupBy(lease => lease.Owner).Select(group => new
+            {
                 Owner = group.Key,
                 Count = group.Count()
             });

@@ -3,24 +3,14 @@
 
 namespace Microsoft.Azure.EventHubs
 {
+    using System;
     using System.Diagnostics;
 
     static class Fx
     {
-        static ExceptionUtility exceptionUtility;
+        private static readonly Lazy<ExceptionUtility> exceptionUtility = new Lazy<ExceptionUtility>(() => new ExceptionUtility());
 
-        public static ExceptionUtility Exception
-        {
-            get
-            {
-                if (exceptionUtility == null)
-                {
-                    exceptionUtility = new ExceptionUtility();
-                }
-
-                return exceptionUtility;
-            }
-        }
+        public static ExceptionUtility Exception => exceptionUtility.Value;
 
         [Conditional("DEBUG")]
         public static void Assert(bool condition, string message)
