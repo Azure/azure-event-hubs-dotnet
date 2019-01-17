@@ -323,6 +323,9 @@ namespace Microsoft.Azure.EventHubs.Processor
                             {
                                 ProcessorEventSource.Log.PartitionPumpError(this.host.HostName, possibleLease.PartitionId, "Failure during acquiring lease", e.ToString());
                                 this.host.EventProcessorOptions.NotifyOfException(this.host.HostName, possibleLease.PartitionId, e, EventProcessorHostActionStrings.CheckingLeases);
+
+                                // Acquisition failed. Make sure we don't leave the lease as owned.
+                                allLeases[possibleLease.PartitionId].Owner = null;
                             }
                         }, cancellationToken));
                     }
@@ -368,6 +371,9 @@ namespace Microsoft.Azure.EventHubs.Processor
                                     "Exception during stealing lease for partition " + stealThisLease.PartitionId, e.ToString());
                                 this.host.EventProcessorOptions.NotifyOfException(this.host.HostName,
                                     stealThisLease.PartitionId, e, EventProcessorHostActionStrings.StealingLease);
+
+                                // Acquisition failed. Make sure we don't leave the lease as owned.
+                                allLeases[possibleLease.PartitionId].Owner = null;
                             }
                         }
                     }
