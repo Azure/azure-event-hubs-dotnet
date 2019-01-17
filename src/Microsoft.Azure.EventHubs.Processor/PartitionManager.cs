@@ -316,6 +316,14 @@ namespace Microsoft.Azure.EventHubs.Processor
                                             leasesOwnedByOthers.TryRemove(downloadedLease.PartitionId, out var removedLease);
                                             Interlocked.Increment(ref ourLeaseCount);
                                         }
+                                        else
+                                        {
+                                            // Acquisition failed. Make sure we don't leave the lease as owned.
+                                            allLeases[possibleLease.PartitionId].Owner = null;
+
+                                            ProcessorEventSource.Log.EventProcessorHostWarning(this.host.HostName,
+                                                "Failed to acquire lease for partition " + downloadedLease.PartitionId, null);
+                                        }
                                     }
                                 }
                             }
@@ -360,6 +368,9 @@ namespace Microsoft.Azure.EventHubs.Processor
                                     }
                                     else
                                     {
+                                        // Acquisition failed. Make sure we don't leave the lease as owned.
+                                        allLeases[stealThisLease.PartitionId].Owner = null;
+
                                         ProcessorEventSource.Log.EventProcessorHostWarning(this.host.HostName,
                                             "Failed to steal lease for partition " + downloadedLease.PartitionId, null);
                                     }
