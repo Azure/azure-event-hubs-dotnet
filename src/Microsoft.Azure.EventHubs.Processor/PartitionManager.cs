@@ -267,10 +267,10 @@ namespace Microsoft.Azure.EventHubs.Processor
                                             EventProcessorHostActionStrings.RenewingLease);
 
                                         // Nullify the owner on the lease in case this host lost it.
-                                        // This helps to remove pump earlier reducing dupliate receives.
+                                        // This helps to remove pump earlier reducing duplicate receives.
                                         if (renewResult.Exception?.GetBaseException() is LeaseLostException)
                                         {
-                                            capturedLease.Owner = null;
+                                            allLeases[capturedLease.PartitionId].Owner = null;
                                         }
                                     }
                                 }, cancellationToken));
@@ -315,6 +315,10 @@ namespace Microsoft.Azure.EventHubs.Processor
                                             ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, downloadedLease.PartitionId, "Acquired lease.");
                                             leasesOwnedByOthers.TryRemove(downloadedLease.PartitionId, out var removedLease);
                                             Interlocked.Increment(ref ourLeaseCount);
+
+                                            //////////////// DEBUG
+                                            ProcessorEventSource.Log.EventProcessorHostWarning(this.host.HostName,
+                                                "Acquired expired lease for partition " + downloadedLease.PartitionId, null);
                                         }
                                         else
                                         {
@@ -365,6 +369,10 @@ namespace Microsoft.Azure.EventHubs.Processor
                                         // Succeeded in stealing lease
                                         ProcessorEventSource.Log.PartitionPumpStealLeaseStop(this.host.HostName, downloadedLease.PartitionId);
                                         ourLeaseCount++;
+
+                                        //////////////// DEBUG
+                                        ProcessorEventSource.Log.EventProcessorHostWarning(this.host.HostName,
+                                            "Stole lease for partition " + downloadedLease.PartitionId, null);
                                     }
                                     else
                                     {

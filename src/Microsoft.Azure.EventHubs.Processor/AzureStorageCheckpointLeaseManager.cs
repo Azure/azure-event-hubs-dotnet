@@ -258,7 +258,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                     leaseList.Add(new AzureBlobLease(partitionId, owner, leaseBlob));
                 }
 
-                // Yield break if there is not other page to return.
+                // Yield break if there is no other page to return.
                 if (leaseBlobsResult.ContinuationToken == null)
                 {
                     break;
