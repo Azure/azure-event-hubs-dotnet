@@ -383,7 +383,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                 lease.IncrementEpoch(); // Increment epoch each time lease is acquired or stolen by a new host
 
                 // Renew lease here if needed?
-                // ChangeLease doesn't renew the lease time so we should avoid lease expiring before renew interval.
+                // ChangeLease doesn't renew so we should avoid lease expiring before next renew interval.
                 if (renewLease)
                 {
                     await this.RenewLeaseCoreAsync(lease).ConfigureAwait(false);

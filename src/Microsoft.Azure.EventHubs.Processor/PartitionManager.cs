@@ -353,7 +353,10 @@ namespace Microsoft.Azure.EventHubs.Processor
                     if (leasesOwnedByOthers.Count > 0)
                     {
                         Lease stealThisLease = WhichLeaseToSteal(leasesOwnedByOthers.Values, ourLeaseCount);
-                        if (stealThisLease != null)
+
+                        // Don't attempt to steal the lease if current host has a pump for this partition id
+                        // This is possible when current pump is in failed state due to lease moved to some other host.
+                        if (stealThisLease != null && !this.partitionPumps.ContainsKey(stealThisLease.PartitionId))
                         {
                             try
                             {
@@ -491,7 +494,17 @@ namespace Microsoft.Azure.EventHubs.Processor
 
         async Task CreateNewPumpAsync(string partitionId, Lease lease)
         {
-            PartitionPump newPartitionPump = new EventHubPartitionPump(this.host, lease);
+            // Refresh lease content and do last minute check to reduce partition moves.
+            var refreshedLease = await this.host.LeaseManager.GetLeaseAsync(partitionId);
+            if (refreshedLease.Owner != this.host.HostName || await refreshedLease.IsExpired().ConfigureAwait(false))
+            {
+                // Partition moved to some other node after lease acquisition.
+                // Return w/o creating the pump.
+                ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, partitionId, $"Partition moved to another host or expired after acquisition.");
+                return;
+            }
+
+            PartitionPump newPartitionPump = new EventHubPartitionPump(this.host, refreshedLease);
             await newPartitionPump.OpenAsync().ConfigureAwait(false);
             this.partitionPumps.TryAdd(partitionId, newPartitionPump); // do the put after start, if the start fails then put doesn't happen
             ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, partitionId, "Created new PartitionPump");
