@@ -342,6 +342,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             string partitionId = lease.PartitionId;
             try
             {
+                bool renewLease = false;
                 string newToken;
                 await leaseBlob.FetchAttributesAsync(null, null, this.operationContext).ConfigureAwait(false);
                 if (leaseBlob.Properties.LeaseState == LeaseState.Leased)
@@ -359,6 +360,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                     }
 
                     ProcessorEventSource.Log.AzureStorageManagerInfo(this.host.HostName, lease.PartitionId, "Need to ChangeLease");
+                    renewLease = true;
                     newToken = await leaseBlob.ChangeLeaseAsync(
                         newLeaseId,
                         AccessCondition.GenerateLeaseCondition(lease.Token),
@@ -379,6 +381,13 @@ namespace Microsoft.Azure.EventHubs.Processor
                 lease.Token = newToken;
                 lease.Owner = this.host.HostName;
                 lease.IncrementEpoch(); // Increment epoch each time lease is acquired or stolen by a new host
+
+                // Renew lease here if needed?
+                // ChangeLease doesn't renew the lease time so we should avoid lease expiring before renew interval.
+                if (renewLease)
+                {
+                    await this.RenewLeaseCoreAsync(lease).ConfigureAwait(false);
+                }
 
                 await leaseBlob.UploadTextAsync(
                     JsonConvert.SerializeObject(lease),
