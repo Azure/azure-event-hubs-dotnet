@@ -242,7 +242,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                                 ourLeaseCount++;
 
                                 // Get lease from partition since we need the token at this point.
-                                if (!this.partitionPumps.TryGetValue(capturedPump.PartitionId, out var capturedPump))
+                                if (!this.partitionPumps.TryGetValue(subjectLease.PartitionId, out var capturedPump))
                                 {
                                     continue;
                                 }
