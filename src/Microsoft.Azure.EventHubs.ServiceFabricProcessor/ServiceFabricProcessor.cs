@@ -19,7 +19,8 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
     {
         // Service Fabric objects initialized in constructor
         private readonly IReliableStateManager ServiceStateManager;
-        private readonly StatefulServiceContext ServiceContext;
+        private readonly Uri ServiceFabricServiceName;
+        private readonly Guid ServiceFabricPartitionId;
         private readonly IStatefulServicePartition ServicePartition;
 
         // ServiceFabricProcessor settings initialized in constructor
@@ -49,7 +50,8 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         /// how to process the events, and (3) advanced, which right now consists only of the ability to replace the default
         /// reliable dictionary-based checkpoint manager with a user-provided implementation.
         /// </summary>
-        /// <param name="context">Service Fabric-provided context structure</param>
+        /// <param name="ServiceFabricServiceName">Service Fabric Uri found in StatefulServiceContext</param>
+        /// <param name="ServiceFabricPartitionId">Service Fabric partition id found in StatefulServiceContext</param>
         /// <param name="stateManager">Service Fabric-provided state manager, provides access to reliable dictionaries</param>
         /// <param name="partition">Service Fabric-provided partition information</param>
         /// <param name="userEventProcessor">User's event processor implementation</param>
@@ -57,11 +59,12 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         /// <param name="eventHubConsumerGroup">Optional: Name of event hub consumer group to receive from, defaults to "$Default"</param>
         /// <param name="options">Optional: Options structure for ServiceFabricProcessor library</param>
         /// <param name="checkpointManager">Very advanced/optional: user-provided checkpoint manager implementation</param>
-        public ServiceFabricProcessor(StatefulServiceContext context, IReliableStateManager stateManager, IStatefulServicePartition partition, IEventProcessor userEventProcessor,
+        public ServiceFabricProcessor(Uri ServiceFabricServiceName, Guid ServiceFabricPartitionId, IReliableStateManager stateManager, IStatefulServicePartition partition, IEventProcessor userEventProcessor,
             string eventHubConnectionString, string eventHubConsumerGroup = null,
             EventProcessorOptions options = null, ICheckpointMananger checkpointManager = null)
         {
-            this.ServiceContext = context;
+            this.ServiceFabricServiceName = ServiceFabricServiceName;
+            this.ServiceFabricPartitionId = ServiceFabricPartitionId;
             this.ServiceStateManager = stateManager;
             this.ServicePartition = partition;
 
@@ -379,7 +382,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 using (FabricClient fabricClient = new FabricClient())
                 {
                     ServicePartitionList partitionList =
-                        await fabricClient.QueryManager.GetPartitionListAsync(this.ServiceContext.ServiceName);
+                        await fabricClient.QueryManager.GetPartitionListAsync(this.ServiceFabricServiceName);
 
                     // Set the number of partitions
                     this.servicePartitions = partitionList.Count;
@@ -387,7 +390,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                     // Which partition is this one?
                     for (int a = 0; a < partitionList.Count; a++)
                     {
-                        if (partitionList[a].PartitionInformation.Id == this.ServiceContext.PartitionId)
+                        if (partitionList[a].PartitionInformation.Id == this.ServiceFabricPartitionId)
                         {
                             this.fabricPartitionOrdinal = a;
                             break;
