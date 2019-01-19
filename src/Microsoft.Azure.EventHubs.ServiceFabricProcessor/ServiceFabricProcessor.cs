@@ -56,11 +56,11 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         /// <param name="partition">Service Fabric-provided partition information</param>
         /// <param name="userEventProcessor">User's event processor implementation</param>
         /// <param name="eventHubConnectionString">Connection string for user's event hub</param>
-        /// <param name="eventHubConsumerGroup">Optional: Name of event hub consumer group to receive from, defaults to "$Default"</param>
+        /// <param name="eventHubConsumerGroup">Name of event hub consumer group to receive from</param>
         /// <param name="options">Optional: Options structure for ServiceFabricProcessor library</param>
         /// <param name="checkpointManager">Very advanced/optional: user-provided checkpoint manager implementation</param>
         public ServiceFabricProcessor(Uri ServiceFabricServiceName, Guid ServiceFabricPartitionId, IReliableStateManager stateManager, IStatefulServicePartition partition, IEventProcessor userEventProcessor,
-            string eventHubConnectionString, string eventHubConsumerGroup = null,
+            string eventHubConnectionString, string eventHubConsumerGroup,
             EventProcessorOptions options = null, ICheckpointMananger checkpointManager = null)
         {
             this.serviceFabricServiceName = ServiceFabricServiceName;
@@ -71,7 +71,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             this.userEventProcessor = userEventProcessor;
 
             this.ehConnectionString = new EventHubsConnectionStringBuilder(eventHubConnectionString);
-            this.consumerGroupName = eventHubConsumerGroup ?? PartitionReceiver.DefaultConsumerGroupName;
+            this.consumerGroupName = eventHubConsumerGroup;
 
             this.options = options ?? new EventProcessorOptions();
             this.checkpointManager = checkpointManager ?? new ReliableDictionaryCheckpointMananger(this.serviceStateManager);
