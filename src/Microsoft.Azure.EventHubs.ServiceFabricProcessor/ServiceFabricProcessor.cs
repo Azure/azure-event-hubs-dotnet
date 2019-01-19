@@ -18,10 +18,10 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
     public class ServiceFabricProcessor : IPartitionReceiveHandler
     {
         // Service Fabric objects initialized in constructor
-        private readonly IReliableStateManager ServiceStateManager;
-        private readonly Uri ServiceFabricServiceName;
-        private readonly Guid ServiceFabricPartitionId;
-        private readonly IStatefulServicePartition ServicePartition;
+        private readonly IReliableStateManager serviceStateManager;
+        private readonly Uri serviceFabricServiceName;
+        private readonly Guid serviceFabricPartitionId;
+        private readonly IStatefulServicePartition servicePartition;
 
         // ServiceFabricProcessor settings initialized in constructor
         private readonly IEventProcessor userEventProcessor;
@@ -30,7 +30,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
 
         // Initialized during RunAsync startup
         private int fabricPartitionOrdinal = -1;
-        private int servicePartitions = -1;
+        private int servicePartitionCount = -1;
         private string hubPartitionId;
         private PartitionContext partitionContext;
         private string initialOffset;
@@ -63,10 +63,10 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             string eventHubConnectionString, string eventHubConsumerGroup = null,
             EventProcessorOptions options = null, ICheckpointMananger checkpointManager = null)
         {
-            this.ServiceFabricServiceName = ServiceFabricServiceName;
-            this.ServiceFabricPartitionId = ServiceFabricPartitionId;
-            this.ServiceStateManager = stateManager;
-            this.ServicePartition = partition;
+            this.serviceFabricServiceName = ServiceFabricServiceName;
+            this.serviceFabricPartitionId = ServiceFabricPartitionId;
+            this.serviceStateManager = stateManager;
+            this.servicePartition = partition;
 
             this.userEventProcessor = userEventProcessor;
 
@@ -74,7 +74,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             this.consumerGroupName = eventHubConsumerGroup ?? PartitionReceiver.DefaultConsumerGroupName;
 
             this.options = options ?? new EventProcessorOptions();
-            this.checkpointManager = checkpointManager ?? new ReliableDictionaryCheckpointMananger(this.ServiceStateManager);
+            this.checkpointManager = checkpointManager ?? new ReliableDictionaryCheckpointMananger(this.serviceStateManager);
             this.EventHubClientFactory = new EventHubWrappers.EventHubClientFactory();
             this.TestMode = false;
         }
@@ -166,20 +166,20 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 }
                 if (this.TestMode)
                 {
-                    if (this.servicePartitions > ehInfo.PartitionCount)
+                    if (this.servicePartitionCount > ehInfo.PartitionCount)
                     {
                         EventProcessorEventSource.Current.Message("TestMode requires event hub partition count larger than service partitinon count");
                         throw new EventProcessorConfigurationException("TestMode requires event hub partition count larger than service partitinon count");
                     }
-                    else if (this.servicePartitions < ehInfo.PartitionCount)
+                    else if (this.servicePartitionCount < ehInfo.PartitionCount)
                     {
                         EventProcessorEventSource.Current.Message("TestMode: receiving from subset of event hub");
                     }
                 }
-                else if (ehInfo.PartitionCount != this.servicePartitions)
+                else if (ehInfo.PartitionCount != this.servicePartitionCount)
                 {
-                    EventProcessorEventSource.Current.Message($"Service partition count {this.servicePartitions} does not match event hub partition count {ehInfo.PartitionCount}");
-                    throw new EventProcessorConfigurationException($"Service partition count {this.servicePartitions} does not match event hub partition count {ehInfo.PartitionCount}");
+                    EventProcessorEventSource.Current.Message($"Service partition count {this.servicePartitionCount} does not match event hub partition count {ehInfo.PartitionCount}");
+                    throw new EventProcessorConfigurationException($"Service partition count {this.servicePartitionCount} does not match event hub partition count {ehInfo.PartitionCount}");
                 }
                 this.hubPartitionId = ehInfo.PartitionIds[this.fabricPartitionOrdinal];
 
@@ -382,22 +382,22 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 using (FabricClient fabricClient = new FabricClient())
                 {
                     ServicePartitionList partitionList =
-                        await fabricClient.QueryManager.GetPartitionListAsync(this.ServiceFabricServiceName);
+                        await fabricClient.QueryManager.GetPartitionListAsync(this.serviceFabricServiceName);
 
                     // Set the number of partitions
-                    this.servicePartitions = partitionList.Count;
+                    this.servicePartitionCount = partitionList.Count;
 
                     // Which partition is this one?
                     for (int a = 0; a < partitionList.Count; a++)
                     {
-                        if (partitionList[a].PartitionInformation.Id == this.ServiceFabricPartitionId)
+                        if (partitionList[a].PartitionInformation.Id == this.serviceFabricPartitionId)
                         {
                             this.fabricPartitionOrdinal = a;
                             break;
                         }
                     }
 
-                    EventProcessorEventSource.Current.Message($"Total partitions {this.servicePartitions}");
+                    EventProcessorEventSource.Current.Message($"Total partitions {this.servicePartitionCount}");
                 }
             }
         }
@@ -418,7 +418,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                         EventProcessorEventSource.Current.Message($"METRIC {metric.Key} for partition {this.partitionContext.PartitionId} is {metric.Value}");
                         reportableMetrics.Add(new LoadMetric(metric.Key, metric.Value));
                     }
-                    this.ServicePartition.ReportLoad(reportableMetrics);
+                    this.servicePartition.ReportLoad(reportableMetrics);
                     Task.Delay(Constants.MetricReportingInterval, this.linkedCancellationToken).Wait(); // throws on cancel
                 }
                 catch (Exception e)
