@@ -63,6 +63,35 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             string eventHubConnectionString, string eventHubConsumerGroup,
             EventProcessorOptions options = null, ICheckpointMananger checkpointManager = null)
         {
+            if (serviceFabricServiceName == null)
+            {
+                throw new ArgumentNullException("serviceFabricServiceName is null");
+            }
+            if (serviceFabricPartitionId == null)
+            {
+                throw new ArgumentNullException("serviceFabricPartitionId is null");
+            }
+            if (stateManager == null)
+            {
+                throw new ArgumentNullException("stateManager is null");
+            }
+            if (partition == null)
+            {
+                throw new ArgumentNullException("partition is null");
+            }
+            if (userEventProcessor == null)
+            {
+                throw new ArgumentNullException("userEventProcessor is null");
+            }
+            if (string.IsNullOrEmpty(eventHubConnectionString))
+            {
+                throw new ArgumentException("eventHubConnectionString is null or empty");
+            }
+            if (string.IsNullOrEmpty(eventHubConsumerGroup))
+            {
+                throw new ArgumentException("eventHubConsumerGroup is null or empty");
+            }
+
             this.serviceFabricServiceName = serviceFabricServiceName;
             this.serviceFabricPartitionId = serviceFabricPartitionId;
             this.serviceStateManager = stateManager;
@@ -75,6 +104,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
 
             this.options = options ?? new EventProcessorOptions();
             this.checkpointManager = checkpointManager ?? new ReliableDictionaryCheckpointMananger(this.serviceStateManager);
+
             this.EventHubClientFactory = new EventHubWrappers.EventHubClientFactory();
             this.TestMode = false;
         }
