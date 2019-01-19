@@ -488,11 +488,11 @@ namespace Microsoft.Azure.EventHubs.Processor
             else
             {
                 // No existing pump, create a new one.
-                await CreateNewPumpAsync(partitionId, lease).ConfigureAwait(false);
+                await CreateNewPumpAsync(partitionId).ConfigureAwait(false);
             }
         }
 
-        async Task CreateNewPumpAsync(string partitionId, Lease lease)
+        async Task CreateNewPumpAsync(string partitionId)
         {
             // Refresh lease content and do last minute check to reduce partition moves.
             var refreshedLease = await this.host.LeaseManager.GetLeaseAsync(partitionId);
