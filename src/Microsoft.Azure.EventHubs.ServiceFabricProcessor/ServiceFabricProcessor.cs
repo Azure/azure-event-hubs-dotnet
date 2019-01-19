@@ -50,8 +50,8 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         /// how to process the events, and (3) advanced, which right now consists only of the ability to replace the default
         /// reliable dictionary-based checkpoint manager with a user-provided implementation.
         /// </summary>
-        /// <param name="ServiceFabricServiceName">Service Fabric Uri found in StatefulServiceContext</param>
-        /// <param name="ServiceFabricPartitionId">Service Fabric partition id found in StatefulServiceContext</param>
+        /// <param name="serviceFabricServiceName">Service Fabric Uri found in StatefulServiceContext</param>
+        /// <param name="serviceFabricPartitionId">Service Fabric partition id found in StatefulServiceContext</param>
         /// <param name="stateManager">Service Fabric-provided state manager, provides access to reliable dictionaries</param>
         /// <param name="partition">Service Fabric-provided partition information</param>
         /// <param name="userEventProcessor">User's event processor implementation</param>
@@ -59,12 +59,12 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         /// <param name="eventHubConsumerGroup">Name of event hub consumer group to receive from</param>
         /// <param name="options">Optional: Options structure for ServiceFabricProcessor library</param>
         /// <param name="checkpointManager">Very advanced/optional: user-provided checkpoint manager implementation</param>
-        public ServiceFabricProcessor(Uri ServiceFabricServiceName, Guid ServiceFabricPartitionId, IReliableStateManager stateManager, IStatefulServicePartition partition, IEventProcessor userEventProcessor,
+        public ServiceFabricProcessor(Uri serviceFabricServiceName, Guid serviceFabricPartitionId, IReliableStateManager stateManager, IStatefulServicePartition partition, IEventProcessor userEventProcessor,
             string eventHubConnectionString, string eventHubConsumerGroup,
             EventProcessorOptions options = null, ICheckpointMananger checkpointManager = null)
         {
-            this.serviceFabricServiceName = ServiceFabricServiceName;
-            this.serviceFabricPartitionId = ServiceFabricPartitionId;
+            this.serviceFabricServiceName = serviceFabricServiceName;
+            this.serviceFabricPartitionId = serviceFabricPartitionId;
             this.serviceStateManager = stateManager;
             this.servicePartition = partition;
 
