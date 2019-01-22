@@ -28,7 +28,8 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             this.EventHubPath = eventHubPath;
             this.ConsumerGroupName = consumerGroupName;
 
-            this.RuntimeInformation = new ReceiverRuntimeInformation(this.PartitionId);
+            // TODO: Requires client change to support
+            this.RuntimeInformation = null; // new ReceiverRuntimeInformation(this.PartitionId);
 
             this.checkpointMananger = checkpointMananger;
         }
@@ -61,7 +62,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         public ReceiverRuntimeInformation RuntimeInformation
         {
             get;
-            internal set;
+            // internal set;
         }
 
         internal string Offset { get; set; }
