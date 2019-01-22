@@ -319,10 +319,6 @@ namespace Microsoft.Azure.EventHubs.Processor
                                             ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, downloadedLease.PartitionId, "Acquired lease.");
                                             leasesOwnedByOthers.TryRemove(downloadedLease.PartitionId, out var removedLease);
                                             Interlocked.Increment(ref ourLeaseCount);
-
-                                            //////////////// DEBUG
-                                            this.host.EventProcessorOptions.NotifyOfException(this.host.HostName, downloadedLease.PartitionId,
-                                                new Exception("Acquired expired lease for partition"), EventProcessorHostActionStrings.PartitionManagerMainLoop);
                                         }
                                         else
                                         {
@@ -376,10 +372,6 @@ namespace Microsoft.Azure.EventHubs.Processor
                                         // Succeeded in stealing lease
                                         ProcessorEventSource.Log.PartitionPumpStealLeaseStop(this.host.HostName, downloadedLease.PartitionId);
                                         ourLeaseCount++;
-
-                                        //////////////// DEBUG
-                                        this.host.EventProcessorOptions.NotifyOfException(this.host.HostName, downloadedLease.PartitionId,
-                                            new Exception("Stole lease for partition"), EventProcessorHostActionStrings.PartitionManagerMainLoop);
                                     }
                                     else
                                     {
