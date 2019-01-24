@@ -43,8 +43,7 @@ use, such as a database connection, or perform any other startup needed.
 ### ProcessEventsAsync
 
 ```csharp
-Task ProcessEventsAsync(CancellationToken cancellationToken, PartitionContext
-context, IEnumerable<EventData> events)
+Task ProcessEventsAsync(CancellationToken cancellationToken, PartitionContext context, IEnumerable<EventData> events)
 ```
 
 After the Task returned by OpenAsync completes, SFP calls this method repeatedly
@@ -82,11 +81,10 @@ informational. Recovering from the error, if possible, is up to SFP.
 ### GetLoadMetric
 
 ```csharp
-Dictionary<string, int> GetLoadMetric(CancellationToken cancellationToken,
-PartitionContext context)
+Dictionary<string, int> GetLoadMetric(CancellationToken cancellationToken, PartitionContext context)
 ```
 
-One of the features of Service Fabric is sophisticated load balancing of
+Service Fabric offers sophisticated load balancing of
 partition replicas between nodes based on user-provided metrics, and this
 method allows SFP users to take advantage of that feature. SFP polls this
 method periodically and passes the metrics returned to Service Fabric. The
@@ -120,7 +118,7 @@ and finally pass the instance to the ServiceFabricProcessor constructor.
 EventProcessorOptions options = new EventProcessorOptions();
 options.MaxBatchSize = 50;
 ServiceFabricProcessor processor = new ServiceFabricProcessor(..., options);
-```csharp
+```
 
 Available options are:
 
@@ -215,7 +213,7 @@ One of the features of SFP is checkpointing, which provides a client-side
 cursor by persisting the offset of the last event processed successfully.
 Checkpointing does not happen automatically, because there are scenarios
 which do not need it. To use checkpointing, the user's implementation of
-IEventProcessor.ProcessEventsAsync should call the checkpointing methods on
+IEventProcessor.ProcessEventsAsync calls the CheckpointAsync methods on
 the supplied PartitionContext.
 
 ### Finding the Starting Position
