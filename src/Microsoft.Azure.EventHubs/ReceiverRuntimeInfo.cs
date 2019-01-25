@@ -8,10 +8,6 @@ namespace Microsoft.Azure.EventHubs
     /// <summary>Represents the approximate receiver runtime information for a logical partition of an Event Hub.</summary>
     public class ReceiverRuntimeInformation
     {
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="partitionId"></param>
         internal ReceiverRuntimeInformation(string partitionId)
         {
             this.PartitionId = partitionId;
