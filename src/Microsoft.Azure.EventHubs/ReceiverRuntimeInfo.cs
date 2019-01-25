@@ -12,21 +12,9 @@ namespace Microsoft.Azure.EventHubs
         /// 
         /// </summary>
         /// <param name="partitionId"></param>
-        public ReceiverRuntimeInformation(string partitionId)
+        internal ReceiverRuntimeInformation(string partitionId)
         {
             this.PartitionId = partitionId;
-        }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="e"></param>
-        public void Update(EventData e)
-        {
-            this.LastSequenceNumber = e.LastSequenceNumber;
-            this.LastEnqueuedTimeUtc = e.LastEnqueuedTime;
-            this.LastEnqueuedOffset = e.LastEnqueuedOffset;
-            this.RetrievalTime = e.RetrievalTime;
         }
 
         /// <summary>Gets the partition ID for a logical partition of an Event Hub.</summary>
