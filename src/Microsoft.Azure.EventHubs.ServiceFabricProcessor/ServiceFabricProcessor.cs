@@ -107,6 +107,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
 
             this.EventHubClientFactory = new EventHubWrappers.EventHubClientFactory();
             this.TestMode = false;
+            this.MockMode = null;
         }
 
         /// <summary>
@@ -118,6 +119,11 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         /// For testing purposes. Do not change after calling RunAsync.
         /// </summary>
         public bool TestMode { get; set; }
+
+        /// <summary>
+        /// For testing purposes. Do not change after calling RunAsync.
+        /// </summary>
+        public IFabricPartitionLister MockMode { get; set; }
 
         /// <summary>
         /// Starts processing of events.
@@ -410,26 +416,15 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         {
             if (this.fabricPartitionOrdinal == -1)
             {
-                using (FabricClient fabricClient = new FabricClient())
-                {
-                    ServicePartitionList partitionList =
-                        await fabricClient.QueryManager.GetPartitionListAsync(this.serviceFabricServiceName);
+                IFabricPartitionLister lister = this.MockMode ?? new ServiceFabricPartitionLister();
 
-                    // Set the number of partitions
-                    this.servicePartitionCount = partitionList.Count;
+                this.servicePartitionCount = await lister.GetServiceFabricPartitionCount(this.serviceFabricServiceName);
 
-                    // Which partition is this one?
-                    for (int a = 0; a < partitionList.Count; a++)
-                    {
-                        if (partitionList[a].PartitionInformation.Id == this.serviceFabricPartitionId)
-                        {
-                            this.fabricPartitionOrdinal = a;
-                            break;
-                        }
-                    }
+                this.fabricPartitionOrdinal = await lister.GetServiceFabricPartitionOrdinal(this.serviceFabricPartitionId);
 
-                    EventProcessorEventSource.Current.Message($"Total partitions {this.servicePartitionCount}");
-                }
+                EventProcessorEventSource.Current.Message($"Total partitions {this.servicePartitionCount}");
+                EventProcessorEventSource.Current.Message($"Partition ordinal {this.fabricPartitionOrdinal}");
+                // TODO check that ordinal is not -1
             }
         }
 
