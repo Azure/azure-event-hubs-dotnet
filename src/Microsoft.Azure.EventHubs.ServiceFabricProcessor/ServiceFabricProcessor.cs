@@ -225,7 +225,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 this.partitionContext = new PartitionContext(this.linkedCancellationToken, this.hubPartitionId, this.ehConnectionString.EntityPath, this.consumerGroupName, this.checkpointManager);
 
                 //
-                // Start up checkpoint manager.
+                // Start up checkpoint manager and get checkpoint, if any.
                 //
                 await CheckpointStartup(this.linkedCancellationToken);
 
