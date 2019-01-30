@@ -31,7 +31,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                     break;
                 }
             }
-            return ordinal;
+            return Task.FromResult<int>(ordinal);
         }
     }
 }
