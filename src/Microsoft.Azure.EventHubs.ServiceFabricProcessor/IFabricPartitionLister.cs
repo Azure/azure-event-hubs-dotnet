@@ -12,7 +12,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         /// <summary>
         /// 
         /// </summary>
-        /// <param name="serviceFabricName"></param>
+        /// <param name="serviceFabricServiceName"></param>
         /// <returns></returns>
         Task<int> GetServiceFabricPartitionCount(Uri serviceFabricServiceName);
 
