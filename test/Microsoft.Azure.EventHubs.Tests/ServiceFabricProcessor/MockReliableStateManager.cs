@@ -36,8 +36,13 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
         }
 
         #region unused
+        // These events are part of the IReliableStateManager interface and must be present, but without the pragma
+        // the compiler warns that they are never used, the warnings are treated as errors, and the build fails.
+        // The pragma is less ugly than adding fake uses of these events.
+#pragma warning disable 67
         public event EventHandler<NotifyTransactionChangedEventArgs> TransactionChanged;
         public event EventHandler<NotifyStateManagerChangedEventArgs> StateManagerChanged;
+#pragma warning restore 67
 
         public IAsyncEnumerator<IReliableState> GetAsyncEnumerator()
         {
