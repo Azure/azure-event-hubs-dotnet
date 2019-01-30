@@ -38,7 +38,12 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
         public Uri Name => throw new NotImplementedException();
 
         // Unused
+        // This event is part of the IReliableDictionary interface and must be present, but without the pragma
+        // the compiler warns that it is never used, the warnings are treated as errors, and the build fails.
+        // The pragma is less ugly than adding a fake use of this event.
+#pragma warning disable 67
         public event EventHandler<NotifyDictionaryChangedEventArgs<X, Y>> DictionaryChanged;
+#pragma warning restore 67
 
         public Task AddAsync(ITransaction tx, X key, Y value)
         {
