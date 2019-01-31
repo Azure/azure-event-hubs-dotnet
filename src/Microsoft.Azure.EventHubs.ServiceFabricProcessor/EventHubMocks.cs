@@ -22,7 +22,8 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         {
             private readonly string partitionId;
             private long sequenceNumber;
-            private IPartitionReceiveHandler outerHandler;
+            private volatile IPartitionReceiveHandler outerHandler;
+            private int handlerBatchSize;
             private bool invokeWhenNoEvents;
             private readonly CancellationToken token;
 
@@ -53,12 +54,11 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                     this.sequenceNumber++;
                     byte[] body = new byte[] { 0x4D, 0x4F, 0x43, 0x4B, 0x42, 0x4F, 0x44, 0x59 }; // M O C K B O D Y
                     EventData e = new EventData(body);
-                    // TODO -- need a way to set the system properties of the EventData
-                    //e.ForceSystemProperties(new EventData.SystemPropertiesCollection(this.sequenceNumber, DateTime.UtcNow, (this.sequenceNumber * 100).ToString(), ""));
+                    e.SystemProperties = new EventData.SystemPropertiesCollection(this.sequenceNumber, DateTime.UtcNow, (this.sequenceNumber * 100).ToString(), "");
                     e.Properties.Add("userkey", "uservalue");
                     events.Add(e);
                 }
-                Thread.Sleep(5000);
+                Thread.Sleep(50);
                 EventProcessorEventSource.Current.Message($"MOCK ReceiveAsync returning {maxEventCount} events for partition {this.partitionId} ending at {this.sequenceNumber}");
                 return Task.FromResult<IEnumerable<EventData>>(events);
             }
@@ -75,7 +75,12 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 this.invokeWhenNoEvents = invokeWhenNoEvents; // TODO mock does not emulate receive timeouts
                 if (this.outerHandler != null)
                 {
+                    this.handlerBatchSize = this.outerHandler.MaxBatchSize;
                     Task.Run(() => GenerateMessages());
+                }
+                else
+                {
+                    EventProcessorEventSource.Current.Message("MOCK IPartitionReceiver.SetReceiveHandler with NULL handler");
                 }
             }
 
@@ -93,12 +98,17 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             {
                 while ((!this.token.IsCancellationRequested) && (this.outerHandler != null))
                 {
-                    EventProcessorEventSource.Current.Message("MOCK Generating messages and sending to handler");
-                    IEnumerable<EventData> events = ReceiveAsync(10, TimeSpan.FromSeconds(10.0)).Result; // TODO get count from somewhere real
+                    // TODO random batch sizes
+                    IEnumerable<EventData> events = ReceiveAsync(this.handlerBatchSize, TimeSpan.FromSeconds(10.0)).Result;
                     IPartitionReceiveHandler capturedHandler = this.outerHandler;
                     if (capturedHandler != null)
                     {
+                        EventProcessorEventSource.Current.Message("MOCK Sending messages to handler");
                         await capturedHandler.ProcessEventsAsync(events);
+                    }
+                    else
+                    {
+                        EventProcessorEventSource.Current.Message("MOCK Handler has been detached");
                     }
                 }
                 EventProcessorEventSource.Current.Message("MOCK Message generation ending");
@@ -200,9 +210,8 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             /// <returns></returns>
             public EventHubWrappers.IEventHubClient CreateFromConnectionString(string connectionString)
             {
-                throw new NotImplementedException("Need a change to EventData before mocks can be supported");
-                //EventProcessorEventSource.Current.Message($"MOCK Creating IEventHubClient {connectionString} with {this.partitionCount} partitions");
-                //return new EventHubClientMock(this.partitionCount, new EventHubsConnectionStringBuilder(connectionString));
+                EventProcessorEventSource.Current.Message($"MOCK Creating IEventHubClient {connectionString} with {this.partitionCount} partitions");
+                return new EventHubClientMock(this.partitionCount, new EventHubsConnectionStringBuilder(connectionString));
             }
         }
     }
