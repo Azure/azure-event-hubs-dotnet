@@ -9,7 +9,7 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
 {
     class MockTransaction : ITransaction
     {
-        private static long sequence = 0L;
+        private static long sequence = -1L;
 
         public MockTransaction()
         {

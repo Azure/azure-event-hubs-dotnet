@@ -20,7 +20,7 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
             // Ignore T internally because we use only one type
             if (!this.dictionaryOfDictionaries.ContainsKey(name))
             {
-                this.dictionaryOfDictionaries.Add(name, new MockReliableDictionary<string, Microsoft.Azure.EventHubs.ServiceFabricProcessor.Checkpoint>());
+                this.dictionaryOfDictionaries.Add(name, new MockReliableDictionary<string, Dictionary<string, object>>());
             }
             return Task.FromResult<T>((T)this.dictionaryOfDictionaries[name]);
         }
