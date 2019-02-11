@@ -152,7 +152,9 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
             // Prepare host trackers.
             var hostReceiveEvents = new ConcurrentDictionary<string, AsyncAutoResetEvent>();
 
+            var containerName = Guid.NewGuid().ToString();
             var hosts = new List<EventProcessorHost>();
+
             try
             {
                 for (int hostId = 0; hostId < hostCount; hostId++)
@@ -163,11 +165,11 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
                     TestUtility.Log("Creating EventProcessorHost");
                     var eventProcessorHost = new EventProcessorHost(
                         thisHostName,
-                        string.Empty, // Passing empty as entity path here rsince path is already in EH connection string.
+                        string.Empty, // Passing empty as entity path here since path is already in EH connection string.
                         PartitionReceiver.DefaultConsumerGroupName,
                         TestUtility.EventHubsConnectionString,
                         TestUtility.StorageConnectionString,
-                        Guid.NewGuid().ToString());
+                        containerName);
                     hosts.Add(eventProcessorHost);
                     TestUtility.Log($"Calling RegisterEventProcessorAsync");
                     var processorOptions = new EventProcessorOptions
@@ -673,7 +675,9 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
                         };
                 };
 
-                await eventProcessorHost.RegisterEventProcessorFactoryAsync(processorFactory);
+                var epo = EventProcessorOptions.DefaultOptions;
+                epo.ReceiveTimeout = TimeSpan.FromSeconds(10);
+                await eventProcessorHost.RegisterEventProcessorFactoryAsync(processorFactory, epo);
 
                 // Wait 15 seconds then create a new epoch receiver.
                 // This will trigger ReceiverDisconnectedExcetion in the host.
@@ -685,7 +689,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
                     targetPartition, EventPosition.FromStart(), 2);
                 await externalReceiver.ReceiveAsync(100, TimeSpan.FromSeconds(5));
 
-                // Give another 1 minute for host to recover then do the validatins.
+                // Give another 1 minute for host to recover then do the validations.
                 await Task.Delay(60000);
 
                 TestUtility.Log("Verifying that host was able to receive ReceiverDisconnectedException");
