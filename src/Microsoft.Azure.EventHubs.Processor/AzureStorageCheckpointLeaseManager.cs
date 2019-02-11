@@ -234,18 +234,18 @@ namespace Microsoft.Azure.EventHubs.Processor
         public async Task<IEnumerable<Lease>> GetAllLeasesAsync()
         {
             var leaseList = new List<Lease>();
+            BlobContinuationToken continuationToken = null;
 
-            // Fetch first page of blobs.
-            var leaseBlobsResult = await this.consumerGroupDirectory.ListBlobsSegmentedAsync(
-                true,
-                BlobListingDetails.Metadata,
-                null,
-                null,
-                null,
-                this.operationContext);
-
-            while (true)
+            do
             {
+                var leaseBlobsResult = await this.consumerGroupDirectory.ListBlobsSegmentedAsync(
+                    true,
+                    BlobListingDetails.Metadata,
+                    null,
+                    continuationToken,
+                    null,
+                    this.operationContext);
+
                 foreach (CloudBlockBlob leaseBlob in leaseBlobsResult.Results)
                 {
                     // Try getting owner name from existing blob. 
@@ -258,21 +258,9 @@ namespace Microsoft.Azure.EventHubs.Processor
                     leaseList.Add(new AzureBlobLease(partitionId, owner, leaseBlob));
                 }
 
-                // Yield break if there is no other page to return.
-                if (leaseBlobsResult.ContinuationToken == null)
-                {
-                    break;
-                }
+                continuationToken = leaseBlobsResult.ContinuationToken;
 
-                // Fetch next page.
-                leaseBlobsResult = await this.consumerGroupDirectory.ListBlobsSegmentedAsync(
-                    true,
-                    BlobListingDetails.Metadata,
-                    null,
-                    leaseBlobsResult.ContinuationToken,
-                    null,
-                    this.operationContext);
-            }
+            } while (continuationToken != null);
 
             return leaseList;
         }
@@ -565,7 +553,7 @@ namespace Microsoft.Azure.EventHubs.Processor
         [Obsolete("GetAllLeases is deprecated, please use GetAllLeasesAsync instead.", true)]
         public IEnumerable<Task<Lease>> GetAllLeases()
         {
-            throw new NotImplementedException();
+            return null;
         }
     }
 }
