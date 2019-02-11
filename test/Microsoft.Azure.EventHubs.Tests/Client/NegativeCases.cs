@@ -150,7 +150,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
 
             foreach (var invalidPartitionId in invalidPartitions)
             {
-                await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+                await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () =>
                 {
                     TestUtility.Log($"Getting partition information from invalid partition {invalidPartitionId}");
                     await this.EventHubClient.GetPartitionRuntimeInformationAsync(invalidPartitionId);
