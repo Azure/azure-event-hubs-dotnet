@@ -549,11 +549,5 @@ namespace Microsoft.Azure.EventHubs.Processor
         {
             return this.consumerGroupDirectory.GetBlockBlobReference(partitionId);
         }
-
-        [Obsolete("GetAllLeases is deprecated, please use GetAllLeasesAsync instead.", true)]
-        public IEnumerable<Task<Lease>> GetAllLeases()
-        {
-            return null;
-        }
     }
 }

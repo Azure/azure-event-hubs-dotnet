@@ -61,13 +61,6 @@ namespace Microsoft.Azure.EventHubs.Processor
         Task<Lease> GetLeaseAsync(string partitionId);
 
         /// <summary>
-        /// GetAllLeases is deprecated, please use GetAllLeasesAsync instead.
-        /// </summary>
-        /// <returns></returns>
-        [Obsolete("GetAllLeases is deprecated, please use GetAllLeasesAsync instead.", true)]
-        IEnumerable<Task<Lease>> GetAllLeases();
-
-        /// <summary>
         /// Return the lease info for all partitions.
         /// A typical implementation could just call GetLeaseAsync() on all partitions.
         /// </summary>
