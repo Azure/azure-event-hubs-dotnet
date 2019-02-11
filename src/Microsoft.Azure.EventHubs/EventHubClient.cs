@@ -84,6 +84,7 @@ namespace Microsoft.Azure.EventHubs
             return eventHubClient;
         }
 
+#if !UAP10_0 && !IOS
         /// <summary>
         /// Creates a new instance of the Event Hubs client using the specified endpoint, entity path, AAD authentication context.
         /// </summary>
@@ -109,6 +110,7 @@ namespace Microsoft.Azure.EventHubs
                 operationTimeout,
                 transportType);
         }
+#endif
 
         /// <summary>
         /// Creates a new instance of the Event Hubs client using the specified endpoint, entity path, AAD authentication context.
@@ -142,7 +144,7 @@ namespace Microsoft.Azure.EventHubs
                 transportType);
         }
 
-#if !UAP10_0
+#if !UAP10_0 && !IOS
         /// <summary>
         /// Creates a new instance of the Event Hubs client using the specified endpoint, entity path, AAD authentication context.
         /// </summary>
