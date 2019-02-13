@@ -17,23 +17,19 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
         {
         }
 
-        protected bool hasShutDown;
-        protected Exception shutdownException;
-
-        protected Uri mockServiceUri = new Uri("fabric:/ServiceFabricProcessor/tests/CITs/smoke");
-        protected Guid mockPartitionId = Guid.NewGuid();
-
-
         [Fact]
         [DisplayTestMethodName]
         void TestMockFabricPartitionLister()
         {
+            TestState state = new TestState();
+            state.Initialize("TestMockFabricPartitionLister", 1, 0);
+
             int setCount = 1;
             int setOrd = 0;
             IFabricPartitionLister mock = new MockPartitionLister(setCount, setOrd);
-            int gotCount = mock.GetServiceFabricPartitionCount(this.mockServiceUri).Result;
+            int gotCount = mock.GetServiceFabricPartitionCount(state.ServiceUri).Result;
             Assert.True(gotCount == setCount, $"Returned count {gotCount} does not match original count {setCount}");
-            int gotOrd = mock.GetServiceFabricPartitionOrdinal(this.mockPartitionId).Result;
+            int gotOrd = mock.GetServiceFabricPartitionOrdinal(state.ServicePartitionId).Result;
             Assert.True(gotOrd == setOrd, $"Returned ordinal {gotOrd} does not match original ordinal {setOrd}");
         }
 
@@ -138,71 +134,76 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
         [DisplayTestMethodName]
         void SmokeTest()
         {
-            IReliableStateManager mockStateManager = new MockReliableStateManager();
-            IStatefulServicePartition mockServicePartition = new MockStatefulServicePartition();
-            string mockConnectionString = "Endpoint=sb://NOTREAL.servicebus.windows.net/;SharedAccessKeyName=blah;SharedAccessKey=bloo;EntityPath=testhub";
-
-            this.hasShutDown = false;
-            this.shutdownException = null;
-            EventProcessorOptions options = new EventProcessorOptions();
-            options.OnShutdown = OnShutdown;
-
-            TestProcessor proc = new TestProcessor(options);
+            TestState state = new TestState();
+            state.Initialize("smoke", 1, 0);
 
             Microsoft.Azure.EventHubs.ServiceFabricProcessor.ServiceFabricProcessor sfp =
                 new Microsoft.Azure.EventHubs.ServiceFabricProcessor.ServiceFabricProcessor(
-                    mockServiceUri,
-                    mockPartitionId,
-                    mockStateManager,
-                    mockServicePartition,
-                    proc,
-                    mockConnectionString,
+                    state.ServiceUri,
+                    state.ServicePartitionId,
+                    state.StateManager,
+                    state.StatefulServicePartition,
+                    state.Processor,
+                    state.ConnectionString,
                     "$Default",
-                    options);
-            sfp.MockMode = new MockPartitionLister(1, 0);
+                    state.Options);
+            sfp.MockMode = state.PartitionLister;
             sfp.EventHubClientFactory = new EventHubMocks.EventHubClientFactoryMock(1);
 
-            CancellationTokenSource tokenSource = new CancellationTokenSource();
+            state.PrepareToRun();
+            state.StartRun(sfp);
 
-            Task sfpTask = null;
-            Task outerTask = Task.Run(() => { sfpTask = sfp.RunAsync(tokenSource.Token); });
+            state.RunForNBatches(20, 10);
 
-            while (!proc.IsOpened && !this.hasShutDown)
-            {
-                Thread.Sleep(1000);
-            }
-            Assert.False(this.hasShutDown, "Shut down before open");
+            state.WaitRun();
 
-            while ((proc.TotalBatches < 20) && !this.hasShutDown)
-            {
-                Thread.Sleep(1000);
-            }
-            Assert.False(this.hasShutDown, "Uncommanded shut down while processing");
-
-            if (!this.hasShutDown)
-            {
-                tokenSource.Cancel();
-                while (!proc.IsClosed)
-                {
-                    Thread.Sleep(1000);
-                }
-            }
-            while (!this.hasShutDown)
-            {
-                Thread.Sleep(1000);
-            }
-            //Assert.True(this.hasShutDown, "Shutdown notification did not occur");
-
-            outerTask.Wait();
-            sfpTask.Wait();
-
-            Assert.True(proc.TotalErrors == 0);
+            Assert.True(state.Processor.TotalErrors == 0, $"Errors found {state.Processor.TotalErrors}");
+            Assert.Null(state.ShutdownException);
         }
 
-        private void OnShutdown(Exception e)
+        [Fact]
+        [DisplayTestMethodName]
+        void PartitionCountEnforcement()
         {
-            this.hasShutDown = true;
-            this.shutdownException = e;
+            innerPartitionCountEnforcement(4, 16);
+            innerPartitionCountEnforcement(4, 2);
+        }
+
+        private void innerPartitionCountEnforcement(int servicePartitions, int eventHubPartitions)
+        {
+            TestState state = new TestState();
+            state.Initialize("partitioncountenforcement", servicePartitions, 0);
+
+            Microsoft.Azure.EventHubs.ServiceFabricProcessor.ServiceFabricProcessor sfp =
+                new Microsoft.Azure.EventHubs.ServiceFabricProcessor.ServiceFabricProcessor(
+                    state.ServiceUri,
+                    state.ServicePartitionId,
+                    state.StateManager,
+                    state.StatefulServicePartition,
+                    state.Processor,
+                    state.ConnectionString,
+                    "$Default",
+                    state.Options);
+            sfp.MockMode = state.PartitionLister;
+            sfp.EventHubClientFactory = new EventHubMocks.EventHubClientFactoryMock(eventHubPartitions);
+
+            state.PrepareToRun();
+            state.StartRun(sfp);
+
+            int retries = 0;
+            while (!state.HasShutDown && (retries < 10))
+            {
+                Thread.Sleep(1000);
+                retries++;
+            }
+
+            Assert.True(state.HasShutDown, $"Shutdown notification did not occur after {retries} seconds");
+            Assert.False(state.Processor.IsOpened, "Processor was opened");
+            Assert.NotNull(state.ShutdownException);
+            Assert.True(state.ShutdownException is EventProcessorConfigurationException,
+                $"Unexpected exception type {state.ShutdownException.GetType().Name}");
+            Assert.Equal($"Service partition count {servicePartitions} does not match event hub partition count {eventHubPartitions}",
+                state.ShutdownException.Message);
         }
     }
 }
