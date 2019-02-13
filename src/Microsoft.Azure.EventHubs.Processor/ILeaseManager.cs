@@ -65,7 +65,7 @@ namespace Microsoft.Azure.EventHubs.Processor
         /// A typical implementation could just call GetLeaseAsync() on all partitions.
         /// </summary>
         /// <returns>list of lease info.</returns>
-        IEnumerable<Task<Lease>> GetAllLeases();
+        Task<IEnumerable<Lease>> GetAllLeasesAsync();
 
         /// <summary>
         /// Create in the store the lease info for the given partition, if it does not exist. Do nothing if it does exist

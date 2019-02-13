@@ -23,7 +23,7 @@ namespace Microsoft.Azure.EventHubs.Processor
 
         protected EventProcessorHost Host { get; }
 
-        protected Lease Lease { get; }
+        protected internal Lease Lease { get; }
 
         protected IEventProcessor Processor { get; private set; }
 
@@ -31,9 +31,9 @@ namespace Microsoft.Azure.EventHubs.Processor
 
         protected AsyncLock ProcessingAsyncLock { get; }
 
-        internal void SetLease(Lease newLease)
+        internal void SetLeaseToken(string newToken)
         {
-            this.PartitionContext.Lease = newLease;
+            this.PartitionContext.Lease.Token = newToken;
         }
 
         public async Task OpenAsync()
@@ -124,12 +124,15 @@ namespace Microsoft.Azure.EventHubs.Processor
             if (reason != CloseReason.LeaseLost)
             {
                 // Since this pump is dead, release the lease.
-                // Ignore LeaseLostException
                 try
                 {
                     await this.Host.LeaseManager.ReleaseLeaseAsync(this.PartitionContext.Lease).ConfigureAwait(false);
                 }
-                catch (LeaseLostException) { }
+                catch (Exception e)
+                {
+                    // Log and ignore any failure since expired lease will be picked by another host.
+                    this.Host.EventProcessorOptions.NotifyOfException(this.Host.HostName, this.PartitionContext.PartitionId, e, EventProcessorHostActionStrings.ReleasingLease);
+                }
             }
 
             this.PumpStatus = PartitionPumpStatus.Closed;

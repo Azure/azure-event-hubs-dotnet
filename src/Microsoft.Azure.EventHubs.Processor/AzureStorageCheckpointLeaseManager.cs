@@ -5,6 +5,7 @@ namespace Microsoft.Azure.EventHubs.Processor
 {
     using System;
     using System.Collections.Generic;
+    using System.Linq;
     using System.Threading.Tasks;
     using Microsoft.Azure.EventHubs.Primitives;
     using Newtonsoft.Json;
@@ -13,6 +14,8 @@ namespace Microsoft.Azure.EventHubs.Processor
 
     class AzureStorageCheckpointLeaseManager : ICheckpointManager, ILeaseManager
     {
+        static string MetaDataOwnerName = "OWNINGHOST";
+            
         EventProcessorHost host;
         TimeSpan leaseDuration;
         TimeSpan leaseRenewInterval;
@@ -107,7 +110,9 @@ namespace Microsoft.Azure.EventHubs.Processor
 
         public Task<bool> CreateCheckpointStoreIfNotExistsAsync()
         {
-            return CreateLeaseStoreIfNotExistsAsync();
+            // Because we control the caller, we know that this method will only be called after createLeaseStoreIfNotExists.
+            // In this implementation, it's the same store, so the store will always exist if execution reaches here.
+            return Task.FromResult(true);
         }
 
         public async Task<Checkpoint> GetCheckpointAsync(string partitionId)
@@ -126,19 +131,10 @@ namespace Microsoft.Azure.EventHubs.Processor
             return checkpoint;
         }
 
-        [Obsolete("Use UpdateCheckpointAsync(Lease lease, Checkpoint checkpoint) instead", true)]
-        public Task UpdateCheckpointAsync(Checkpoint checkpoint)
-        {
-            throw new NotImplementedException();
-        }
-
-        public async Task<Checkpoint> CreateCheckpointIfNotExistsAsync(string partitionId)
+        public Task<Checkpoint> CreateCheckpointIfNotExistsAsync(string partitionId)
         {
             // Normally the lease will already be created, checkpoint store is initialized after lease store.
-            AzureBlobLease lease = (AzureBlobLease)await CreateLeaseIfNotExistsAsync(partitionId).ConfigureAwait(false);
-            Checkpoint checkpoint = new Checkpoint(partitionId, lease.Offset, lease.SequenceNumber);
-
-            return checkpoint;
+            return Task.FromResult<Checkpoint>(null);
         }
 
         public async Task UpdateCheckpointAsync(Lease lease, Checkpoint checkpoint)
@@ -228,26 +224,45 @@ namespace Microsoft.Azure.EventHubs.Processor
 
         public async Task<Lease> GetLeaseAsync(string partitionId) // throws URISyntaxException, IOException, StorageException
         {
-            AzureBlobLease retval = null;
-
             CloudBlockBlob leaseBlob = GetBlockBlobReference(partitionId);
 
-            if (await leaseBlob.ExistsAsync(null, this.operationContext).ConfigureAwait(false))
-            {
-                retval = await DownloadLeaseAsync(partitionId, leaseBlob).ConfigureAwait(false);
-            }
+            await leaseBlob.FetchAttributesAsync().ConfigureAwait(false);
 
-            return retval;
+            return await DownloadLeaseAsync(partitionId, leaseBlob).ConfigureAwait(false);
         }
 
-        public IEnumerable<Task<Lease>> GetAllLeases()
+        public async Task<IEnumerable<Lease>> GetAllLeasesAsync()
         {
-            IEnumerable<string> partitionIds = this.host.PartitionManager.GetPartitionIdsAsync().WaitAndUnwrapException();
+            var leaseList = new List<Lease>();
+            BlobContinuationToken continuationToken = null;
 
-            foreach (string id in partitionIds)
+            do
             {
-                yield return GetLeaseAsync(id);
-            }
+                var leaseBlobsResult = await this.consumerGroupDirectory.ListBlobsSegmentedAsync(
+                    true,
+                    BlobListingDetails.Metadata,
+                    null,
+                    continuationToken,
+                    null,
+                    this.operationContext);
+
+                foreach (CloudBlockBlob leaseBlob in leaseBlobsResult.Results)
+                {
+                    // Try getting owner name from existing blob. 
+                    // This might return null when run on the existing lease after SDK upgrade.
+                    leaseBlob.Metadata.TryGetValue(MetaDataOwnerName, out var owner);
+
+                    // Discover partition id from URI path of the blob.
+                    var partitionId = leaseBlob.Uri.AbsolutePath.Split('/').Last();
+
+                    leaseList.Add(new AzureBlobLease(partitionId, owner, leaseBlob));
+                }
+
+                continuationToken = leaseBlobsResult.ContinuationToken;
+
+            } while (continuationToken != null);
+
+            return leaseList;
         }
 
         public async Task<Lease> CreateLeaseIfNotExistsAsync(string partitionId) // throws URISyntaxException, IOException, StorageException
@@ -315,6 +330,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             string partitionId = lease.PartitionId;
             try
             {
+                bool renewLease = false;
                 string newToken;
                 await leaseBlob.FetchAttributesAsync(null, null, this.operationContext).ConfigureAwait(false);
                 if (leaseBlob.Properties.LeaseState == LeaseState.Leased)
@@ -332,6 +348,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                     }
 
                     ProcessorEventSource.Log.AzureStorageManagerInfo(this.host.HostName, lease.PartitionId, "Need to ChangeLease");
+                    renewLease = true;
                     newToken = await leaseBlob.ChangeLeaseAsync(
                         newLeaseId,
                         AccessCondition.GenerateLeaseCondition(lease.Token),
@@ -341,26 +358,35 @@ namespace Microsoft.Azure.EventHubs.Processor
                 else
                 {
                     ProcessorEventSource.Log.AzureStorageManagerInfo(this.host.HostName, lease.PartitionId, "Need to AcquireLease");
-
-                    try
-                    {
-                        newToken = await leaseBlob.AcquireLeaseAsync(leaseDuration, newLeaseId, null, null, this.operationContext).ConfigureAwait(false);
-                    }
-                    catch (StorageException se)
-                        when (se.RequestInformation != null
-                        && se.RequestInformation.ErrorCode.Equals(BlobErrorCodeStrings.LeaseAlreadyPresent, StringComparison.OrdinalIgnoreCase))
-                    {
-                        // Either some other host grabbed the lease or checkpoint call renewed it.
-                        return false;
-                    }
+                    newToken = await leaseBlob.AcquireLeaseAsync(
+                        leaseDuration, 
+                        newLeaseId, 
+                        null, 
+                        null,
+                        this.operationContext).ConfigureAwait(false);
                 }
 
                 lease.Token = newToken;
                 lease.Owner = this.host.HostName;
                 lease.IncrementEpoch(); // Increment epoch each time lease is acquired or stolen by a new host
+
+                // Renew lease here if needed?
+                // ChangeLease doesn't renew so we should avoid lease expiring before next renew interval.
+                if (renewLease)
+                {
+                    await this.RenewLeaseCoreAsync(lease).ConfigureAwait(false);
+                }
+
                 await leaseBlob.UploadTextAsync(
                     JsonConvert.SerializeObject(lease),
                     null,
+                    AccessCondition.GenerateLeaseCondition(lease.Token),
+                    null,
+                    this.operationContext).ConfigureAwait(false);
+
+                // Update owner in the metadata.
+                lease.Blob.Metadata[MetaDataOwnerName] = lease.Owner;
+                await lease.Blob.SetMetadataAsync(
                     AccessCondition.GenerateLeaseCondition(lease.Token),
                     null,
                     this.operationContext).ConfigureAwait(false);
@@ -418,6 +444,14 @@ namespace Microsoft.Azure.EventHubs.Processor
                     Token = string.Empty,
                     Owner = string.Empty
                 };
+
+                // Remove owner in the metadata.
+                leaseBlob.Metadata.Remove(MetaDataOwnerName);
+                await leaseBlob.SetMetadataAsync(
+                    AccessCondition.GenerateLeaseCondition(leaseId),
+                    null,
+                    this.operationContext);
+
                 await leaseBlob.UploadTextAsync(
                     JsonConvert.SerializeObject(releasedCopy),
                     null,
@@ -478,7 +512,7 @@ namespace Microsoft.Azure.EventHubs.Processor
             return true;
         }
 
-        async Task<AzureBlobLease> DownloadLeaseAsync(string partitionId, CloudBlockBlob blob) // throws StorageException, IOException
+        async Task<Lease> DownloadLeaseAsync(string partitionId, CloudBlockBlob blob) // throws StorageException, IOException
         {
             string jsonLease = await blob.DownloadTextAsync().ConfigureAwait(false);
 
@@ -513,15 +547,7 @@ namespace Microsoft.Azure.EventHubs.Processor
 
         CloudBlockBlob GetBlockBlobReference(string partitionId)
         {
-            CloudBlockBlob leaseBlob = this.consumerGroupDirectory.GetBlockBlobReference(partitionId);
-
-            // Fixed, keeping workaround commented until full validation.
-            // GetBlockBlobReference creates a new ServiceClient thus resets options.
-            // Because of this we lose settings like MaximumExecutionTime on the client.
-            // Until storage addresses the issue we need to override it here once more.
-            // Tracking bug: https://github.com/Azure/azure-storage-net/issues/398
-            // leaseBlob.ServiceClient.DefaultRequestOptions = this.storageClient.DefaultRequestOptions;
-            return leaseBlob;
+            return this.consumerGroupDirectory.GetBlockBlobReference(partitionId);
         }
     }
 }
