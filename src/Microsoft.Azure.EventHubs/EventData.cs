@@ -69,7 +69,10 @@ namespace Microsoft.Azure.EventHubs
         /// SystemProperties that are populated by EventHubService.
         /// As these are populated by Service, they are only present on a Received EventData.
         /// </summary>
-        public SystemPropertiesCollection SystemProperties { get; internal set; }
+        public SystemPropertiesCollection SystemProperties
+        {
+            get; set;
+        }
 
         internal AmqpMessage AmqpMessage { get; set; }
 
