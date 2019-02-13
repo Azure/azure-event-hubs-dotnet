@@ -9,6 +9,8 @@ namespace Microsoft.Azure.EventHubs.Processor
 
 	class AzureBlobLease : Lease
 	{
+        readonly bool isOwned;
+
 	    // ctor needed for deserialization
 	    internal AzureBlobLease()
 		{
@@ -17,14 +19,23 @@ namespace Microsoft.Azure.EventHubs.Processor
 	    internal AzureBlobLease(string partitionId, CloudBlockBlob blob) : base(partitionId)
 		{
 			this.Blob = blob;
-		}
+            this.isOwned = blob.Properties.LeaseState == LeaseState.Leased;
+        }
 
-	    internal AzureBlobLease(AzureBlobLease source)
+        internal AzureBlobLease(string partitionId, string owner, CloudBlockBlob blob) : base(partitionId)
+        {
+            this.Blob = blob;
+            this.Owner = owner;
+            this.isOwned = blob.Properties.LeaseState == LeaseState.Leased;
+        }
+
+        internal AzureBlobLease(AzureBlobLease source)
 			: base(source)
 		{
 			this.Offset = source.Offset;
 			this.SequenceNumber = source.SequenceNumber;
 			this.Blob = source.Blob;
+            this.isOwned = source.isOwned;
 		}
 
 	    internal AzureBlobLease(AzureBlobLease source, CloudBlockBlob blob) : base(source)
@@ -32,17 +43,16 @@ namespace Microsoft.Azure.EventHubs.Processor
 			this.Offset = source.Offset;
 			this.SequenceNumber = source.SequenceNumber;
 			this.Blob = blob;
+            this.isOwned = blob.Properties.LeaseState == LeaseState.Leased;
 		}
 
 	    // do not serialize
 	    [JsonIgnore]
 		public CloudBlockBlob Blob { get; }
 
-	    public override async Task<bool> IsExpired()
+	    public override Task<bool> IsExpired()
 		{
-			await this.Blob.FetchAttributesAsync().ConfigureAwait(false); // Get the latest metadata
-			var currentState = this.Blob.Properties.LeaseState;
-			return currentState != LeaseState.Leased;
+            return Task.FromResult(!this.isOwned);
 		}
 	}
 }

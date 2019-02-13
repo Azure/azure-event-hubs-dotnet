@@ -13,8 +13,9 @@ namespace Microsoft.Azure.EventHubs
     public class AzureActiveDirectoryTokenProvider : TokenProvider
     {
         readonly AuthenticationContext authContext;
+
+#if !UAP10_0 && !IOS
         readonly ClientCredential clientCredential;
-#if !UAP10_0
         readonly ClientAssertionCertificate clientAssertionCertificate;
 #endif
         readonly string clientId;
@@ -32,6 +33,7 @@ namespace Microsoft.Azure.EventHubs
 
         readonly AuthType authType;
 
+#if !UAP10_0 && !IOS
         internal AzureActiveDirectoryTokenProvider(AuthenticationContext authContext, ClientCredential credential)
         {
             this.clientCredential = credential;
@@ -40,7 +42,6 @@ namespace Microsoft.Azure.EventHubs
             this.clientId = clientCredential.ClientId;
         }
 
-#if !UAP10_0
         internal AzureActiveDirectoryTokenProvider(AuthenticationContext authContext, ClientAssertionCertificate clientAssertionCertificate)
         {
             this.clientAssertionCertificate = clientAssertionCertificate;
@@ -72,16 +73,15 @@ namespace Microsoft.Azure.EventHubs
 
             switch (this.authType)
             {
+#if !UAP10_0 && !IOS
                 case AuthType.ClientCredential:
                     authResult = await this.authContext.AcquireTokenAsync(ClientConstants.AadEventHubsAudience, this.clientCredential);
                     break;
 
-#if !UAP10_0
                 case AuthType.ClientAssertionCertificate:
                     authResult = await this.authContext.AcquireTokenAsync(ClientConstants.AadEventHubsAudience, this.clientAssertionCertificate);
                     break;
 #endif
-
                 case AuthType.InteractiveUserLogin:
                     authResult = await this.authContext.AcquireTokenAsync(ClientConstants.AadEventHubsAudience, this.clientId, this.redirectUri, this.platformParameters, this.userIdentifier);
                     break;
