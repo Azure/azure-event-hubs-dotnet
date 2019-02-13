@@ -72,8 +72,9 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             /// <summary>
             /// </summary>
             /// <param name="connectionString"></param>
+            /// <param name="receiveTimeout"></param>
             /// <returns></returns>
-            IEventHubClient CreateFromConnectionString(string connectionString);
+            IEventHubClient Create(string connectionString, TimeSpan receiveTimeout);
         }
 
         internal class PartitionReceiverWrapper : IPartitionReceiver
@@ -131,9 +132,11 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
 
         internal class EventHubClientFactory : IEventHubClientFactory
         {
-            public IEventHubClient CreateFromConnectionString(string connectionString)
+            public IEventHubClient Create(string connectionString, TimeSpan receiveTimeout)
             {
-                return new EventHubClientWrapper(EventHubClient.CreateFromConnectionString(connectionString));
+                EventHubsConnectionStringBuilder csb = new EventHubsConnectionStringBuilder(connectionString);
+                csb.OperationTimeout = receiveTimeout;
+                return new EventHubClientWrapper(EventHubClient.Create(csb));
             }
         }
     }

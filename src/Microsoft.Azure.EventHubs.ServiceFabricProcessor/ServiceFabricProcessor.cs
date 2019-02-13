@@ -184,7 +184,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 //
                 Exception lastException = null;
                 EventProcessorEventSource.Current.Message("Creating event hub client");
-                lastException = RetryWrapper(() => { ehclient = this.EventHubClientFactory.CreateFromConnectionString(this.ehConnectionString.ToString()); });
+                lastException = RetryWrapper(() => { ehclient = this.EventHubClientFactory.Create(this.ehConnectionString.ToString(), this.options.ReceiveTimeout); });
                 if (ehclient == null)
                 {
                     EventProcessorEventSource.Current.Message("Out of retries event hub client");
