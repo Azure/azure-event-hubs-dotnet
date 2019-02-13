@@ -76,6 +76,8 @@ namespace Microsoft.Azure.EventHubs
             return new SharedAccessSignatureTokenProvider(keyName, sharedAccessKey, tokenTimeToLive, tokenScope);
         }
 
+
+#if !UAP10_0 && !IOS
         /// <summary>Creates an Azure Active Directory token provider.</summary>
         /// <param name="authContext">AuthenticationContext for AAD.</param>
         /// <param name="clientCredential">The app credential.</param>
@@ -87,6 +89,7 @@ namespace Microsoft.Azure.EventHubs
 
             return new AzureActiveDirectoryTokenProvider(authContext, clientCredential);
         }
+#endif
 
         /// <summary>Creates an Azure Active Directory token provider.</summary>
         /// <param name="authContext">AuthenticationContext for AAD.</param>
@@ -110,7 +113,7 @@ namespace Microsoft.Azure.EventHubs
             return new AzureActiveDirectoryTokenProvider(authContext, clientId, redirectUri, platformParameters, userIdentifier);
         }
 
-#if !UAP10_0
+#if !UAP10_0 && !IOS
         /// <summary>Creates an Azure Active Directory token provider.</summary>
         /// <param name="authContext">AuthenticationContext for AAD.</param>
         /// <param name="clientAssertionCertificate">The client assertion certificate credential.</param>
