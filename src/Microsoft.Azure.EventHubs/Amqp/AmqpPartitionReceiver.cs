@@ -312,6 +312,12 @@ namespace Microsoft.Azure.EventHubs.Amqp
                         }
                         catch { }
 
+                        // ReceiverDisconnectedException is a special case where we know we cannot recover the pump.
+                        if (e is ReceiverDisconnectedException)
+                        {
+                            break;
+                        }
+
                         continue;
                     }
 
