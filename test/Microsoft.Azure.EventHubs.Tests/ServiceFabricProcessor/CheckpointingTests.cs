@@ -1,0 +1,198 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Azure.EventHubs.ServiceFabricProcessor;
+using Xunit;
+
+namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
+{
+    public class CheckpointingTests
+    {
+        [Fact]
+        [DisplayTestMethodName]
+        void CheckpointBatchTest()
+        {
+            TestState state = new TestState();
+            state.Initialize("checkpointing", 1, 0);
+            state.Processor = new CheckpointingProcessor(state.Options);
+
+            Microsoft.Azure.EventHubs.ServiceFabricProcessor.ServiceFabricProcessor sfp =
+                new Microsoft.Azure.EventHubs.ServiceFabricProcessor.ServiceFabricProcessor(
+                    state.ServiceUri,
+                    state.ServicePartitionId,
+                    state.StateManager,
+                    state.StatefulServicePartition,
+                    state.Processor,
+                    state.ConnectionString,
+                    "$Default",
+                    state.Options);
+            sfp.MockMode = state.PartitionLister;
+            sfp.EventHubClientFactory = new EventHubMocks.EventHubClientFactoryMock(1);
+
+            state.PrepareToRun();
+            state.StartRun(sfp);
+
+            state.RunForNBatches(20, 10);
+
+            state.WaitRun();
+
+            Assert.True(state.Processor.TotalErrors == 0, $"Errors found {state.Processor.TotalErrors}");
+            Assert.Null(state.ShutdownException);
+
+            EventData checkpointedEvent = state.Processor.LastEvent;
+            Assert.NotNull(checkpointedEvent);
+            Assert.True(checkpointedEvent.SystemProperties.SequenceNumber > 0L,
+                $"Unexpected sequence number {checkpointedEvent.SystemProperties.SequenceNumber}");
+
+            state.Processor = new CheckpointingProcessor(state.Options);
+
+            sfp = new Microsoft.Azure.EventHubs.ServiceFabricProcessor.ServiceFabricProcessor(
+                    state.ServiceUri,
+                    state.ServicePartitionId,
+                    state.StateManager,
+                    state.StatefulServicePartition,
+                    state.Processor,
+                    state.ConnectionString,
+                    "$Default",
+                    state.Options);
+            sfp.MockMode = state.PartitionLister;
+            sfp.EventHubClientFactory = new EventHubMocks.EventHubClientFactoryMock(1);
+
+            state.PrepareToRun();
+            state.StartRun(sfp);
+
+            state.RunForNBatches(1, 10);
+
+            state.WaitRun();
+
+            Assert.True(state.Processor.TotalErrors == 0, $"Errors found {state.Processor.TotalErrors}");
+            Assert.Null(state.ShutdownException);
+
+            EventData restartEvent = ((CheckpointingProcessor)state.Processor).FirstEvent;
+            Assert.NotNull(restartEvent);
+
+            Assert.True((restartEvent.SystemProperties.SequenceNumber - checkpointedEvent.SystemProperties.SequenceNumber) == 1,
+                $"Unexpected change in sequence number from {checkpointedEvent.SystemProperties.SequenceNumber} to {restartEvent.SystemProperties.SequenceNumber}");
+        }
+
+        [Fact]
+        [DisplayTestMethodName]
+        void CheckpointEventTest()
+        {
+            TestState state = new TestState();
+            state.Initialize("checkpointing", 1, 0);
+            const long checkpointAt = 57L;
+            state.Processor = new CheckpointingProcessor(state.Options, checkpointAt);
+
+            Microsoft.Azure.EventHubs.ServiceFabricProcessor.ServiceFabricProcessor sfp =
+                new Microsoft.Azure.EventHubs.ServiceFabricProcessor.ServiceFabricProcessor(
+                    state.ServiceUri,
+                    state.ServicePartitionId,
+                    state.StateManager,
+                    state.StatefulServicePartition,
+                    state.Processor,
+                    state.ConnectionString,
+                    "$Default",
+                    state.Options);
+            sfp.MockMode = state.PartitionLister;
+            sfp.EventHubClientFactory = new EventHubMocks.EventHubClientFactoryMock(1);
+
+            state.PrepareToRun();
+            state.StartRun(sfp);
+
+            state.RunForNBatches(20, 10);
+
+            state.WaitRun();
+
+            Assert.True(state.Processor.TotalErrors == 0, $"Errors found {state.Processor.TotalErrors}");
+            Assert.Null(state.ShutdownException);
+
+            EventData checkpointedEvent = ((CheckpointingProcessor)state.Processor).CheckpointedEvent;
+            Assert.NotNull(checkpointedEvent);
+            Assert.True(checkpointedEvent.SystemProperties.SequenceNumber == checkpointAt,
+                $"Checkpointed event has seq {checkpointedEvent.SystemProperties.SequenceNumber}, expected {checkpointAt}");
+
+            EventData lastEvent = state.Processor.LastEvent;
+            Assert.NotNull(lastEvent);
+            Assert.True(lastEvent.SystemProperties.SequenceNumber > checkpointedEvent.SystemProperties.SequenceNumber,
+                $"Unexpected sequence number {lastEvent.SystemProperties.SequenceNumber}");
+
+            state.Processor = new CheckpointingProcessor(state.Options);
+
+            sfp = new Microsoft.Azure.EventHubs.ServiceFabricProcessor.ServiceFabricProcessor(
+                    state.ServiceUri,
+                    state.ServicePartitionId,
+                    state.StateManager,
+                    state.StatefulServicePartition,
+                    state.Processor,
+                    state.ConnectionString,
+                    "$Default",
+                    state.Options);
+            sfp.MockMode = state.PartitionLister;
+            sfp.EventHubClientFactory = new EventHubMocks.EventHubClientFactoryMock(1);
+
+            state.PrepareToRun();
+            state.StartRun(sfp);
+
+            state.RunForNBatches(1, 10);
+
+            state.WaitRun();
+
+            Assert.True(state.Processor.TotalErrors == 0, $"Errors found {state.Processor.TotalErrors}");
+            Assert.Null(state.ShutdownException);
+
+            EventData restartEvent = ((CheckpointingProcessor)state.Processor).FirstEvent;
+            Assert.NotNull(restartEvent);
+
+            Assert.True((restartEvent.SystemProperties.SequenceNumber - checkpointedEvent.SystemProperties.SequenceNumber) == 1,
+                $"Unexpected change in sequence number from {checkpointedEvent.SystemProperties.SequenceNumber} to {restartEvent.SystemProperties.SequenceNumber}");
+        }
+
+        class CheckpointingProcessor : TestProcessor
+        {
+            private readonly long checkpointAt;
+
+            public CheckpointingProcessor(EventProcessorOptions options, long checkpointAt = -1L) : base(options)
+            {
+                this.FirstEvent = null;
+                this.CheckpointedEvent = null;
+                this.checkpointAt = checkpointAt;
+            }
+
+            public EventData FirstEvent { get; private set; }
+
+            public EventData CheckpointedEvent { get; private set; }
+
+            public override Task ProcessEventsAsync(CancellationToken cancellationToken, PartitionContext context, IEnumerable<EventData> events)
+            {
+                if (this.FirstEvent == null)
+                {
+                    IEnumerator<EventData> blah = events.GetEnumerator();
+                    blah.MoveNext();
+                    this.FirstEvent = blah.Current;
+                }
+
+                Task retval = base.ProcessEventsAsync(cancellationToken, context, events);
+
+                if (this.checkpointAt == -1L)
+                {
+                    retval = context.CheckpointAsync();
+                }
+                else
+                {
+                    foreach (EventData e in events)
+                    {
+                        if (e.SystemProperties.SequenceNumber == checkpointAt)
+                        {
+                            this.CheckpointedEvent = e;
+                            retval = context.CheckpointAsync(e);
+                        }
+                    }
+                }
+                return retval;
+            }
+        }
+    }
+}

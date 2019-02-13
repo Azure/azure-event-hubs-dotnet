@@ -24,6 +24,7 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
             this.LastBatchEvents = -1;
             this.TotalEvents = 0;
             this.LastError = null;
+            this.LastEvent = null;
             this.TotalErrors = 0;
 
             this.options = options;
@@ -40,6 +41,8 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
         public int TotalEvents { get; private set; }
 
         public Exception LastError { get; private set; }
+
+        public EventData LastEvent { get; private set; }
 
         public int TotalErrors { get; private set; }
 
@@ -117,6 +120,7 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
             int count = 0;
             foreach (EventData e in events)
             {
+                this.LastEvent = e;
                 count++;
             }
 
