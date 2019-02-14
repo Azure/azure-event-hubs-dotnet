@@ -158,7 +158,7 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
             state.WaitRun();
 
             Assert.True(state.Processor.TotalErrors == state.Processor.TotalBatches,
-                $"Unexpected error count {state.Processor.TotalErrors}");
+                $"Unexpected error count got {state.Processor.TotalErrors} expected {state.Processor.TotalBatches}");
             Assert.True(state.Processor.LastError is NotImplementedException,
                 $"Unexpected exception type {state.Processor.LastError.GetType().Name}");
             Assert.Null(state.ShutdownException);
