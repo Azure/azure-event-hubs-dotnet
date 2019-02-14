@@ -357,7 +357,15 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 }
             }
 
-            await this.userEventProcessor.ProcessEventsAsync(this.linkedCancellationToken, this.partitionContext, effectiveEvents);
+            try
+            {
+                await this.userEventProcessor.ProcessEventsAsync(this.linkedCancellationToken, this.partitionContext, effectiveEvents);
+            }
+            catch (Exception e)
+            {
+                EventProcessorEventSource.Current.Message($"Processing exception on {this.hubPartitionId}: {e}");
+                SafeProcessError(this.partitionContext, e);
+            }
 
             foreach (EventData ev in effectiveEvents)
             {
@@ -368,7 +376,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         Task IPartitionReceiveHandler.ProcessErrorAsync(Exception error)
         {
             EventProcessorEventSource.Current.Message($"RECEIVE EXCEPTION on {this.hubPartitionId}: {error}");
-            this.userEventProcessor.ProcessErrorAsync(this.partitionContext, error);
+            SafeProcessError(this.partitionContext, error);
             if (error is EventHubsException)
             {
                 if (!(error as EventHubsException).IsTransient)
@@ -385,6 +393,21 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 this.internalCanceller.Cancel();
             }
             return Task.CompletedTask;
+        }
+
+        private void SafeProcessError(PartitionContext context, Exception error)
+        {
+            try
+            {
+                this.userEventProcessor.ProcessErrorAsync(context, error).Wait();
+            }
+            catch (Exception e)
+            {
+                // The user's error notification method has thrown.
+                // Recursively notifying could easily cause an infinite loop, until the stack runs out.
+                // So do not notify, just log.
+                EventProcessorEventSource.Current.Message($"Error thrown by ProcessErrorASync: {e}");
+            }
         }
 
         private async Task CheckpointStartup(CancellationToken cancellationToken)
