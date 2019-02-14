@@ -65,6 +65,11 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             }
 
             /// <summary>
+            /// Not meaningful in this mock.
+            /// </summary>
+            public int PrefetchCount { get; set; }
+
+            /// <summary>
             /// Receive mock events.
             /// </summary>
             /// <param name="maxEventCount"></param>
