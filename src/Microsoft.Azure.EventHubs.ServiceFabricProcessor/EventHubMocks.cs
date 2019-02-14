@@ -23,6 +23,11 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             /// <summary>
             /// 
             /// </summary>
+            public static Dictionary<string, PartitionReceiverMock> receivers = new Dictionary<string, PartitionReceiverMock>();
+
+            /// <summary>
+            /// 
+            /// </summary>
             protected readonly string partitionId;
             /// <summary>
             /// 
@@ -53,6 +58,10 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             /// </summary>
             public TimeSpan ReceiveTimeout { get => this.pumpTimeout;  }
             /// <summary>
+            /// Not meaningful in this mock but exposed so that tests can verify.
+            /// </summary>
+            public ReceiverOptions Options { get; private set; }
+            /// <summary>
             /// 
             /// </summary>
             protected readonly CancellationToken token;
@@ -64,16 +73,25 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             /// <param name="sequenceNumber"></param>
             /// <param name="token"></param>
             /// <param name="pumpTimeout"></param>
-            public PartitionReceiverMock(string partitionId, long sequenceNumber, CancellationToken token, TimeSpan pumpTimeout)
+            /// <param name="options"></param>
+            /// <param name="tag"></param>
+            public PartitionReceiverMock(string partitionId, long sequenceNumber, CancellationToken token, TimeSpan pumpTimeout,
+                ReceiverOptions options, string tag)
             {
                 this.partitionId = partitionId;
                 this.sequenceNumber = sequenceNumber;
                 this.token = token;
                 this.pumpTimeout = pumpTimeout;
+                this.Options = options;
+
+                if (tag != null)
+                {
+                    PartitionReceiverMock.receivers[tag] = this;
+                }
             }
 
             /// <summary>
-            /// Not meaningful in this mock.
+            /// Not meaningful in this mock but exposed so that tests can verify.
             /// </summary>
             public int PrefetchCount { get; set; }
 
@@ -181,6 +199,10 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             /// <summary>
             /// 
             /// </summary>
+            protected readonly string tag;
+            /// <summary>
+            /// 
+            /// </summary>
             protected CancellationToken token = new CancellationToken();
 
             /// <summary>
@@ -188,10 +210,12 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             /// </summary>
             /// <param name="partitionCount"></param>
             /// <param name="csb"></param>
-            public EventHubClientMock(int partitionCount, EventHubsConnectionStringBuilder csb)
+            /// <param name="tag"></param>
+            public EventHubClientMock(int partitionCount, EventHubsConnectionStringBuilder csb, string tag)
             {
                 this.partitionCount = partitionCount;
                 this.csb = csb;
+                this.tag = tag;
             }
 
             internal void SetCancellationToken(CancellationToken t)
@@ -232,7 +256,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 EventProcessorEventSource.Current.Message($"MOCK CreateEpochReceiver(CG {consumerGroupName}, part {partitionId}, offset {offset} epoch {epoch})");
                 // TODO implement epoch semantics
                 long startSeq = (offset != null) ? (long.Parse(offset) / 100L) : 0L;
-                return new PartitionReceiverMock(partitionId, startSeq, this.token, this.csb.OperationTimeout);
+                return new PartitionReceiverMock(partitionId, startSeq, this.token, this.csb.OperationTimeout, receiverOptions, this.tag);
             }
 
             /// <summary>
@@ -255,14 +279,20 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             /// 
             /// </summary>
             protected readonly int partitionCount;
+            /// <summary>
+            /// 
+            /// </summary>
+            protected readonly string tag;
 
             /// <summary>
             /// Construct the mock factory.
             /// </summary>
             /// <param name="partitionCount"></param>
-            public EventHubClientFactoryMock(int partitionCount)
+            /// <param name="tag"></param>
+            public EventHubClientFactoryMock(int partitionCount, string tag = null)
             {
                 this.partitionCount = partitionCount;
+                this.tag = tag;
             }
 
             /// <summary>
@@ -276,7 +306,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 EventProcessorEventSource.Current.Message($"MOCK Creating IEventHubClient {connectionString} with {this.partitionCount} partitions");
                 EventHubsConnectionStringBuilder csb = new EventHubsConnectionStringBuilder(connectionString);
                 csb.OperationTimeout = receiveTimeout;
-                return new EventHubClientMock(this.partitionCount, csb);
+                return new EventHubClientMock(this.partitionCount, csb, this.tag);
             }
         }
     }
