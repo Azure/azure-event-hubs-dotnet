@@ -354,8 +354,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                     this.partitionContext.SetOffsetAndSequenceNumber(last);
                     if (this.options.EnableReceiverRuntimeMetric)
                     {
-                        // TODO: requires client change to support
-                        // this.partitionContext.RuntimeInformation.Update(last);
+                        this.partitionContext.RuntimeInformation.Update(last);
                     }
                 }
             }
