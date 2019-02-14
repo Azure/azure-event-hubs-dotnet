@@ -125,10 +125,9 @@ namespace Microsoft.Azure.EventHubs
             }
         }
 
-        /// <summary>Converts the batch to an IEnumerable of EventData objects that can be accepted by the
-        /// SendBatchAsync method.</summary>
-        /// <returns>Returns an IEnumerable of EventData objects.</returns>
-        internal IEnumerable<EventData> ToEnumerable()
+        /// <summary>Returns the enumerator of EventData objects in the batch.</summary>
+        /// <returns>IEnumerable of EventData objects.</returns>
+        public IEnumerable<EventData> ToEnumerable()
         {
             this.ThrowIfDisposed();
             return this.eventDataList;
