@@ -194,7 +194,12 @@ namespace Microsoft.Azure.EventHubs
                 transportType);
         }
 
-        static EventHubClient Create(EventHubsConnectionStringBuilder csb)
+        /// <summary>
+        /// Creates a new instance of the Event Hubs client using the specified connection string builder.
+        /// </summary>
+        /// <param name="csb"></param>
+        /// <returns></returns>
+        public static EventHubClient Create(EventHubsConnectionStringBuilder csb)
         {
             Guard.ArgumentNotNull(nameof(csb), csb);
             Guard.ArgumentNotNullOrWhiteSpace(nameof(csb.EntityPath), csb.EntityPath);
