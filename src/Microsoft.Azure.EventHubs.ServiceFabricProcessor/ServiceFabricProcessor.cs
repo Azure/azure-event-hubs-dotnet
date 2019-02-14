@@ -171,6 +171,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         {
             EventHubWrappers.IEventHubClient ehclient = null;
             EventHubWrappers.IPartitionReceiver receiver = null;
+            bool processorOpened = false;
 
             try
             {
@@ -263,6 +264,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 //
                 EventProcessorEventSource.Current.Message("Creating event processor");
                 await this.userEventProcessor.OpenAsync(this.linkedCancellationToken, this.partitionContext);
+                processorOpened = true;
                 EventProcessorEventSource.Current.Message("Event processor created and opened OK");
 
                 //
@@ -283,7 +285,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             }
             finally
             {
-                if (this.partitionContext != null)
+                if (processorOpened)
                 {
                     await this.userEventProcessor.CloseAsync(this.partitionContext, this.linkedCancellationToken.IsCancellationRequested ? CloseReason.Cancelled : CloseReason.Failure);
                 }
