@@ -14,10 +14,14 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
         private string eventHub;
         private string consumerGroup;
 
-        private EventProcessorOptions options;
+        private readonly EventProcessorOptions options;
+
+        public enum ErrorLocation { OnOpen, OnEvents, OnError, OnClose };
 
         public TestProcessor(EventProcessorOptions options)
         {
+            this.Injector = null;
+
             this.IsOpened = false;
             this.IsClosed = false;
             this.TotalBatches = 0;
@@ -29,6 +33,8 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
 
             this.options = options;
         }
+
+        public ErrorInjector Injector { get; set; }
 
         public bool IsOpened { get; private set; }
 
@@ -54,6 +60,15 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
             ValidateContext(context);
             // reason is an enum, can't be invalid
 
+            if (this.Injector != null)
+            {
+                Exception e = this.Injector.Inject(ErrorLocation.OnClose);
+                if (e != null)
+                {
+                    throw e;
+                }
+            }
+
             this.IsClosed = true;
 
             return Task.CompletedTask;
@@ -66,6 +81,15 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
 
             // cancellationToken is value type, can't be null
             Assert.NotNull(context);
+
+            if (this.Injector != null)
+            {
+                Exception e = this.Injector.Inject(ErrorLocation.OnOpen);
+                if (e != null)
+                {
+                    throw e;
+                }
+            }
 
             this.IsOpened = true;
 
@@ -88,6 +112,15 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
             this.LastError = error;
             this.TotalErrors++;
 
+            if (this.Injector != null)
+            {
+                Exception e = this.Injector.Inject(ErrorLocation.OnError);
+                if (e != null)
+                {
+                    throw e;
+                }
+            }
+
             return Task.CompletedTask;
         }
 
@@ -99,6 +132,15 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
             // cancellationToken is value type, can't be null
             ValidateContext(context);
             CountAndValidateBatch(events);
+
+            if (this.Injector != null)
+            {
+                Exception e = this.Injector.Inject(ErrorLocation.OnEvents);
+                if (e != null)
+                {
+                    throw e;
+                }
+            }
 
             return Task.CompletedTask;
         }
@@ -138,6 +180,33 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
             this.LastBatchEvents = count;
             this.TotalEvents += count;
             this.TotalBatches++;
+        }
+
+        internal class ErrorInjector
+        {
+            protected readonly List<ErrorLocation> locations;
+            protected readonly Exception error;
+
+            internal ErrorInjector(ErrorLocation errorAt, Exception error)
+            {
+                this.locations = new List<ErrorLocation>() { errorAt };
+                this.error = error;
+            }
+
+            internal ErrorInjector(List<ErrorLocation> locations, Exception error)
+            {
+                this.locations = locations;
+                this.error = error;
+            }
+
+            internal Exception Inject(ErrorLocation location)
+            {
+                if (this.locations.Contains(location))
+                {
+                    return this.error;
+                }
+                return null;
+            }
         }
     }
 }

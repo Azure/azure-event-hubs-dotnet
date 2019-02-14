@@ -77,6 +77,13 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
         {
             VerifyNormalStartup(maxRetries);
 
+            CountNBatches(atLeastBatches, maxRetries);
+
+            DoNormalShutdown(maxRetries);
+        }
+
+        public void CountNBatches(int atLeastBatches, int maxRetries)
+        {
             int retries = 0;
             while ((this.Processor.TotalBatches < atLeastBatches) && !this.HasShutDown && (retries < maxRetries))
             {
@@ -86,8 +93,6 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
             Assert.False(this.HasShutDown, "Uncommanded shut down while processing");
             Assert.True(this.Processor.TotalBatches >= atLeastBatches,
                 $"Unexpected loop exit at {this.Processor.TotalBatches} batches and {retries} seconds");
-
-            DoNormalShutdown(maxRetries);
         }
 
         public void VerifyNormalStartup(int maxRetries)
