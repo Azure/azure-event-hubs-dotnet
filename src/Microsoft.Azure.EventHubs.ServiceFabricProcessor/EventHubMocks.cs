@@ -39,11 +39,19 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             /// <summary>
             /// 
             /// </summary>
+            public int HandlerBatchSize { get => this.handlerBatchSize; }
+            /// <summary>
+            /// 
+            /// </summary>
             protected bool invokeWhenNoEvents;
             /// <summary>
             /// 
             /// </summary>
             protected TimeSpan pumpTimeout;
+            /// <summary>
+            /// 
+            /// </summary>
+            public TimeSpan ReceiveTimeout { get => this.pumpTimeout;  }
             /// <summary>
             /// 
             /// </summary>
