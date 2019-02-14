@@ -87,7 +87,7 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
         class TimeoutPartitionReceiverMock : EventHubMocks.PartitionReceiverMock
         {
             internal TimeoutPartitionReceiverMock(string partitionId, long sequenceNumber, CancellationToken token, TimeSpan pumpTimeout) :
-                base(partitionId, sequenceNumber, token, pumpTimeout)
+                base(partitionId, sequenceNumber, token, pumpTimeout, null, null)
             {
             }
 
@@ -100,7 +100,7 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
 
         class TimeoutEventHubClientMock : EventHubMocks.EventHubClientMock
         {
-            internal TimeoutEventHubClientMock(int partitionCount, EventHubsConnectionStringBuilder csb) : base(partitionCount, csb)
+            internal TimeoutEventHubClientMock(int partitionCount, EventHubsConnectionStringBuilder csb) : base(partitionCount, csb, null)
             {
             }
 
