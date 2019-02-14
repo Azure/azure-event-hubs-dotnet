@@ -187,10 +187,7 @@ namespace Microsoft.Azure.EventHubs
                     // Update receiver runtime metrics?
                     if (this.ReceiverRuntimeMetricEnabled)
                     {
-                        this.RuntimeInfo.LastSequenceNumber = lastEvent.LastSequenceNumber;
-                        this.RuntimeInfo.LastEnqueuedOffset = lastEvent.LastEnqueuedOffset;
-                        this.RuntimeInfo.LastEnqueuedTimeUtc = lastEvent.LastEnqueuedTime;
-                        this.RuntimeInfo.RetrievalTime = lastEvent.RetrievalTime;
+                        this.RuntimeInfo.Update(lastEvent);
                     }
                 }
 

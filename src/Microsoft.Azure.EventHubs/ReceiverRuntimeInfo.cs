@@ -8,7 +8,11 @@ namespace Microsoft.Azure.EventHubs
     /// <summary>Represents the approximate receiver runtime information for a logical partition of an Event Hub.</summary>
     public class ReceiverRuntimeInformation
     {
-        internal ReceiverRuntimeInformation(string partitionId)
+        /// <summary>
+        /// Construct a new instance for the given partition.
+        /// </summary>
+        /// <param name="partitionId"></param>
+        public ReceiverRuntimeInformation(string partitionId)
         {
             this.PartitionId = partitionId;
         }
@@ -32,5 +36,17 @@ namespace Microsoft.Azure.EventHubs
         /// <summary>Gets the time of when the runtime info was retrieved.</summary>
         /// <value>The enqueued time of the last event.</value>
         public DateTime RetrievalTime { get; internal set; }
+
+        /// <summary>
+        /// Update the properties of this instance with the values from the given event.
+        /// </summary>
+        /// <param name="updateFrom"></param>
+        public void Update(EventData updateFrom)
+        {
+            this.LastSequenceNumber = updateFrom.LastSequenceNumber;
+            this.LastEnqueuedOffset = updateFrom.LastEnqueuedOffset;
+            this.LastEnqueuedTimeUtc = updateFrom.LastEnqueuedTime;
+            this.RetrievalTime = updateFrom.RetrievalTime;
+        }
     }
 }
