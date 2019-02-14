@@ -114,6 +114,21 @@ namespace Microsoft.Azure.EventHubs
             {
             }
 
+            /// <summary>
+            /// Construct and initialize a new instance.
+            /// </summary>
+            /// <param name="sequenceNumber"></param>
+            /// <param name="enqueuedTimeUtc"></param>
+            /// <param name="offset"></param>
+            /// <param name="partitionKey"></param>
+            public SystemPropertiesCollection(long sequenceNumber, DateTime enqueuedTimeUtc, string offset, string partitionKey)
+            {
+                this[ClientConstants.SequenceNumberName] = sequenceNumber;
+                this[ClientConstants.EnqueuedTimeUtcName] = enqueuedTimeUtc;
+                this[ClientConstants.OffsetName] = offset;
+                this[ClientConstants.PartitionKeyName] = partitionKey;
+            }
+
             /// <summary>Gets the logical sequence number of the event within the partition stream of the Event Hub.</summary>
             public long SequenceNumber
             {
