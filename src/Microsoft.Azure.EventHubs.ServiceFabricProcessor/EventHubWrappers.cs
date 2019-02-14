@@ -19,6 +19,11 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         public interface IPartitionReceiver
         {
             /// <summary>
+            /// 
+            /// </summary>
+            int PrefetchCount { get; set; }
+
+            /// <summary>
             /// </summary>
             /// <param name="maxEventCount"></param>
             /// <param name="waitTime"></param>
@@ -85,6 +90,15 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             {
                 this.inner = receiver;
                 this.MaxBatchSize = 10; // TODO get this from somewhere real
+            }
+
+            public int PrefetchCount
+            {
+                get => this.inner.PrefetchCount;
+                set
+                {
+                    this.inner.PrefetchCount = value;
+                }
             }
 
             public Task<IEnumerable<EventData>> ReceiveAsync(int maxEventCount, TimeSpan waitTime)

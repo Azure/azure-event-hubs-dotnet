@@ -257,6 +257,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                     EventProcessorEventSource.Current.Message("Out of retries creating receiver");
                     throw new Exception("Out of retries creating event hub receiver", lastException);
                 }
+                receiver.PrefetchCount = this.options.PrefetchCount;
 
                 //
                 // Call Open on user's event processor instance.
