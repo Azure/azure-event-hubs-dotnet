@@ -28,8 +28,10 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
             this.LastBatchEvents = -1;
             this.TotalEvents = 0;
             this.LastError = null;
+            this.FirstEvent = null;
             this.LastEvent = null;
             this.TotalErrors = 0;
+            this.LatestContext = null;
 
             this.options = options;
         }
@@ -48,9 +50,13 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
 
         public Exception LastError { get; private set; }
 
+        public EventData FirstEvent { get; private set; }
+
         public EventData LastEvent { get; private set; }
 
         public int TotalErrors { get; private set; }
+
+        public PartitionContext LatestContext { get; private set; }
 
         public override Task CloseAsync(PartitionContext context, CloseReason reason)
         {
@@ -81,6 +87,7 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
 
             // cancellationToken is value type, can't be null
             Assert.NotNull(context);
+            this.LatestContext = context;
 
             if (this.Injector != null)
             {
@@ -106,7 +113,7 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
             Assert.True(this.IsOpened, "ProcessError when not open"); // object MUST be open
             Assert.False(this.IsClosed, "ProcessError after close"); // object MUST NOT be closed
 
-            // cancellationToken is value type, can't be null
+            ValidateContext(context);
             Assert.NotNull(error);
 
             this.LastError = error;
@@ -149,6 +156,8 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
         {
             Assert.NotNull(context);
 
+            this.LatestContext = context;
+
             // A given processor instance MUST always process the same hub+cg+partition.
             Assert.Equal(this.partitionId, context.PartitionId);
             Assert.Equal(this.eventHub, context.EventHubPath);
@@ -162,6 +171,10 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
             int count = 0;
             foreach (EventData e in events)
             {
+                if (this.FirstEvent == null)
+                {
+                    this.FirstEvent = e;
+                }
                 this.LastEvent = e;
                 count++;
             }
