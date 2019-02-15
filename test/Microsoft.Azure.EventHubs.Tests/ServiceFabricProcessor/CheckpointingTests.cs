@@ -156,24 +156,14 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
 
             public CheckpointingProcessor(EventProcessorOptions options, long checkpointAt = -1L) : base(options)
             {
-                this.FirstEvent = null;
                 this.CheckpointedEvent = null;
                 this.checkpointAt = checkpointAt;
             }
-
-            public EventData FirstEvent { get; private set; }
 
             public EventData CheckpointedEvent { get; private set; }
 
             public override Task ProcessEventsAsync(CancellationToken cancellationToken, PartitionContext context, IEnumerable<EventData> events)
             {
-                if (this.FirstEvent == null)
-                {
-                    IEnumerator<EventData> blah = events.GetEnumerator();
-                    blah.MoveNext();
-                    this.FirstEvent = blah.Current;
-                }
-
                 Task retval = base.ProcessEventsAsync(cancellationToken, context, events);
 
                 if (this.checkpointAt == -1L)
