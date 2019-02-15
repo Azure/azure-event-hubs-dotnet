@@ -21,16 +21,14 @@ namespace Microsoft.Azure.EventHubs.Tests.Amqp
         void UpdateEventDataHeaderAndPropertiesReceiveCorrelationIdAndCopyItsValueToEventData()
         {
             // Arrange
-
             // the following simulates a message's round trip from client to broker to client
             var message = AmqpMessage.Create(new MemoryStream(new byte[12]), true);
             AddSection(message, SectionFlag.Properties);
             // serialize - send the message on client side
             ArraySegment<byte>[] buffers = ReadMessagePayLoad(message, 71);
-            EventData eventData;
-            
+
             // Act 
-            eventData = AmqpMessageConverter.AmqpMessageToEventData(message);
+            var eventData = AmqpMessageConverter.AmqpMessageToEventData(message);
 
             // Assert
             Assert.NotNull(eventData);

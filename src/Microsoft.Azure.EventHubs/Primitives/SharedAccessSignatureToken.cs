@@ -7,6 +7,7 @@ namespace Microsoft.Azure.EventHubs
     using System.Collections.Generic;
     using System.Globalization;
     using System.Net;
+    using Microsoft.Azure.EventHubs.Primitives;
 
     /// <summary>
     /// A SecurityToken that wraps a Shared Access Signature
@@ -38,33 +39,26 @@ namespace Microsoft.Azure.EventHubs
 
         internal static void Validate(string sharedAccessSignature)
         {
-            if (string.IsNullOrEmpty(sharedAccessSignature))
-            {
-                throw new ArgumentNullException(nameof(sharedAccessSignature));
-            }
+            Guard.ArgumentNotNullOrWhiteSpace(nameof(sharedAccessSignature), sharedAccessSignature);
 
             IDictionary<string, string> parsedFields = ExtractFieldValues(sharedAccessSignature);
 
-            string signature;
-            if (!parsedFields.TryGetValue(Signature, out signature))
+            if (!parsedFields.TryGetValue(Signature, out _))
             {
                 throw new ArgumentNullException(Signature);
             }
 
-            string expiry;
-            if (!parsedFields.TryGetValue(SignedExpiry, out expiry))
+            if (!parsedFields.TryGetValue(SignedExpiry, out _))
             {
                 throw new ArgumentNullException(SignedExpiry);
             }
 
-            string keyName;
-            if (!parsedFields.TryGetValue(SignedKeyName, out keyName))
+            if (!parsedFields.TryGetValue(SignedKeyName, out _))
             {
                 throw new ArgumentNullException(SignedKeyName);
             }
 
-            string encodedAudience;
-            if (!parsedFields.TryGetValue(SignedResource, out encodedAudience))
+            if (!parsedFields.TryGetValue(SignedResource, out _))
             {
                 throw new ArgumentNullException(SignedResource);
             }

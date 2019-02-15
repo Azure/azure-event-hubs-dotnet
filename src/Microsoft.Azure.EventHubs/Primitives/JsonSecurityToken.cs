@@ -4,7 +4,6 @@
 namespace Microsoft.Azure.EventHubs
 {
     using System;
-    using System.Collections.ObjectModel;
     using System.IdentityModel.Tokens;
 #if !NET461
     using System.IdentityModel.Tokens.Jwt;

@@ -5,7 +5,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
 {
     using System;
     using System.Collections.Generic;
-    using System.Globalization;
     using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Azure.Amqp;
@@ -40,12 +39,12 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
         FaultTolerantAmqpObject<ReceivingAmqpLink> ReceiveLinkManager { get; }
 
-        protected async override Task OnCloseAsync()
+        protected override async Task OnCloseAsync()
         {
             // Close any ReceiveHandler (this is safe if there is none) and the ReceiveLinkManager in parallel.
-            await this.ReceiveHandlerClose();
+            await this.ReceiveHandlerClose().ConfigureAwait(false);
             this.clientLinkManager.Close();
-            await this.ReceiveLinkManager.CloseAsync();
+            await this.ReceiveLinkManager.CloseAsync().ConfigureAwait(false);
         }
 
         protected override async Task<IList<EventData>> OnReceiveAsync(int maxMessageCount, TimeSpan waitTime)
@@ -112,9 +111,9 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     }
                     else
                     {
-                        // Handle System.TimeoutException explicitly.
-                        // We don't really want to to throw TimeoutException on this call.
-                        if (ex is TimeoutException)
+                        // Handle EventHubsTimeoutException explicitly.
+                        // We don't really want to to throw EventHubsTimeoutException on this call.
+                        if (ex is EventHubsTimeoutException)
                         {
                             break;
                         }
@@ -139,12 +138,8 @@ namespace Microsoft.Azure.EventHubs.Amqp
                         // Notify existing handler first (but don't wait).
                         Task.Run(() =>
                             this.receiveHandler.ProcessErrorAsync(new OperationCanceledException("New handler has registered for this receiver.")))
-                            .ContinueWith(t =>
-                                t.Exception.Handle(ex =>
-                                {
-                                    // We omit any failures from ProcessErrorAsync
-                                    return true;
-                                }), TaskContinuationOptions.OnlyOnFaulted);
+                            // We omit any failures from ProcessErrorAsync
+                            .ContinueWith(t => t.Exception.Handle(ex => true), TaskContinuationOptions.OnlyOnFaulted);
                     }
 
                     this.receiveHandler = newReceiveHandler;
@@ -206,10 +201,12 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 }
 
                 // Create our Link
-                var linkSettings = new AmqpLinkSettings();
-                linkSettings.Role = true;
-                linkSettings.TotalLinkCredit = (uint)this.PrefetchCount;
-                linkSettings.AutoSendFlow = this.PrefetchCount > 0;
+                var linkSettings = new AmqpLinkSettings
+                {
+                    Role = true,
+                    TotalLinkCredit = (uint)this.PrefetchCount,
+                    AutoSendFlow = this.PrefetchCount > 0
+                };
                 linkSettings.AddProperty(AmqpClientConstants.EntityTypeName, (int)MessagingEntityType.ConsumerGroup);
                 linkSettings.Source = new Source { Address = address.AbsolutePath, FilterSet = filterMap };
                 linkSettings.Target = new Target { Address = this.ClientId };
@@ -219,9 +216,9 @@ namespace Microsoft.Azure.EventHubs.Amqp
                 if (this.ReceiverRuntimeMetricEnabled)
                 {
                     linkSettings.DesiredCapabilities = new Multiple<AmqpSymbol>(new List<AmqpSymbol>
-                        {
-                            AmqpClientConstants.EnableReceiverRuntimeMetricName
-                        });
+                    {
+                        AmqpClientConstants.EnableReceiverRuntimeMetricName
+                    });
                 }
 
                 if (this.Epoch.HasValue)
@@ -270,8 +267,7 @@ namespace Microsoft.Azure.EventHubs.Amqp
 
             if (this.EventPosition != null)
             {
-                filterMap = new List<AmqpDescribed>();
-                filterMap.Add(new AmqpSelectorFilter(this.EventPosition.GetExpression()));
+                filterMap = new List<AmqpDescribed> { new AmqpSelectorFilter(this.EventPosition.GetExpression()) };
             }
 
             return filterMap;
@@ -305,11 +301,22 @@ namespace Microsoft.Azure.EventHubs.Amqp
                     }
                     catch (Exception e)
                     {
-                        EventHubsEventSource.Log.ReceiveHandlerExitingWithError(this.ClientId, this.PartitionId, e.Message);
-                        await this.ReceiveHandlerProcessErrorAsync(e).ConfigureAwait(false);
+                        // Omit any failures at exception handling. Pump should continue until cancellation is triggered.
+                        try
+                        {
+                            EventHubsEventSource.Log.ReceiveHandlerExitingWithError(this.ClientId, this.PartitionId, e.Message);
+                            await this.ReceiveHandlerProcessErrorAsync(e).ConfigureAwait(false);
 
-                        // Avoid tight loop if Receieve call keeps faling.
-                        await Task.Delay(100).ConfigureAwait(false);
+                            // Avoid tight loop if Receieve call keeps faling.
+                            await Task.Delay(100, cancellationToken).ConfigureAwait(false);
+                        }
+                        catch { }
+
+                        // ReceiverDisconnectedException is a special case where we know we cannot recover the pump.
+                        if (e is ReceiverDisconnectedException)
+                        {
+                            break;
+                        }
 
                         continue;
                     }

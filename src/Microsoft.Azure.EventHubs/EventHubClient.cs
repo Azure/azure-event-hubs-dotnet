@@ -9,6 +9,7 @@ namespace Microsoft.Azure.EventHubs
     using System.Net;
     using System.Threading.Tasks;
     using Microsoft.Azure.EventHubs.Amqp;
+    using Microsoft.Azure.EventHubs.Primitives;
     using Microsoft.IdentityModel.Clients.ActiveDirectory;
 
     /// <summary>
@@ -17,12 +18,14 @@ namespace Microsoft.Azure.EventHubs
     /// </summary>
     public abstract class EventHubClient : ClientEntity
     {
-        EventDataSender innerSender;
+        readonly Lazy<EventDataSender> innerSender;
         bool closeCalled = false;
 
         internal EventHubClient(EventHubsConnectionStringBuilder csb)
             : base($"{nameof(EventHubClient)}{ClientEntity.GetNextId()}({csb.EntityPath})")
         {
+            this.innerSender = new Lazy<EventDataSender>(() => this.CreateEventSender());
+
             this.ConnectionStringBuilder = csb;
             this.EventHubName = csb.EntityPath;
             this.RetryPolicy = RetryPolicy.Default;
@@ -35,27 +38,7 @@ namespace Microsoft.Azure.EventHubs
 
         internal EventHubsConnectionStringBuilder ConnectionStringBuilder { get; }
 
-        /// <summary></summary>
-        protected object ThisLock { get; } = new object();
-
-        EventDataSender InnerSender
-        {
-            get
-            {
-                if (this.innerSender == null)
-                {
-                    lock (this.ThisLock)
-                    {
-                        if (this.innerSender == null)
-                        {
-                            this.innerSender = this.CreateEventSender();
-                        }
-                    }
-                }
-
-                return this.innerSender;
-            }
-        }
+        EventDataSender InnerSender => this.innerSender.Value;
 
         /// <summary>
         /// Creates a new instance of the Event Hubs client using the specified connection string. You can populate the EntityPath property with the name of the Event Hub.
@@ -64,10 +47,7 @@ namespace Microsoft.Azure.EventHubs
         /// <returns></returns>
         public static EventHubClient CreateFromConnectionString(string connectionString)
         {
-            if (string.IsNullOrWhiteSpace(connectionString))
-            {
-                throw Fx.Exception.ArgumentNullOrWhiteSpace(nameof(connectionString));
-            }
+            Guard.ArgumentNotNullOrWhiteSpace(nameof(connectionString), connectionString);
 
             var csb = new EventHubsConnectionStringBuilder(connectionString);
             return Create(csb);
@@ -83,38 +63,28 @@ namespace Microsoft.Azure.EventHubs
         /// <param name="transportType">Transport type on connection.</param>
         /// <returns></returns>
         public static EventHubClient Create(
-            Uri endpointAddress, 
-            string entityPath, 
-            ITokenProvider tokenProvider, 
-            TimeSpan? operationTimeout = null, 
+            Uri endpointAddress,
+            string entityPath,
+            ITokenProvider tokenProvider,
+            TimeSpan? operationTimeout = null,
             TransportType transportType = TransportType.Amqp)
         {
-            if (endpointAddress == null)
-            {
-                throw Fx.Exception.ArgumentNull(nameof(endpointAddress));
-            }
-
-            if (string.IsNullOrWhiteSpace(entityPath))
-            {
-                throw Fx.Exception.ArgumentNullOrWhiteSpace(nameof(entityPath));
-            }
-
-            if (tokenProvider == null)
-            {
-                throw Fx.Exception.ArgumentNull(nameof(tokenProvider));
-            }
+            Guard.ArgumentNotNull(nameof(endpointAddress), endpointAddress);
+            Guard.ArgumentNotNull(nameof(tokenProvider), tokenProvider);
+            Guard.ArgumentNotNullOrWhiteSpace(nameof(entityPath), entityPath);
 
             EventHubsEventSource.Log.EventHubClientCreateStart(endpointAddress.Host, entityPath);
             EventHubClient eventHubClient = new AmqpEventHubClient(
                 endpointAddress,
                 entityPath,
                 tokenProvider,
-                operationTimeout?? ClientConstants.DefaultOperationTimeout,
+                operationTimeout ?? ClientConstants.DefaultOperationTimeout,
                 transportType);
             EventHubsEventSource.Log.EventHubClientCreateStop(eventHubClient.ClientId);
             return eventHubClient;
         }
 
+#if !UAP10_0 && !IOS
         /// <summary>
         /// Creates a new instance of the Event Hubs client using the specified endpoint, entity path, AAD authentication context.
         /// </summary>
@@ -126,20 +96,21 @@ namespace Microsoft.Azure.EventHubs
         /// <param name="transportType">Transport type on connection.</param>
         /// <returns></returns>
         public static EventHubClient Create(
-            Uri endpointAddress, 
-            string entityPath, 
+            Uri endpointAddress,
+            string entityPath,
             AuthenticationContext authContext,
             ClientCredential clientCredential,
             TimeSpan? operationTimeout = null,
             TransportType transportType = TransportType.Amqp)
         {
             return Create(
-                endpointAddress, 
-                entityPath, 
+                endpointAddress,
+                entityPath,
                 TokenProvider.CreateAadTokenProvider(authContext, clientCredential),
                 operationTimeout,
                 transportType);
         }
+#endif
 
         /// <summary>
         /// Creates a new instance of the Event Hubs client using the specified endpoint, entity path, AAD authentication context.
@@ -173,7 +144,7 @@ namespace Microsoft.Azure.EventHubs
                 transportType);
         }
 
-#if !UAP10_0
+#if !UAP10_0 && !IOS
         /// <summary>
         /// Creates a new instance of the Event Hubs client using the specified endpoint, entity path, AAD authentication context.
         /// </summary>
@@ -223,12 +194,15 @@ namespace Microsoft.Azure.EventHubs
                 transportType);
         }
 
-        static EventHubClient Create(EventHubsConnectionStringBuilder csb)
+        /// <summary>
+        /// Creates a new instance of the Event Hubs client using the specified connection string builder.
+        /// </summary>
+        /// <param name="csb"></param>
+        /// <returns></returns>
+        public static EventHubClient Create(EventHubsConnectionStringBuilder csb)
         {
-            if (string.IsNullOrWhiteSpace(csb.EntityPath))
-            {
-                throw Fx.Exception.ArgumentNullOrWhiteSpace(nameof(csb.EntityPath));
-            }
+            Guard.ArgumentNotNull(nameof(csb), csb);
+            Guard.ArgumentNotNullOrWhiteSpace(nameof(csb.EntityPath), csb.EntityPath);
 
             EventHubsEventSource.Log.EventHubClientCreateStart(csb.Endpoint.Host, csb.EntityPath);
             EventHubClient eventHubClient = new AmqpEventHubClient(csb);
@@ -275,11 +249,7 @@ namespace Microsoft.Azure.EventHubs
         /// <seealso cref="PartitionSender.SendAsync(EventData)"/>
         public Task SendAsync(EventData eventData)
         {
-            if (eventData == null)
-            {
-                throw Fx.Exception.ArgumentNull(nameof(eventData));
-            }
-
+            Guard.ArgumentNotNull(nameof(eventData), eventData);
             return this.SendAsync(new[] { eventData }, null);
         }
 
@@ -347,10 +317,8 @@ namespace Microsoft.Azure.EventHubs
         /// <seealso cref="PartitionSender.SendAsync(EventData)"/>
         public Task SendAsync(EventData eventData, string partitionKey)
         {
-            if (eventData == null || string.IsNullOrEmpty(partitionKey))
-            {
-                throw Fx.Exception.ArgumentNull(eventData == null ? nameof(eventData) : nameof(partitionKey));
-            }
+            Guard.ArgumentNotNull(nameof(eventData), eventData);
+            Guard.ArgumentNotNullOrWhiteSpace(nameof(partitionKey), partitionKey);
 
             return this.SendAsync(new[] { eventData }, partitionKey);
         }
@@ -426,11 +394,7 @@ namespace Microsoft.Azure.EventHubs
         /// <seealso cref="PartitionSender"/>
         public PartitionSender CreatePartitionSender(string partitionId)
         {
-            if (string.IsNullOrWhiteSpace(partitionId))
-            {
-                throw Fx.Exception.ArgumentNullOrWhiteSpace(nameof(partitionId));
-            }
-
+            Guard.ArgumentNotNullOrWhiteSpace(nameof(partitionId), partitionId);
             return new PartitionSender(this, partitionId);
         }
 
@@ -446,11 +410,7 @@ namespace Microsoft.Azure.EventHubs
         /// <seealso cref="PartitionReceiver"/>
         public PartitionReceiver CreateReceiver(string consumerGroupName, string partitionId, EventPosition eventPosition, ReceiverOptions receiverOptions = null)
         {
-            if (eventPosition == null)
-            {
-                throw Fx.Exception.ArgumentNull(nameof(eventPosition));
-            }
-
+            Guard.ArgumentNotNull(nameof(eventPosition), eventPosition);
             return this.OnCreateReceiver(consumerGroupName, partitionId, eventPosition, null, receiverOptions);
         }
 
@@ -471,11 +431,7 @@ namespace Microsoft.Azure.EventHubs
         /// <seealso cref="PartitionReceiver"/>
         public PartitionReceiver CreateEpochReceiver(string consumerGroupName, string partitionId, EventPosition eventPosition, long epoch, ReceiverOptions receiverOptions = null)
         {
-            if (eventPosition == null)
-            {
-                throw Fx.Exception.ArgumentNull(nameof(eventPosition));
-            }
-
+            Guard.ArgumentNotNull(nameof(eventPosition), eventPosition);
             return this.OnCreateReceiver(consumerGroupName, partitionId, eventPosition, epoch, receiverOptions);
         }
 
@@ -506,11 +462,7 @@ namespace Microsoft.Azure.EventHubs
         /// <returns>Returns <see cref="EventHubPartitionRuntimeInformation" />.</returns>
         public async Task<EventHubPartitionRuntimeInformation> GetPartitionRuntimeInformationAsync(string partitionId)
         {
-            if (string.IsNullOrWhiteSpace(partitionId))
-            {
-                throw Fx.Exception.ArgumentNullOrWhiteSpace(nameof(partitionId));
-            }
-
+            Guard.ArgumentNotNullOrWhiteSpace(nameof(partitionId), partitionId);
             EventHubsEventSource.Log.GetEventHubPartitionRuntimeInformationStart(this.ClientId, partitionId);
 
             try
@@ -534,7 +486,7 @@ namespace Microsoft.Azure.EventHubs
         {
             return this.CreateBatch(new BatchOptions());
         }
-        
+
         /// <summary>Creates a batch where event data objects can be added for later SendAsync call.</summary>
         /// <param name="options"><see cref="BatchOptions" /> to define partition key and max message size.</param>
         /// <returns>Returns <see cref="EventDataBatch" />.</returns>
@@ -546,24 +498,16 @@ namespace Microsoft.Azure.EventHubs
 
         /// <summary> Gets or sets a value indicating whether the runtime metric of a receiver is enabled. </summary>
         /// <value> true if a client wants to access <see cref="ReceiverRuntimeInformation"/> using <see cref="PartitionReceiver"/>. </value>
-        public bool EnableReceiverRuntimeMetric
-        {
-            get;
-            set;
-        }
+        public bool EnableReceiverRuntimeMetric { get; set; }
 
         /// <summary>
         /// Gets or sets the web proxy.
         /// A proxy is applicable only when transport type is set to AmqpWebSockets.
         /// If not set, systemwide proxy settings will be honored.
         /// </summary>
-        public IWebProxy WebProxy
-        {
-            get;
-            set;
-        }
+        public IWebProxy WebProxy { get; set; }
 
-        internal bool CloseCalled { get => this.closeCalled; }
+        internal bool CloseCalled => this.closeCalled;
 
         internal EventDataSender CreateEventSender(string partitionId = null)
         {
@@ -599,10 +543,9 @@ namespace Microsoft.Azure.EventHubs
         /// </summary>
         protected override void OnRetryPolicyUpdate()
         {
-            // Propagate retry policy updates to inner sender if there is any.
-            if (this.innerSender != null)
+            if (this.innerSender.IsValueCreated)
             {
-                this.innerSender.RetryPolicy = this.RetryPolicy.Clone();
+                this.innerSender.Value.RetryPolicy = this.RetryPolicy.Clone();
             }
         }
     }

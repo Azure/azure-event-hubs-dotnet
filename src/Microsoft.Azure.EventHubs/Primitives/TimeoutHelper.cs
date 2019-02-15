@@ -12,8 +12,8 @@ namespace Microsoft.Azure.EventHubs
     {
         DateTime deadline;
         bool deadlineSet;
-        TimeSpan originalTimeout;
-        public static readonly TimeSpan MaxWait = TimeSpan.FromMilliseconds(Int32.MaxValue);
+        readonly TimeSpan originalTimeout;
+        public static readonly TimeSpan MaxWait = TimeSpan.FromMilliseconds(int.MaxValue);
 
         public TimeoutHelper(TimeSpan timeout) :
             this(timeout, false)
@@ -34,10 +34,7 @@ namespace Microsoft.Azure.EventHubs
             }
         }
 
-        public TimeSpan OriginalTimeout
-        {
-            get { return this.originalTimeout; }
-        }
+        public TimeSpan OriginalTimeout => this.originalTimeout;
 
         public static bool IsTooLarge(TimeSpan timeout)
         {
@@ -46,14 +43,9 @@ namespace Microsoft.Azure.EventHubs
 
         public static TimeSpan FromMilliseconds(int milliseconds)
         {
-            if (milliseconds == Timeout.Infinite)
-            {
-                return TimeSpan.MaxValue;
-            }
-            else
-            {
-                return TimeSpan.FromMilliseconds(milliseconds);
-            }
+            return milliseconds == Timeout.Infinite
+                ? TimeSpan.MaxValue
+                : TimeSpan.FromMilliseconds(milliseconds);
         }
 
         public static int ToMilliseconds(TimeSpan timeout)
@@ -62,39 +54,22 @@ namespace Microsoft.Azure.EventHubs
             {
                 return Timeout.Infinite;
             }
-            else
-            {
-                long ticks = Ticks.FromTimeSpan(timeout);
-                if (ticks / TimeSpan.TicksPerMillisecond > int.MaxValue)
-                {
-                    return int.MaxValue;
-                }
-                return Ticks.ToMilliseconds(ticks);
-            }
+
+            long ticks = Ticks.FromTimeSpan(timeout);
+
+            return ticks / TimeSpan.TicksPerMillisecond > int.MaxValue
+                ? int.MaxValue
+                : Ticks.ToMilliseconds(ticks);
         }
 
         public static TimeSpan Min(TimeSpan val1, TimeSpan val2)
         {
-            if (val1 > val2)
-            {
-                return val2;
-            }
-            else
-            {
-                return val1;
-            }
+            return val1 > val2 ? val2 : val1;
         }
 
         public static DateTime Min(DateTime val1, DateTime val2)
         {
-            if (val1 > val2)
-            {
-                return val2;
-            }
-            else
-            {
-                return val1;
-            }
+            return val1 > val2 ? val2 : val1;
         }
 
         public static TimeSpan Add(TimeSpan timeout1, TimeSpan timeout2)
@@ -122,12 +97,9 @@ namespace Microsoft.Azure.EventHubs
 
         public static TimeSpan Divide(TimeSpan timeout, int factor)
         {
-            if (timeout == TimeSpan.MaxValue)
-            {
-                return TimeSpan.MaxValue;
-            }
-
-            return Ticks.ToTimeSpan((Ticks.FromTimeSpan(timeout) / factor) + 1);
+            return timeout == TimeSpan.MaxValue
+                ? TimeSpan.MaxValue
+                : Ticks.ToTimeSpan((Ticks.FromTimeSpan(timeout) / factor) + 1);
         }
 
         public TimeSpan RemainingTime()
@@ -137,22 +109,14 @@ namespace Microsoft.Azure.EventHubs
                 this.SetDeadline();
                 return this.originalTimeout;
             }
-            else if (this.deadline == DateTime.MaxValue)
+
+            if (this.deadline == DateTime.MaxValue)
             {
                 return TimeSpan.MaxValue;
             }
-            else
-            {
-                TimeSpan remaining = this.deadline - DateTime.UtcNow;
-                if (remaining <= TimeSpan.Zero)
-                {
-                    return TimeSpan.Zero;
-                }
-                else
-                {
-                    return remaining;
-                }
-            }
+
+            TimeSpan remaining = this.deadline - DateTime.UtcNow;
+            return remaining <= TimeSpan.Zero ? TimeSpan.Zero : remaining;
         }
 
         public TimeSpan ElapsedTime()
@@ -201,10 +165,8 @@ namespace Microsoft.Azure.EventHubs
                 waitHandle.WaitOne();
                 return true;
             }
-            else
-            {
-                return waitHandle.WaitOne(timeout);
-            }
+
+            return waitHandle.WaitOne(timeout);
         }
     }
 }

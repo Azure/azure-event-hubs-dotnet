@@ -58,18 +58,12 @@ namespace Microsoft.Azure.EventHubs
         /// Get the actual Payload/Data wrapped by EventData.
         /// This is intended to be used after receiving EventData using <see cref="PartitionReceiver"/>.
         /// </summary>
-        public ArraySegment<byte> Body
-        {
-            get;
-        }
+        public ArraySegment<byte> Body { get; }
 
         /// <summary>
         /// Application property bag
         /// </summary>
-        public IDictionary<string, object> Properties
-        {
-            get; internal set;
-        }
+        public IDictionary<string, object> Properties { get; internal set; }
 
         /// <summary>
         /// SystemProperties that are populated by EventHubService.
@@ -77,7 +71,7 @@ namespace Microsoft.Azure.EventHubs
         /// </summary>
         public SystemPropertiesCollection SystemProperties
         {
-            get; internal set;
+            get; set;
         }
 
         internal AmqpMessage AmqpMessage { get; set; }
@@ -104,10 +98,7 @@ namespace Microsoft.Azure.EventHubs
             {
                 if (disposing)
                 {
-                    if (this.AmqpMessage != null)
-                    {
-                        this.AmqpMessage.Dispose();
-                    }
+                    AmqpMessage?.Dispose();
                 }
 
                 disposed = true;
@@ -123,6 +114,21 @@ namespace Microsoft.Azure.EventHubs
             {
             }
 
+            /// <summary>
+            /// Construct and initialize a new instance.
+            /// </summary>
+            /// <param name="sequenceNumber"></param>
+            /// <param name="enqueuedTimeUtc"></param>
+            /// <param name="offset"></param>
+            /// <param name="partitionKey"></param>
+            public SystemPropertiesCollection(long sequenceNumber, DateTime enqueuedTimeUtc, string offset, string partitionKey)
+            {
+                this[ClientConstants.SequenceNumberName] = sequenceNumber;
+                this[ClientConstants.EnqueuedTimeUtcName] = enqueuedTimeUtc;
+                this[ClientConstants.OffsetName] = offset;
+                this[ClientConstants.PartitionKeyName] = partitionKey;
+            }
+
             /// <summary>Gets the logical sequence number of the event within the partition stream of the Event Hub.</summary>
             public long SequenceNumber
             {
@@ -133,10 +139,8 @@ namespace Microsoft.Azure.EventHubs
                     {
                         return (long)value;
                     }
-                    else
-                    {
-                        throw new ArgumentException(Resources.MissingSystemProperty.FormatForUser(ClientConstants.SequenceNumberName));
-                    }
+
+                    throw new ArgumentException(Resources.MissingSystemProperty.FormatForUser(ClientConstants.SequenceNumberName));
                 }
             }
 
@@ -151,10 +155,8 @@ namespace Microsoft.Azure.EventHubs
                     {
                         return (DateTime)value;
                     }
-                    else
-                    {
-                        throw new ArgumentException(Resources.MissingSystemProperty.FormatForUser(ClientConstants.EnqueuedTimeUtcName));
-                    }
+
+                    throw new ArgumentException(Resources.MissingSystemProperty.FormatForUser(ClientConstants.EnqueuedTimeUtcName));
                 }
             }
 
@@ -170,10 +172,8 @@ namespace Microsoft.Azure.EventHubs
                     {
                         return (string)value;
                     }
-                    else
-                    {
-                        throw new ArgumentException(Resources.MissingSystemProperty.FormatForUser(ClientConstants.OffsetName));
-                    }
+
+                    throw new ArgumentException(Resources.MissingSystemProperty.FormatForUser(ClientConstants.OffsetName));
                 }
             }
 
@@ -187,12 +187,11 @@ namespace Microsoft.Azure.EventHubs
                     {
                         return (string)value;
                     }
-                    else
-                    {
-                        return null;
-                    }
+
+                    return null;
                 }
             }
         }
     }
 }
+

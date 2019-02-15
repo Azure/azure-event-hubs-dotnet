@@ -6,6 +6,7 @@ namespace Microsoft.Azure.EventHubs.Processor
     using System;
     using System.Threading;
     using System.Threading.Tasks;
+    using Microsoft.Azure.EventHubs.Primitives;
 
     /// <summary>
     /// Encapsulates information related to an Event Hubs partition used by <see cref="IEventProcessor"/>.
@@ -50,23 +51,13 @@ namespace Microsoft.Azure.EventHubs.Processor
         /// <summary>
         /// Gets the host owner for the partition.
         /// </summary>
-        public string Owner
-        {
-            get
-            {
-                return this.Lease.Owner;
-            }
-        }
+        public string Owner => this.Lease.Owner;
 
         /// <summary>
         /// Gets the approximate receiver runtime information for a logical partition of an Event Hub.
         /// To enable the setting, refer to <see cref="EventProcessorOptions.EnableReceiverRuntimeMetric"/>
         /// </summary>
-        public ReceiverRuntimeInformation RuntimeInformation
-        {
-            get;
-            private set;
-        }
+        public ReceiverRuntimeInformation RuntimeInformation { get; }
 
         internal string Offset { get; set; }
 
@@ -82,10 +73,7 @@ namespace Microsoft.Azure.EventHubs.Processor
 
         internal void SetOffsetAndSequenceNumber(EventData eventData)
         {
-            if (eventData == null)
-            {
-                throw new ArgumentNullException(nameof(eventData));
-            }
+            Guard.ArgumentNotNull(nameof(eventData), eventData);
 
             lock (this.ThisLock)
             {
@@ -104,13 +92,18 @@ namespace Microsoft.Azure.EventHubs.Processor
                 // No checkpoint was ever stored. Use the initialOffsetProvider instead.
                 ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, this.PartitionId, "Calling user-provided initial offset provider");
                 eventPosition = this.host.EventProcessorOptions.InitialOffsetProvider(this.PartitionId);
-                ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, this.PartitionId, $"Initial Position Provider. Offset:{eventPosition.Offset}, SequenceNumber:{eventPosition.SequenceNumber}, DateTime:{eventPosition.EnqueuedTimeUtc}");
+                ProcessorEventSource.Log.PartitionPumpInfo(
+                    this.host.HostName, 
+                    this.PartitionId, 
+                    $"Initial Position Provider. Offset:{eventPosition.Offset}, SequenceNumber:{eventPosition.SequenceNumber}, DateTime:{eventPosition.EnqueuedTimeUtc}");
             }
             else
             {
                 this.Offset = startingCheckpoint.Offset;
                 this.SequenceNumber = startingCheckpoint.SequenceNumber;
-                ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, this.PartitionId, $"Retrieved starting offset/sequenceNumber: {this.Offset}/{this.SequenceNumber}");
+                ProcessorEventSource.Log.PartitionPumpInfo(
+                    this.host.HostName, 
+                    this.PartitionId, $"Retrieved starting offset/sequenceNumber: {this.Offset}/{this.SequenceNumber}");
                 eventPosition = EventPosition.FromOffset(this.Offset);
             }
 
@@ -144,10 +137,7 @@ namespace Microsoft.Azure.EventHubs.Processor
         /// <exception cref="ArgumentOutOfRangeException">If the sequenceNumber is less than the last checkpointed value</exception>
         public Task CheckpointAsync(EventData eventData)
         {
-            if (eventData == null)
-            {
-                throw new ArgumentNullException("eventData");
-            }
+            Guard.ArgumentNotNull(nameof(eventData), eventData);
 
             // We have never seen this sequence number yet
             if (eventData.SystemProperties.SequenceNumber > this.SequenceNumber)

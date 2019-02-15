@@ -5,6 +5,7 @@ namespace Microsoft.Azure.EventHubs
 {
     using System;
     using System.Threading.Tasks;
+    using Microsoft.Azure.EventHubs.Primitives;
     using Microsoft.IdentityModel.Clients.ActiveDirectory;
 
     /// <summary>
@@ -75,24 +76,20 @@ namespace Microsoft.Azure.EventHubs
             return new SharedAccessSignatureTokenProvider(keyName, sharedAccessKey, tokenTimeToLive, tokenScope);
         }
 
+
+#if !UAP10_0 && !IOS
         /// <summary>Creates an Azure Active Directory token provider.</summary>
         /// <param name="authContext">AuthenticationContext for AAD.</param>
         /// <param name="clientCredential">The app credential.</param>
         /// <returns>The <see cref="TokenProvider" /> for returning Json web token.</returns>
         public static TokenProvider CreateAadTokenProvider(AuthenticationContext authContext, ClientCredential clientCredential)
         {
-            if (authContext == null)
-            {
-                throw new ArgumentNullException(nameof(authContext));
-            }
-
-            if (clientCredential == null)
-            {
-                throw new ArgumentNullException(nameof(clientCredential));
-            }
+            Guard.ArgumentNotNull(nameof(authContext), authContext);
+            Guard.ArgumentNotNull(nameof(clientCredential), clientCredential);
 
             return new AzureActiveDirectoryTokenProvider(authContext, clientCredential);
         }
+#endif
 
         /// <summary>Creates an Azure Active Directory token provider.</summary>
         /// <param name="authContext">AuthenticationContext for AAD.</param>
@@ -108,45 +105,23 @@ namespace Microsoft.Azure.EventHubs
             IPlatformParameters platformParameters, 
             UserIdentifier userIdentifier = null)
         {
-            if (authContext == null)
-            {
-                throw new ArgumentNullException(nameof(authContext));
-            }
-
-            if (string.IsNullOrEmpty(clientId))
-            {
-                throw new ArgumentNullException(nameof(clientId));
-            }
-
-            if (redirectUri == null)
-            {
-                throw new ArgumentNullException(nameof(redirectUri));
-            }
-
-            if (platformParameters == null)
-            {
-                throw new ArgumentNullException(nameof(platformParameters));
-            }
+            Guard.ArgumentNotNull(nameof(authContext), authContext);
+            Guard.ArgumentNotNullOrWhiteSpace(nameof(clientId), clientId);
+            Guard.ArgumentNotNull(nameof(redirectUri), redirectUri);
+            Guard.ArgumentNotNull(nameof(platformParameters), platformParameters);
 
             return new AzureActiveDirectoryTokenProvider(authContext, clientId, redirectUri, platformParameters, userIdentifier);
         }
 
-#if !UAP10_0
+#if !UAP10_0 && !IOS
         /// <summary>Creates an Azure Active Directory token provider.</summary>
         /// <param name="authContext">AuthenticationContext for AAD.</param>
         /// <param name="clientAssertionCertificate">The client assertion certificate credential.</param>
         /// <returns>The <see cref="TokenProvider" /> for returning Json web token.</returns>
         public static TokenProvider CreateAadTokenProvider(AuthenticationContext authContext, ClientAssertionCertificate clientAssertionCertificate)
         {
-            if (authContext == null)
-            {
-                throw new ArgumentNullException(nameof(authContext));
-            }
-
-            if (clientAssertionCertificate == null)
-            {
-                throw new ArgumentNullException(nameof(clientAssertionCertificate));
-            }
+            Guard.ArgumentNotNull(nameof(authContext), authContext);
+            Guard.ArgumentNotNull(nameof(clientAssertionCertificate), clientAssertionCertificate);
 
             return new AzureActiveDirectoryTokenProvider(authContext, clientAssertionCertificate);
         }

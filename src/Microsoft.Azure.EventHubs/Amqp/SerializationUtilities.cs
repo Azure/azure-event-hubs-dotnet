@@ -15,12 +15,12 @@ namespace Microsoft.Azure.EventHubs.Amqp
         Byte, SByte, Char, Int16, UInt16, Int32, UInt32, Int64, UInt64, Single, Double, Decimal, // Numeric types
         Boolean, Guid, String, Uri, DateTime, DateTimeOffset, TimeSpan,
         Stream,
-        Unknown,
+        Unknown
     }
 
     class SerializationUtilities
     {
-        readonly static Dictionary<Type, PropertyValueType> typeToIntMap = new Dictionary<Type, PropertyValueType>
+        static readonly Dictionary<Type, PropertyValueType> typeToIntMap = new Dictionary<Type, PropertyValueType>
         {
             { typeof(byte), PropertyValueType.Byte },
             { typeof(sbyte), PropertyValueType.SByte },

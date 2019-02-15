@@ -7,6 +7,7 @@ namespace Microsoft.Azure.EventHubs
     using System.Collections.Generic;
     using Microsoft.Azure.Amqp;
     using Microsoft.Azure.EventHubs.Amqp;
+    using Microsoft.Azure.EventHubs.Primitives;
 
     /// <summary>A helper class for creating an IEnumerable&lt;<see cref="Microsoft.Azure.EventHubs.EventData"/>&gt; taking into account the max size limit, so that the IEnumerable&lt;<see cref="Microsoft.Azure.EventHubs.EventData"/>&gt; can be passed to the Send or SendAsync method of an <see cref="Microsoft.Azure.EventHubs.EventHubClient"/> to send the <see cref="Microsoft.Azure.EventHubs.EventData"/> objects as a batch.</summary>
     public class EventDataBatch : IDisposable
@@ -60,10 +61,7 @@ namespace Microsoft.Azure.EventHubs
         /// </remarks>
         public bool TryAdd(EventData eventData)
         {
-            if (eventData == null)
-            {
-                throw new ArgumentNullException(nameof(eventData));
-            }
+            Guard.ArgumentNotNull(nameof(eventData), eventData);
 
             this.ThrowIfDisposed();
             long size = GetEventSizeForBatch(eventData);
@@ -78,10 +76,7 @@ namespace Microsoft.Azure.EventHubs
             return true;
         }
 
-        internal string PartitionKey
-        {
-            get; set;
-        }
+        internal string PartitionKey { get; set; }
 
         long GetEventSizeForBatch(EventData eventData)
         {
@@ -91,15 +86,10 @@ namespace Microsoft.Azure.EventHubs
             eventData.AmqpMessage = amqpMessage;
 
             // Calculate overhead depending on the message size. 
-            if (eventData.AmqpMessage.SerializedMessageSize < 256)
-            {
-                // Overhead is smaller for messages smaller than 256 bytes.
-                return eventData.AmqpMessage.SerializedMessageSize + 5;
-            }
-            else
-            {
-                return eventData.AmqpMessage.SerializedMessageSize + 8;
-            }
+            // Overhead is smaller for messages smaller than 256 bytes.
+            long overhead = eventData.AmqpMessage.SerializedMessageSize < 256 ? 5 : 8;
+
+            return eventData.AmqpMessage.SerializedMessageSize + overhead;
         }
 
         /// <summary>
@@ -135,10 +125,9 @@ namespace Microsoft.Azure.EventHubs
             }
         }
 
-        /// <summary>Converts the batch to an IEnumerable of EventData objects that can be accepted by the
-        /// SendBatchAsync method.</summary>
-        /// <returns>Returns an IEnumerable of EventData objects.</returns>
-        internal IEnumerable<EventData> ToEnumerable()
+        /// <summary>Returns the enumerator of EventData objects in the batch.</summary>
+        /// <returns>IEnumerable of EventData objects.</returns>
+        public IEnumerable<EventData> ToEnumerable()
         {
             this.ThrowIfDisposed();
             return this.eventDataList;
