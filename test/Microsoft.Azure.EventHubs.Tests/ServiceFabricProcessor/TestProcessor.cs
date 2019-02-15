@@ -68,14 +68,7 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
             ValidateContext(context);
             // reason is an enum, can't be invalid
 
-            if (this.Injector != null)
-            {
-                Exception e = this.Injector.Inject(ErrorLocation.OnClose);
-                if (e != null)
-                {
-                    throw e;
-                }
-            }
+            this.Injector?.Inject(ErrorLocation.OnClose);
 
             this.IsClosed = true;
 
@@ -91,14 +84,7 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
             Assert.NotNull(context);
             this.LatestContext = context;
 
-            if (this.Injector != null)
-            {
-                Exception e = this.Injector.Inject(ErrorLocation.OnOpen);
-                if (e != null)
-                {
-                    throw e;
-                }
-            }
+            this.Injector?.Inject(ErrorLocation.OnOpen);
 
             this.IsOpened = true;
 
@@ -121,14 +107,7 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
             this.LastError = error;
             this.TotalErrors++;
 
-            if (this.Injector != null)
-            {
-                Exception e = this.Injector.Inject(ErrorLocation.OnError);
-                if (e != null)
-                {
-                    throw e;
-                }
-            }
+            this.Injector?.Inject(ErrorLocation.OnError);
 
             return Task.CompletedTask;
         }
@@ -142,14 +121,7 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
             ValidateContext(context);
             CountAndValidateBatch(events);
 
-            if (this.Injector != null)
-            {
-                Exception e = this.Injector.Inject(ErrorLocation.OnEvents);
-                if (e != null)
-                {
-                    throw e;
-                }
-            }
+            this.Injector?.Inject(ErrorLocation.OnEvents);
 
             return Task.CompletedTask;
         }
@@ -214,13 +186,12 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
                 this.error = error;
             }
 
-            internal Exception Inject(ErrorLocation location)
+            internal void Inject(ErrorLocation location)
             {
                 if (this.locations.Contains(location))
                 {
-                    return this.error;
+                    throw this.error;
                 }
-                return null;
             }
         }
     }
