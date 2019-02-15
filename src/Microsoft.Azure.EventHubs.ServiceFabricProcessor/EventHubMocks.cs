@@ -255,7 +255,15 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             {
                 EventProcessorEventSource.Current.Message($"MOCK CreateEpochReceiver(CG {consumerGroupName}, part {partitionId}, offset {offset} epoch {epoch})");
                 // TODO implement epoch semantics
-                long startSeq = (offset != null) ? (long.Parse(offset) / 100L) : 0L;
+                long startSeq = 0L;
+                if (eventPosition.SequenceNumber.HasValue)
+                {
+                    startSeq = eventPosition.SequenceNumber.Value;
+                }
+                else if (offset != null)
+                {
+                    startSeq = (long.Parse(offset) / 100L);
+                }
                 return new PartitionReceiverMock(partitionId, startSeq, this.token, this.csb.OperationTimeout, receiverOptions, this.tag);
             }
 
