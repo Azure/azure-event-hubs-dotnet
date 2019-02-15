@@ -1,12 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Fabric;
-using System.Fabric.Query;
-using System.Text;
-using System.Threading.Tasks;
+﻿// Copyright (c) Microsoft. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for full license information.using System;
 
 namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
 {
+    using System;
+    using System.Fabric;
+    using System.Fabric.Query;
+    using System.Threading.Tasks;
+
     class ServiceFabricPartitionLister : IFabricPartitionLister
     {
         private ServicePartitionList partitionList = null;
