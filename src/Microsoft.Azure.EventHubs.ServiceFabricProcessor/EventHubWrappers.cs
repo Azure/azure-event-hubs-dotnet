@@ -57,7 +57,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             /// <param name="consumerGroupName"></param>
             /// <param name="partitionId"></param>
             /// <param name="eventPosition"></param>
-            /// <param name="offset">Only used by mocks</param>
+            /// <param name="offset">Only used by mocks, exists because EventPosition doesn't expose offset</param>
             /// <param name="epoch"></param>
             /// <param name="receiverOptions"></param>
             /// <returns></returns>
