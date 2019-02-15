@@ -1,13 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.Azure.EventHubs.ServiceFabricProcessor;
-using Xunit;
+﻿// Copyright (c) Microsoft. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
 {
+    using System.Collections.Generic;
+    using System.Threading;
+    using System.Threading.Tasks;
+    using Microsoft.Azure.EventHubs.ServiceFabricProcessor;
+    using Xunit;
+
     public class CheckpointingTests
     {
         [Fact]
@@ -18,8 +19,7 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
             state.Initialize("checkpointing", 1, 0);
             state.Processor = new CheckpointingProcessor(state.Options);
 
-            Microsoft.Azure.EventHubs.ServiceFabricProcessor.ServiceFabricProcessor sfp =
-                new Microsoft.Azure.EventHubs.ServiceFabricProcessor.ServiceFabricProcessor(
+            ServiceFabricProcessor sfp = new ServiceFabricProcessor(
                     state.ServiceUri,
                     state.ServicePartitionId,
                     state.StateManager,
@@ -48,7 +48,7 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
 
             state.Processor = new CheckpointingProcessor(state.Options);
 
-            sfp = new Microsoft.Azure.EventHubs.ServiceFabricProcessor.ServiceFabricProcessor(
+            sfp = new ServiceFabricProcessor(
                     state.ServiceUri,
                     state.ServicePartitionId,
                     state.StateManager,
@@ -86,8 +86,7 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
             const long checkpointAt = 57L;
             state.Processor = new CheckpointingProcessor(state.Options, checkpointAt);
 
-            Microsoft.Azure.EventHubs.ServiceFabricProcessor.ServiceFabricProcessor sfp =
-                new Microsoft.Azure.EventHubs.ServiceFabricProcessor.ServiceFabricProcessor(
+            ServiceFabricProcessor sfp = new ServiceFabricProcessor(
                     state.ServiceUri,
                     state.ServicePartitionId,
                     state.StateManager,
@@ -121,7 +120,7 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
 
             state.Processor = new CheckpointingProcessor(state.Options);
 
-            sfp = new Microsoft.Azure.EventHubs.ServiceFabricProcessor.ServiceFabricProcessor(
+            sfp = new ServiceFabricProcessor(
                     state.ServiceUri,
                     state.ServicePartitionId,
                     state.StateManager,

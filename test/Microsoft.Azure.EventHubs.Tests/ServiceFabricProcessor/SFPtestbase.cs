@@ -1,16 +1,17 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Fabric;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.Azure.EventHubs.ServiceFabricProcessor;
-using Microsoft.ServiceFabric.Data;
-using Microsoft.ServiceFabric.Data.Collections;
-using Xunit;
+﻿// Copyright (c) Microsoft. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Fabric;
+    using System.Threading;
+    using Microsoft.Azure.EventHubs.ServiceFabricProcessor;
+    using Microsoft.ServiceFabric.Data;
+    using Microsoft.ServiceFabric.Data.Collections;
+    using Xunit;
+
     public class SFPtestbase
     {
         public SFPtestbase()
@@ -137,8 +138,7 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
             TestState state = new TestState();
             state.Initialize("smoke", 1, 0);
 
-            Microsoft.Azure.EventHubs.ServiceFabricProcessor.ServiceFabricProcessor sfp =
-                new Microsoft.Azure.EventHubs.ServiceFabricProcessor.ServiceFabricProcessor(
+            ServiceFabricProcessor sfp = new ServiceFabricProcessor(
                     state.ServiceUri,
                     state.ServicePartitionId,
                     state.StateManager,
@@ -174,8 +174,7 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
             TestState state = new TestState();
             state.Initialize("partitioncountenforcement", servicePartitions, 0);
 
-            Microsoft.Azure.EventHubs.ServiceFabricProcessor.ServiceFabricProcessor sfp =
-                new Microsoft.Azure.EventHubs.ServiceFabricProcessor.ServiceFabricProcessor(
+            ServiceFabricProcessor sfp = new ServiceFabricProcessor(
                     state.ServiceUri,
                     state.ServicePartitionId,
                     state.StateManager,

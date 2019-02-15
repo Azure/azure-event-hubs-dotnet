@@ -1,14 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Threading;
-using Microsoft.Azure.EventHubs.ServiceFabricProcessor;
-using Microsoft.ServiceFabric.Data;
-using Microsoft.ServiceFabric.Data.Collections;
-using Xunit;
+﻿// Copyright (c) Microsoft. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Threading;
+    using Microsoft.Azure.EventHubs.ServiceFabricProcessor;
+    using Microsoft.ServiceFabric.Data;
+    using Microsoft.ServiceFabric.Data.Collections;
+    using Xunit;
+
     public class OptionsTests
     {
         [Fact]
@@ -32,8 +34,7 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
             receiverOptions.Identifier = tag;
             state.Options.ClientReceiverOptions = receiverOptions;
 
-            Microsoft.Azure.EventHubs.ServiceFabricProcessor.ServiceFabricProcessor sfp =
-                new Microsoft.Azure.EventHubs.ServiceFabricProcessor.ServiceFabricProcessor(
+            ServiceFabricProcessor sfp = new ServiceFabricProcessor(
                     state.ServiceUri,
                     state.ServicePartitionId,
                     state.StateManager,
@@ -81,8 +82,7 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
             const long firstSequenceNumber = 3456L;
             state.Options.InitialPositionProvider = (partitionId) => { return EventPosition.FromSequenceNumber(firstSequenceNumber); };
 
-            Microsoft.Azure.EventHubs.ServiceFabricProcessor.ServiceFabricProcessor sfp =
-                new Microsoft.Azure.EventHubs.ServiceFabricProcessor.ServiceFabricProcessor(
+            ServiceFabricProcessor sfp = new ServiceFabricProcessor(
                     state.ServiceUri,
                     state.ServicePartitionId,
                     state.StateManager,
@@ -127,8 +127,7 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
                 tx.CommitAsync().Wait();
             }
 
-            Microsoft.Azure.EventHubs.ServiceFabricProcessor.ServiceFabricProcessor sfp =
-                new Microsoft.Azure.EventHubs.ServiceFabricProcessor.ServiceFabricProcessor(
+            ServiceFabricProcessor sfp = new ServiceFabricProcessor(
                     state.ServiceUri,
                     state.ServicePartitionId,
                     state.StateManager,
@@ -161,8 +160,7 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
             state.Initialize("RuntimeInformation", 1, 0);
             state.Options.EnableReceiverRuntimeMetric = true;
 
-            Microsoft.Azure.EventHubs.ServiceFabricProcessor.ServiceFabricProcessor sfp =
-                new Microsoft.Azure.EventHubs.ServiceFabricProcessor.ServiceFabricProcessor(
+            ServiceFabricProcessor sfp = new ServiceFabricProcessor(
                     state.ServiceUri,
                     state.ServicePartitionId,
                     state.StateManager,
