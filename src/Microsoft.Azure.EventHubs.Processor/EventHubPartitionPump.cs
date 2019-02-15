@@ -35,6 +35,13 @@ namespace Microsoft.Azure.EventHubs.Processor
                     lastException = e;
                     ProcessorEventSource.Log.PartitionPumpWarning(
                         this.Host.HostName, this.PartitionContext.PartitionId, "Failure creating client or receiver, retrying", e.ToString());
+
+                    // Don't retry if we already lost the lease.
+                    if (e is ReceiverDisconnectedException)
+                    {
+                        break;
+                    }
+
                     retryCount++;
                 }
             }
@@ -93,7 +100,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                 receiverOptions);
 
             this.partitionReceiver.PrefetchCount = this.Host.EventProcessorOptions.PrefetchCount;
-            
+
             ProcessorEventSource.Log.PartitionPumpCreateClientsStop(this.Host.HostName, this.PartitionContext.PartitionId);
         }
 

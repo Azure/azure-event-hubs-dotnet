@@ -6,7 +6,6 @@ namespace Microsoft.Azure.EventHubs.Amqp
     using System;
     using System.Collections.Generic;
     using System.Text.RegularExpressions;
-
     using Microsoft.Azure.Amqp;
     using Microsoft.Azure.Amqp.Encoding;
     using Microsoft.Azure.Amqp.Framing;
@@ -44,85 +43,85 @@ namespace Microsoft.Azure.EventHubs.Amqp
             {
                 return (AmqpSymbol)condition;
             }
-            else
-            {
-                // Most of the time we should have an error condition
-                foreach (var kvp in conditionToStatusMap)
-                {
-                    if (kvp.Value == statusCode)
-                    {
-                        return kvp.Key;
-                    }
-                }
 
-                return AmqpErrorCode.InternalError;
+            // Most of the time we should have an error condition
+            foreach (var kvp in conditionToStatusMap)
+            {
+                if (kvp.Value == statusCode)
+                {
+                    return kvp.Key;
+                }
             }
+
+            return AmqpErrorCode.InternalError;
         }
 
         public static Exception ToMessagingContract(Error error, bool connectionError = false)
         {
-            if (error == null)
-            {
-                return new EventHubsException(true, "Unknown error.");
-            }
-
-            return ToMessagingContract(error.Condition.Value, error.Description, connectionError);
+            return error == null ?
+                new EventHubsException(true, "Unknown error.") 
+                : ToMessagingContract(error.Condition.Value, error.Description, connectionError);
         }
 
         public static Exception ToMessagingContract(string condition, string message, bool connectionError = false)
         {
             if (string.Equals(condition, AmqpClientConstants.TimeoutError.Value))
             {
-                return new TimeoutException(message);
+                return new EventHubsTimeoutException(message);
             }
-            else if (string.Equals(condition, AmqpErrorCode.NotFound.Value))
+
+            if (string.Equals(condition, AmqpErrorCode.NotFound.Value))
             {
                 if (message.ToLower().Contains("status-code: 404") ||
                     Regex.IsMatch(message, "The messaging entity .* could not be found"))
                 {
                     return new MessagingEntityNotFoundException(message);
                 }
-                else
-                {
-                    return new EventHubsCommunicationException(message);
-                }
+
+                return new EventHubsCommunicationException(message);
             }
-            else if (string.Equals(condition, AmqpErrorCode.NotImplemented.Value))
+
+            if (string.Equals(condition, AmqpErrorCode.NotImplemented.Value))
             {
                 return new NotSupportedException(message);
             }
-            else if (string.Equals(condition, AmqpErrorCode.NotAllowed.Value))
+
+            if (string.Equals(condition, AmqpErrorCode.NotAllowed.Value))
             {
                 return new InvalidOperationException(message);
             }
-            else if (string.Equals(condition, AmqpErrorCode.UnauthorizedAccess.Value))
+
+            if (string.Equals(condition, AmqpErrorCode.UnauthorizedAccess.Value))
             {
                 return new UnauthorizedAccessException(message);
             }
-            else if (string.Equals(condition, AmqpClientConstants.ServerBusyError.Value))
+
+            if (string.Equals(condition, AmqpClientConstants.ServerBusyError.Value))
             {
                 return new ServerBusyException(message);
             }
-            else if (string.Equals(condition, AmqpClientConstants.ArgumentError.Value))
+
+            if (string.Equals(condition, AmqpClientConstants.ArgumentError.Value))
             {
                 return new ArgumentException(message);
             }
-            else if (string.Equals(condition, AmqpClientConstants.ArgumentOutOfRangeError.Value))
+
+            if (string.Equals(condition, AmqpClientConstants.ArgumentOutOfRangeError.Value))
             {
                 return new ArgumentOutOfRangeException(message);
             }
-            else if (string.Equals(condition, AmqpErrorCode.Stolen.Value))
+
+            if (string.Equals(condition, AmqpErrorCode.Stolen.Value))
             {
                 return new ReceiverDisconnectedException(message);
             }
-            else if (string.Equals(condition, AmqpErrorCode.ResourceLimitExceeded.Value))
+
+            if (string.Equals(condition, AmqpErrorCode.ResourceLimitExceeded.Value))
             {
                 return new QuotaExceededException(message);
             }
-            else
-            {
-                return new EventHubsException(true, message);
-            }
+
+            return new EventHubsException(true, message);
         }
     }
 }

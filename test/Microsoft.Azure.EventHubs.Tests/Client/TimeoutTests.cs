@@ -47,8 +47,8 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
         }
 
         /// <summary>
-        /// Small receive timeout should not throw System.TimeoutException. 
-        /// TimeoutException should be returned as NULL to the awaiting client.
+        /// Small receive timeout should not throw EventHubsTimeoutException. 
+        /// EventHubsTimeoutException should be returned as NULL to the awaiting client.
         /// </summary>
         /// <returns></returns>
         [Fact]

@@ -61,7 +61,7 @@ namespace Microsoft.Azure.EventHubs
                 DiagnosticListener.StartActivity(activity,
                     new
                     {
-                        Endpoint = csb.Endpoint,
+                        csb.Endpoint,
                         Entity = csb.EntityPath,
                         PartitionKey = partitionKey,
                         EventDatas = eventDatas
@@ -87,7 +87,7 @@ namespace Microsoft.Azure.EventHubs
             DiagnosticListener.Write(SendActivityExceptionName,
                 new
                 {
-                    Endpoint = csb.Endpoint,
+                    csb.Endpoint,
                     Entity = csb.EntityPath,
                     PartitionKey = partitionKey,
                     EventDatas = eventDatas,
@@ -105,19 +105,19 @@ namespace Microsoft.Azure.EventHubs
             DiagnosticListener.StopActivity(activity,
                 new
                 {
-                    Endpoint = csb.Endpoint,
+                    csb.Endpoint,
                     Entity = csb.EntityPath,
                     PartitionKey = partitionKey,
                     EventDatas = eventDatas,
-                    Status = sendTask?.Status
+                    sendTask?.Status
                 });
         }
 
         internal static Activity StartReceiveActivity(
-            string clientId, 
-            EventHubsConnectionStringBuilder csb, 
-            string partitionKey, 
-            string consumerGroup, 
+            string clientId,
+            EventHubsConnectionStringBuilder csb,
+            string partitionKey,
+            string consumerGroup,
             EventPosition eventPosition)
         {
             // skip if diagnostic source not enabled
@@ -168,7 +168,6 @@ namespace Microsoft.Azure.EventHubs
         internal static void FailReceiveActivity(Activity activity, EventHubsConnectionStringBuilder csb, string partitionKey, string consumerGroup, Exception ex)
         {
             // TODO consider enriching activity with data from exception
-
             if (!DiagnosticListener.IsEnabled() || !DiagnosticListener.IsEnabled(ReceiveActivityExceptionName))
             {
                 return;
@@ -177,7 +176,7 @@ namespace Microsoft.Azure.EventHubs
             DiagnosticListener.Write(ReceiveActivityExceptionName,
                 new
                 {
-                    Endpoint = csb.Endpoint,
+                    csb.Endpoint,
                     Entity = csb.EntityPath,
                     PartitionKey = partitionKey,
                     ConsumerGroup = consumerGroup,
@@ -198,12 +197,12 @@ namespace Microsoft.Azure.EventHubs
             DiagnosticListener.StopActivity(activity,
                 new
                 {
-                    Endpoint = csb.Endpoint,
+                    csb.Endpoint,
                     Entity = csb.EntityPath,
                     PartitionKey = partitionKey,
                     ConsumerGroup = consumerGroup,
                     EventDatas = events,
-                    Status = receiveTask?.Status
+                    receiveTask?.Status
                 });
         }
 
@@ -237,11 +236,9 @@ namespace Microsoft.Azure.EventHubs
 
         internal static string SerializeCorrelationContext(IList<KeyValuePair<string, string>> baggage)
         {
-            if (baggage.Any())
-            {
-                return string.Join(",", baggage.Select(kvp => kvp.Key + "=" + kvp.Value));
-            }
-            return null;
+            return baggage.Any()
+                ? string.Join(",", baggage.Select(kvp => kvp.Key + "=" + kvp.Value))
+                : null;
         }
 
         private static void SetRelatedOperations(Activity activity, IEnumerable<EventData> eventDatas)

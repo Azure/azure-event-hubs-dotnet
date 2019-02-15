@@ -29,6 +29,8 @@ namespace Microsoft.Azure.EventHubs
                 platform = "UAP";
 #elif NET461
                 platform = Environment.OSVersion.VersionString;
+#elif IOS
+                platform = "IOS";
 #endif
             }
             catch { }

@@ -1,6 +1,8 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
+using Microsoft.Azure.EventHubs.Primitives;
+
 namespace Microsoft.Azure.EventHubs.Processor
 {
     using System;
@@ -15,20 +17,13 @@ namespace Microsoft.Azure.EventHubs.Processor
         internal LeaseLostException(string partitionId, Exception innerException)
             : base(innerException.Message, innerException)
         {
-            if (partitionId == null)
-            {
-                throw new ArgumentNullException(nameof(partitionId));
-            }
-
+            Guard.ArgumentNotNullOrWhiteSpace(nameof(partitionId), partitionId);
             this.partitionId = partitionId;
         }
 
         /// <summary>
         /// Gets the partition ID where the exception occured.
         /// </summary>
-        public string PartitionId
-        {
-            get { return this.partitionId; }
-        }
+        public string PartitionId => this.partitionId;
     }
 }
