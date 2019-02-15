@@ -5,6 +5,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
 {
     using System;
     using System.Collections.Generic;
+    using System.Reflection;
     using System.Threading;
     using System.Threading.Tasks;
 
@@ -105,11 +106,14 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             {
                 List<EventData> events = null;
                 events = new List<EventData>();
+                long lastSeq = this.sequenceNumber + maxEventCount;
                 for (int i = 0; i < maxEventCount; i++)
                 {
                     this.sequenceNumber++;
                     byte[] body = new byte[] { 0x4D, 0x4F, 0x43, 0x4B, 0x42, 0x4F, 0x44, 0x59 }; // M O C K B O D Y
                     EventData e = new EventData(body);
+                    PropertyInfo propertyInfo = e.GetType().GetProperty("LastSequenceNumber", BindingFlags.NonPublic | BindingFlags.Instance);
+                    propertyInfo.SetValue(e, lastSeq);
                     e.SystemProperties = new EventData.SystemPropertiesCollection(this.sequenceNumber, DateTime.UtcNow, (this.sequenceNumber * 100).ToString(), "");
                     e.Properties.Add("userkey", "uservalue");
                     events.Add(e);
