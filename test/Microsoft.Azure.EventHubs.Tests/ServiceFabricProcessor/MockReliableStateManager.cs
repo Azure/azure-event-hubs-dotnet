@@ -1,11 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using Microsoft.ServiceFabric.Data;
-using Microsoft.ServiceFabric.Data.Notifications;
+﻿// Copyright (c) Microsoft. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Threading.Tasks;
+    using Microsoft.ServiceFabric.Data;
+    using Microsoft.ServiceFabric.Data.Notifications;
+
     class MockReliableStateManager : IReliableStateManager
     {
         private Dictionary<string, IReliableState> dictionaryOfDictionaries = new Dictionary<string, IReliableState>();

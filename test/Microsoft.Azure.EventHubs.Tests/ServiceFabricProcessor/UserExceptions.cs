@@ -1,11 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using Microsoft.Azure.EventHubs.ServiceFabricProcessor;
-using Xunit;
+﻿// Copyright (c) Microsoft. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
 {
+    using System;
+    using System.Collections.Generic;
+    using Microsoft.Azure.EventHubs.ServiceFabricProcessor;
+    using Xunit;
+
     public class UserExceptions
     {
         [Fact]
@@ -15,8 +17,7 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
             TestState state = new TestState();
             state.Initialize("OpenException", 1, 0);
 
-            Microsoft.Azure.EventHubs.ServiceFabricProcessor.ServiceFabricProcessor sfp =
-                new Microsoft.Azure.EventHubs.ServiceFabricProcessor.ServiceFabricProcessor(
+            ServiceFabricProcessor sfp = new ServiceFabricProcessor(
                     state.ServiceUri,
                     state.ServicePartitionId,
                     state.StateManager,
@@ -54,8 +55,7 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
             TestState state = new TestState();
             state.Initialize("CloseException", 1, 0);
 
-            Microsoft.Azure.EventHubs.ServiceFabricProcessor.ServiceFabricProcessor sfp =
-                new Microsoft.Azure.EventHubs.ServiceFabricProcessor.ServiceFabricProcessor(
+            ServiceFabricProcessor sfp = new ServiceFabricProcessor(
                     state.ServiceUri,
                     state.ServicePartitionId,
                     state.StateManager,
@@ -97,8 +97,7 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
             TestState state = new TestState();
             state.Initialize("EventException", 1, 0);
 
-            Microsoft.Azure.EventHubs.ServiceFabricProcessor.ServiceFabricProcessor sfp =
-                new Microsoft.Azure.EventHubs.ServiceFabricProcessor.ServiceFabricProcessor(
+            ServiceFabricProcessor sfp = new ServiceFabricProcessor(
                     state.ServiceUri,
                     state.ServicePartitionId,
                     state.StateManager,
@@ -133,8 +132,7 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
             TestState state = new TestState();
             state.Initialize("EventException", 1, 0);
 
-            Microsoft.Azure.EventHubs.ServiceFabricProcessor.ServiceFabricProcessor sfp =
-                new Microsoft.Azure.EventHubs.ServiceFabricProcessor.ServiceFabricProcessor(
+            ServiceFabricProcessor sfp = new ServiceFabricProcessor(
                     state.ServiceUri,
                     state.ServicePartitionId,
                     state.StateManager,

@@ -1,13 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.Azure.EventHubs.ServiceFabricProcessor;
-using Xunit;
+﻿// Copyright (c) Microsoft. All rights reserved.
+// Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Threading;
+    using System.Threading.Tasks;
+    using Microsoft.Azure.EventHubs.ServiceFabricProcessor;
+    using Xunit;
+
     public class TimeoutTests
     {
         [Fact]
@@ -18,8 +20,7 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
             state.Initialize("timeoutsuppress", 1, 0);
             state.Options.ReceiveTimeout = TimeSpan.FromSeconds(5.0);
 
-            Microsoft.Azure.EventHubs.ServiceFabricProcessor.ServiceFabricProcessor sfp =
-                new Microsoft.Azure.EventHubs.ServiceFabricProcessor.ServiceFabricProcessor(
+            ServiceFabricProcessor sfp = new ServiceFabricProcessor(
                     state.ServiceUri,
                     state.ServicePartitionId,
                     state.StateManager,
@@ -55,8 +56,7 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
             state.Options.ReceiveTimeout = TimeSpan.FromSeconds(5.0);
             state.Options.InvokeProcessorAfterReceiveTimeout = true;
 
-            Microsoft.Azure.EventHubs.ServiceFabricProcessor.ServiceFabricProcessor sfp =
-                new Microsoft.Azure.EventHubs.ServiceFabricProcessor.ServiceFabricProcessor(
+            ServiceFabricProcessor sfp = new ServiceFabricProcessor(
                     state.ServiceUri,
                     state.ServicePartitionId,
                     state.StateManager,
