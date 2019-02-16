@@ -288,16 +288,37 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             {
                 if (processorOpened)
                 {
-                    await this.userEventProcessor.CloseAsync(this.partitionContext, this.linkedCancellationToken.IsCancellationRequested ? CloseReason.Cancelled : CloseReason.Failure);
+                    try
+                    {
+                        await this.userEventProcessor.CloseAsync(this.partitionContext, this.linkedCancellationToken.IsCancellationRequested ? CloseReason.Cancelled : CloseReason.Failure);
+                    }
+                    catch (Exception e)
+                    {
+                        EventProcessorEventSource.Current.Message($"IEventProcessor.CloseAsync threw {e}, continuing cleanup");
+                    }
                 }
                 if (receiver != null)
                 {
-                    receiver.SetReceiveHandler(null);
-                    await receiver.CloseAsync();
+                    try
+                    {
+                        receiver.SetReceiveHandler(null);
+                        await receiver.CloseAsync();
+                    }
+                    catch (Exception e)
+                    {
+                        EventProcessorEventSource.Current.Message($"Receiver close threw {e}, continuing cleanup");
+                    }
                 }
                 if (ehclient != null)
                 {
-                    await ehclient.CloseAsync();
+                    try
+                    {
+                        await ehclient.CloseAsync();
+                    }
+                    catch (Exception e)
+                    {
+                        EventProcessorEventSource.Current.Message($"EventHubClient close threw {e}, continuing cleanup");
+                    }
                 }
                 if (this.internalFatalException != null)
                 {
