@@ -347,6 +347,22 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                     }
                     lastException = e;
                 }
+                catch (AggregateException ae)
+                {
+                    if (ae.InnerException is EventHubsException)
+                    {
+                        EventHubsException ehe = (EventHubsException)ae.InnerException;
+                        if (!ehe.IsTransient)
+                        {
+                            throw ehe;
+                        }
+                        lastException = ehe;
+                    }
+                    else
+                    {
+                        throw ae;
+                    }
+                }
             }
 
             return lastException;
