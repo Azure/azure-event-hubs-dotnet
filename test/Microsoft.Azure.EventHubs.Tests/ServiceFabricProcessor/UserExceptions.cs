@@ -34,10 +34,12 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
                 new TestProcessor.ErrorInjector(TestProcessor.ErrorLocation.OnOpen, new NotImplementedException("ErrorInjector"));
             state.StartRun(sfp);
 
+            // EXPECTED RESULT: Failure during startup, Task returned by SFP.RunAsync completed exceptionally.
             state.OuterTask.Wait();
             try
             {
                 state.SFPTask.Wait();
+                Assert.True(false, "No exception thrown");
             }
             catch (AggregateException ae)
             {
@@ -76,18 +78,11 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
             state.CountNBatches(20, 10);
             state.TokenSource.Cancel();
 
-            state.OuterTask.Wait();
-            try
-            {
-                state.SFPTask.Wait();
-            }
-            catch (AggregateException ae)
-            {
-                Assert.True(ae.InnerExceptions.Count == 1, $"Unexpected number of errors {ae.InnerExceptions.Count}");
-                Exception inner = ae.InnerExceptions[0];
-                Assert.True(inner is NotImplementedException, $"Unexpected inner exception type {inner.GetType().Name}");
-                Assert.Equal("ErrorInjector", inner.Message);
-            }
+            // EXPECTED RESULT: Failure is traced but otherwise ignored.
+            state.WaitRun();
+
+            Assert.True(state.Processor.TotalErrors == 0, $"Errors found {state.Processor.TotalErrors}");
+            Assert.Null(state.ShutdownException);
         }
 
         [Fact]
@@ -116,6 +111,8 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
 
             state.RunForNBatches(20, 10);
 
+            // EXPECTED RESULT: Errors are reported to IEventProcessor.ProcessErrorsAsync but processing
+            // continues normally. There should be one error per batch.
             state.WaitRun();
 
             Assert.True(state.Processor.TotalErrors == state.Processor.TotalBatches,
@@ -153,6 +150,9 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
 
             state.RunForNBatches(20, 10);
 
+            // EXPECTED RESULT: Errors from ProcessEventsAsync are reported to ProcessErrorsAsync, but the
+            // errors in ProcessErrorsAsync are ignored. The test implementation of ProcessErrorsAsync increments
+            // the error count before throwing, so we can verify that ProcessErrorsAsync was called.
             state.WaitRun();
 
             Assert.True(state.Processor.TotalErrors == state.Processor.TotalBatches,
