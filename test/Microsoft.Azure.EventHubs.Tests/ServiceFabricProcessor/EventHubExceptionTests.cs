@@ -421,7 +421,7 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
 
             internal override bool ShouldInject(EHErrorLocation location)
             {
-                if (this.locations.Contains(location))
+                if (this.location == location)
                 {
                     bool retval = this.first;
                     this.first = false;
@@ -439,7 +439,7 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
 
             internal override bool ShouldInject(EHErrorLocation location)
             {
-                return this.locations.Contains(location);
+                return this.location == location;
             }
         }
     }
