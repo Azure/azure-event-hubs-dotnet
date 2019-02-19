@@ -299,13 +299,134 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
             }
         }
 
+        [Fact]
+        [DisplayTestMethodName]
+        void TransientEventHubReceiveFailure()
+        {
+            TestState state = new TestState();
+            state.Initialize("TransientEventHubReceiveFailure", 1, 0);
+
+            ServiceFabricProcessor sfp = new ServiceFabricProcessor(
+                    state.ServiceUri,
+                    state.ServicePartitionId,
+                    state.StateManager,
+                    state.StatefulServicePartition,
+                    state.Processor,
+                    state.ConnectionString,
+                    "$Default",
+                    state.Options);
+            sfp.MockMode = state.PartitionLister;
+            EventHubsException error = new EventHubsException(true, "ErrorInjector");
+            NeverEHErrorInjector injector = new NeverEHErrorInjector(EHErrorLocation.Receiving, error);
+            sfp.EventHubClientFactory = new InjectorEventHubClientFactoryMock(1, injector);
+
+            state.PrepareToRun();
+            state.StartRun(sfp);
+            state.VerifyNormalStartup(10);
+
+            int batchesAlreadyDone = state.CountNBatches(20, 10);
+
+            Assert.True(EventHubMocks.PartitionReceiverMock.receivers.ContainsKey(InjectorEventHubClientFactoryMock.Tag),
+                "Cannot find receiver");
+            InjectorPartitionReceiverMock testReceiver = (InjectorPartitionReceiverMock)
+                EventHubMocks.PartitionReceiverMock.receivers[InjectorEventHubClientFactoryMock.Tag];
+            const int errorCount = 10;
+            for (int i = 0; i < errorCount; i++)
+            {
+                testReceiver.ForceReceiveError(error);
+                Thread.Sleep(100);
+            }
+
+            state.CountNBatches(batchesAlreadyDone * 2, 10);
+
+            state.DoNormalShutdown(10);
+            state.WaitRun();
+
+            // EXPECTED RESULT: Processing should happen normally but errors reported.
+            Assert.True(state.Processor.TotalBatches >= 20, $"Run ended at {state.Processor.TotalBatches} batches");
+            Assert.True(state.Processor.TotalErrors == errorCount, $"Errors found {state.Processor.TotalErrors}");
+            Assert.Null(state.ShutdownException);
+        }
+
+        [Fact]
+        [DisplayTestMethodName]
+        void NonTransientEventHubReceiveFailure()
+        {
+            // ReceiverDisconnectedException is a nontransient EventHubsException of particular interest because
+            // it occurs when an epoch receiver has been force-disconnected by a new epoch receiver with a higher epoch.
+            // If this exception occurs, we want SFP to shut down!
+            EventHubReceiveFailure("NonTransient", new ReceiverDisconnectedException("ErrorInjector"), true);
+        }
+
+        [Fact]
+        [DisplayTestMethodName]
+        void HardEventHubReceiveFailure()
+        {
+            EventHubReceiveFailure("Hard", new Exception("ErrorInjector"), false);
+        }
+
+        void EventHubReceiveFailure(string name, Exception error, bool isEventHubsException)
+        { 
+            TestState state = new TestState();
+            state.Initialize(name + "EventHubReceiveFailure", 1, 0);
+
+            ServiceFabricProcessor sfp = new ServiceFabricProcessor(
+                    state.ServiceUri,
+                    state.ServicePartitionId,
+                    state.StateManager,
+                    state.StatefulServicePartition,
+                    state.Processor,
+                    state.ConnectionString,
+                    "$Default",
+                    state.Options);
+            sfp.MockMode = state.PartitionLister;
+            NeverEHErrorInjector injector = new NeverEHErrorInjector(EHErrorLocation.Receiving, error);
+            sfp.EventHubClientFactory = new InjectorEventHubClientFactoryMock(1, injector);
+
+            state.PrepareToRun();
+            state.StartRun(sfp);
+            state.VerifyNormalStartup(10);
+
+            state.CountNBatches(20, 10);
+
+            Assert.True(EventHubMocks.PartitionReceiverMock.receivers.ContainsKey(InjectorEventHubClientFactoryMock.Tag),
+                "Cannot find receiver");
+            InjectorPartitionReceiverMock testReceiver = (InjectorPartitionReceiverMock)
+                EventHubMocks.PartitionReceiverMock.receivers[InjectorEventHubClientFactoryMock.Tag];
+            testReceiver.ForceReceiveError(error);
+
+            // EXPECTED RESULT: RunAsync will throw (Task completed exceptionally) 
+            // due to nontransient EventHubsException or other exception type from EH operation.
+            // The Wait call bundles the exception into an AggregateException and rethrows.
+            state.OuterTask.Wait();
+            try
+            {
+                state.SFPTask.Wait();
+            }
+            catch (AggregateException ae)
+            {
+                Assert.True(ae.InnerExceptions.Count == 1, $"Unexpected number of errors {ae.InnerExceptions.Count}");
+                Exception inner = ae.InnerExceptions[0];
+                if (isEventHubsException)
+                {
+                    Assert.True(inner is EventHubsException, $"Unexpected inner exception type {inner.GetType().Name}");
+                    Assert.False(((EventHubsException)inner).IsTransient, "Inner exception is transient");
+                }
+                else
+                {
+                    Assert.True(inner is Exception, $"Unexpected inner exception type {inner.GetType().Name}");
+                }
+                Assert.Contains("ErrorInjector", inner.Message);
+            }
+        }
+
         private class InjectorPartitionReceiverMock : EventHubMocks.PartitionReceiverMock
         {
             private readonly EHErrorInjector injector;
 
             public InjectorPartitionReceiverMock(string partitionId, long sequenceNumber, CancellationToken token,
                 TimeSpan pumpTimeout, ReceiverOptions options, EHErrorInjector injector) :
-                base(partitionId, sequenceNumber, token, pumpTimeout, options, null)
+                base(partitionId, sequenceNumber, token, pumpTimeout, options, InjectorEventHubClientFactoryMock.Tag)
             {
                 this.injector = injector;
             }
@@ -314,6 +435,11 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
             {
                 return this.injector.InjectTask(EHErrorLocation.ReceiverClosing);
             }
+
+            public void ForceReceiveError(Exception error)
+            {
+                this.outerHandler.ProcessErrorAsync(error).Wait();
+            }
         }
 
         private class InjectorEventHubClientMock : EventHubMocks.EventHubClientMock
@@ -321,7 +447,7 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
             private readonly EHErrorInjector injector;
 
             public InjectorEventHubClientMock(int partitionCount, EventHubsConnectionStringBuilder csb, EHErrorInjector injector) :
-                base(partitionCount, csb, null)
+                base(partitionCount, csb, InjectorEventHubClientFactoryMock.Tag)
             {
                 this.injector = injector;
             }
@@ -354,7 +480,10 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
         {
             private readonly EHErrorInjector injector;
 
-            public InjectorEventHubClientFactoryMock(int partitionCount, EHErrorInjector injector) : base(partitionCount)
+            public static readonly string Tag = "inj";
+
+            public InjectorEventHubClientFactoryMock(int partitionCount, EHErrorInjector injector) : base(partitionCount,
+                InjectorEventHubClientFactoryMock.Tag)
             {
                 this.injector = injector;
             }
@@ -440,6 +569,18 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
             internal override bool ShouldInject(EHErrorLocation location)
             {
                 return this.location == location;
+            }
+        }
+
+        private class NeverEHErrorInjector : EHErrorInjector
+        {
+            internal NeverEHErrorInjector(EHErrorLocation errorAt, Exception error) : base(errorAt, error)
+            {
+            }
+
+            internal override bool ShouldInject(EHErrorLocation location)
+            {
+                return false;
             }
         }
     }
