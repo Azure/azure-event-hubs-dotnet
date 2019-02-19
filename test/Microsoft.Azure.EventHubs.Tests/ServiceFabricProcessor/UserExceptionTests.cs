@@ -8,7 +8,7 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
     using Microsoft.Azure.EventHubs.ServiceFabricProcessor;
     using Xunit;
 
-    public class UserExceptions
+    public class UserExceptionTests
     {
         [Fact]
         [DisplayTestMethodName]
