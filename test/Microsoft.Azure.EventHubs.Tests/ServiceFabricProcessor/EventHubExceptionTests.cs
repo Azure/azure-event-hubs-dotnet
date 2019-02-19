@@ -11,7 +11,7 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
     using Microsoft.Azure.EventHubs.ServiceFabricProcessor;
     using Xunit;
 
-    public class EventHubExceptions
+    public class EventHubExceptionTests
     {
         [Fact]
         [DisplayTestMethodName]
@@ -151,6 +151,9 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
             state.PrepareToRun();
             state.StartRun(sfp);
 
+            // EXPECTED RESULT: RunAsync will throw (Task completed exceptionally) during startup
+            // after running out of retries on an EH operation.
+            // The Wait call bundles the exception into an AggregateException and rethrows.
             state.OuterTask.Wait();
             try
             {
@@ -271,6 +274,9 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
             state.PrepareToRun();
             state.StartRun(sfp);
 
+            // EXPECTED RESULT: RunAsync will throw (Task completed exceptionally) during startup
+            // due to nontransient EventHubsException or other exception type from EH operation.
+            // The Wait call bundles the exception into an AggregateException and rethrows.
             state.OuterTask.Wait();
             try
             {
@@ -367,18 +373,12 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
 
         private abstract class EHErrorInjector
         {
-            protected readonly List<EHErrorLocation> locations;
+            protected readonly EHErrorLocation location;
             protected readonly Exception error;
 
             internal EHErrorInjector(EHErrorLocation errorAt, Exception error)
             {
-                this.locations = new List<EHErrorLocation>() { errorAt };
-                this.error = error;
-            }
-
-            internal EHErrorInjector(List<EHErrorLocation> locations, Exception error)
-            {
-                this.locations = locations;
+                this.location = errorAt;
                 this.error = error;
             }
 
@@ -418,9 +418,6 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
             internal OnceEHErrorInjector(EHErrorLocation errorAt, Exception error) : base(errorAt, error)
             {
             }
-            internal OnceEHErrorInjector(List<EHErrorLocation> locations, Exception error) : base(locations, error)
-            {
-            }
 
             internal override bool ShouldInject(EHErrorLocation location)
             {
@@ -437,9 +434,6 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
         private class AlwaysEHErrorInjector : EHErrorInjector
         {
             internal AlwaysEHErrorInjector(EHErrorLocation errorAt, Exception error) : base(errorAt, error)
-            {
-            }
-            internal AlwaysEHErrorInjector(List<EHErrorLocation> locations, Exception error) : base(locations, error)
             {
             }
 
