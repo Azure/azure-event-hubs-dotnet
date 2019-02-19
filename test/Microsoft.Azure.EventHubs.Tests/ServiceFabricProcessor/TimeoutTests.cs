@@ -42,6 +42,7 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
             state.DoNormalShutdown(10);
             state.WaitRun();
 
+            // EXPECTED RESULT: Normal processing. Because calls on receive timeout are suppressed, batches should be 0.
             Assert.True(state.Processor.TotalBatches == 0, $"ProcessEvents was called {state.Processor.TotalBatches} times");
             Assert.True(state.Processor.TotalErrors == 0, $"Errors found {state.Processor.TotalErrors}");
             Assert.Null(state.ShutdownException);
@@ -78,6 +79,7 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
             state.DoNormalShutdown(10);
             state.WaitRun();
 
+            // EXPECTED RESULT: Normal processing. Calls on receive timeout are enabled, so batches should be nonzero.
             Assert.True(state.Processor.TotalBatches > 0, "ProcessEvents was not called");
             Assert.True(state.Processor.TotalEvents == 0, $"ProcessEvents got {state.Processor.TotalEvents} events");
             Assert.True(state.Processor.TotalErrors == 0, $"Errors found {state.Processor.TotalErrors}");

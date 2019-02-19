@@ -157,6 +157,7 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
 
             state.WaitRun();
 
+            // EXPECTED RESULT: Normal processing.
             Assert.True(state.Processor.TotalErrors == 0, $"Errors found {state.Processor.TotalErrors}");
             Assert.Null(state.ShutdownException);
         }
@@ -196,6 +197,7 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
                 retries++;
             }
 
+            // EXPECTED RESULT: EventProcessorConfigurationException, and IEventProcessor.OpenAsync is never called.
             Assert.True(state.HasShutDown, $"Shutdown notification did not occur after {retries} seconds");
             Assert.False(state.Processor.IsOpened, "Processor was opened");
             Assert.NotNull(state.ShutdownException);

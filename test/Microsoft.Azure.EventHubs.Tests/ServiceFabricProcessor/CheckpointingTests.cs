@@ -38,6 +38,8 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
 
             state.WaitRun();
 
+            // EXPECTED RESULT: Normal processing. Last event processed is also the end of the batch
+            // and hence the final checkpoint. Save for next stage validaiton.
             Assert.True(state.Processor.TotalErrors == 0, $"Errors found {state.Processor.TotalErrors}");
             Assert.Null(state.ShutdownException);
 
@@ -67,6 +69,9 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
 
             state.WaitRun();
 
+            // EXPECTED RESULT: Normal processing. The sequence number of the first event processed in
+            // this stage should be one higher than the sequence number of the last event processed in
+            // the previous stage.
             Assert.True(state.Processor.TotalErrors == 0, $"Errors found {state.Processor.TotalErrors}");
             Assert.Null(state.ShutdownException);
 
@@ -105,6 +110,8 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
 
             state.WaitRun();
 
+            // EXPECTED RESULT: Normal processing. This case checkpoints specific events. Validate that the
+            // last event processed has a higher sequence number than the checkpointed event.
             Assert.True(state.Processor.TotalErrors == 0, $"Errors found {state.Processor.TotalErrors}");
             Assert.Null(state.ShutdownException);
 
@@ -139,6 +146,9 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
 
             state.WaitRun();
 
+            // EXPECTED RESULT: Normal processing. The sequence number of the first event processed in
+            // this stage should be one higher than the sequence number of the event checkpointed in
+            // the previous stage.
             Assert.True(state.Processor.TotalErrors == 0, $"Errors found {state.Processor.TotalErrors}");
             Assert.Null(state.ShutdownException);
 

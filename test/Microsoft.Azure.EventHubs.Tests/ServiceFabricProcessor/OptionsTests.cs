@@ -52,6 +52,8 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
             state.VerifyNormalStartup(10);
             state.CountNBatches(5, 10);
 
+            // EXPECTED RESULT: Normal processing. Validate that simple options MaxBatchSize, PrefetchCount, ReceiveTimeout,
+            // and ClientReceiverOptions are passed through to EH API.
             Assert.True(EventHubMocks.PartitionReceiverMock.receivers.ContainsKey(tag), "Cannot find receiver");
             EventHubMocks.PartitionReceiverMock testReceiver = EventHubMocks.PartitionReceiverMock.receivers[tag];
             Assert.True(testReceiver.HandlerBatchSize == testBatchSize, $"Unexpected batch size {testReceiver.HandlerBatchSize}");
@@ -61,7 +63,8 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
             Assert.NotNull(testReceiver.Options);
             Assert.Equal(testReceiver.Options.Identifier, tag);
 
-            // Check that RuntimeInformation was not updated
+            // EnableReceiverRuntimeMetric is false by default. This case is a convenient opportunity to
+            // verify that RuntimeInformation was not updated when the option is false.
             Assert.True(state.Processor.LatestContext.RuntimeInformation.LastSequenceNumber == 0L,
                 $"RuntimeInformation.LastSequenceNumber is {state.Processor.LatestContext.RuntimeInformation.LastSequenceNumber}");
 
@@ -101,6 +104,8 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
 
             state.WaitRun();
 
+            // EXPECTED RESULT: Normal processing. Sequence number of first event processed should match that
+            // supplied in the InitialPositionProvider.
             Assert.True(state.Processor.FirstEvent.SystemProperties.SequenceNumber == (firstSequenceNumber + 1L),
                 $"Got unexpected first sequence number {state.Processor.FirstEvent.SystemProperties.SequenceNumber}");
             Assert.True(state.Processor.TotalErrors == 0, $"Errors found {state.Processor.TotalErrors}");
@@ -146,6 +151,8 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
 
             state.WaitRun();
 
+            // EXPECTED RESULT: Normal processing. Sequence number of first event processed should match that
+            // supplied in the checkpoint, NOT the InitialPositionProvider.
             Assert.True(state.Processor.FirstEvent.SystemProperties.SequenceNumber == (checkpointSequenceNumber + 1L),
                 $"Got unexpected first sequence number {state.Processor.FirstEvent.SystemProperties.SequenceNumber}");
             Assert.True(state.Processor.TotalErrors == 0, $"Errors found {state.Processor.TotalErrors}");
@@ -179,6 +186,8 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
 
             state.WaitRun();
 
+            // EXPECTED RESULT: Normal processing. Verify that the RuntimeInformation property of the partition
+            // context is updated.
             Assert.True(state.Processor.LatestContext.RuntimeInformation.LastSequenceNumber == state.Processor.LastEvent.SystemProperties.SequenceNumber);
 
             Assert.True(state.Processor.TotalErrors == 0, $"Errors found {state.Processor.TotalErrors}");
