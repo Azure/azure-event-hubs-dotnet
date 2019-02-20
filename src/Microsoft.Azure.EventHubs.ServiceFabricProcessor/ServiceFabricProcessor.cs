@@ -250,7 +250,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 // Create receiver.
                 //
                 EventProcessorEventSource.Current.Message("Creating receiver");
-                lastException = RetryWrapper(() => { receiver = ehclient.CreateEpochReceiver(this.consumerGroupName, this.hubPartitionId, initialPosition, this.initialOffset,
+                lastException = RetryWrapper(() => { receiver = ehclient.CreateEpochReceiver(this.consumerGroupName, this.hubPartitionId, initialPosition,
                     Constants.FixedReceiverEpoch, this.options.ClientReceiverOptions); });
                 if (receiver == null)
                 {

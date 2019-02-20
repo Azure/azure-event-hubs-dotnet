@@ -106,9 +106,9 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
             {
             }
 
-            public override EventHubWrappers.IPartitionReceiver CreateEpochReceiver(string consumerGroupName, string partitionId, EventPosition eventPosition, string offset, long epoch, ReceiverOptions receiverOptions)
+            public override EventHubWrappers.IPartitionReceiver CreateEpochReceiver(string consumerGroupName, string partitionId, EventPosition eventPosition, long epoch, ReceiverOptions receiverOptions)
             {
-                long startSeq = (offset != null) ? (long.Parse(offset) / 100L) : 0L;
+                long startSeq = CalculateStartSeq(eventPosition);
                 return new TimeoutPartitionReceiverMock(partitionId, startSeq, this.token, this.csb.OperationTimeout);
             }
         }

@@ -251,24 +251,39 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             /// <param name="consumerGroupName"></param>
             /// <param name="partitionId"></param>
             /// <param name="eventPosition"></param>
-            /// <param name="offset"></param>
             /// <param name="epoch"></param>
             /// <param name="receiverOptions"></param>
             /// <returns></returns>
-            public virtual EventHubWrappers.IPartitionReceiver CreateEpochReceiver(string consumerGroupName, string partitionId, EventPosition eventPosition, string offset, long epoch, ReceiverOptions receiverOptions)
+            public virtual EventHubWrappers.IPartitionReceiver CreateEpochReceiver(string consumerGroupName, string partitionId, EventPosition eventPosition, long epoch, ReceiverOptions receiverOptions)
             {
-                EventProcessorEventSource.Current.Message($"MOCK CreateEpochReceiver(CG {consumerGroupName}, part {partitionId}, offset {offset} epoch {epoch})");
+                EventProcessorEventSource.Current.Message($"MOCK CreateEpochReceiver(CG {consumerGroupName}, part {partitionId}, epoch {epoch})");
                 // TODO implement epoch semantics
+                long startSeq = CalculateStartSeq(eventPosition);
+                return new PartitionReceiverMock(partitionId, startSeq, this.token, this.csb.OperationTimeout, receiverOptions, this.tag);
+            }
+
+            /// <summary>
+            /// 
+            /// </summary>
+            /// <param name="eventPosition"></param>
+            /// <returns></returns>
+            protected long CalculateStartSeq(EventPosition eventPosition)
+            {
                 long startSeq = 0L;
                 if (eventPosition.SequenceNumber.HasValue)
                 {
                     startSeq = eventPosition.SequenceNumber.Value;
                 }
-                else if (offset != null)
+                else
                 {
-                    startSeq = (long.Parse(offset) / 100L);
+                    PropertyInfo propertyInfo = eventPosition.GetType().GetProperty("Offset", BindingFlags.NonPublic | BindingFlags.Instance);
+                    string offset = (string)propertyInfo.GetValue(eventPosition);
+                    if (!string.IsNullOrEmpty(offset))
+                    {
+                        startSeq = (long.Parse(offset) / 100L);
+                    }
                 }
-                return new PartitionReceiverMock(partitionId, startSeq, this.token, this.csb.OperationTimeout, receiverOptions, this.tag);
+                return startSeq;
             }
 
             /// <summary>

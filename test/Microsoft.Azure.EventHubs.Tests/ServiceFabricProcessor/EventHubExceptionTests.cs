@@ -459,18 +459,10 @@ namespace Microsoft.Azure.EventHubs.Tests.ServiceFabricProcessor
             }
 
             public override EventHubWrappers.IPartitionReceiver CreateEpochReceiver(string consumerGroupName, string partitionId,
-                EventPosition eventPosition, string offset, long epoch, ReceiverOptions receiverOptions)
+                EventPosition eventPosition, long epoch, ReceiverOptions receiverOptions)
             {
                 this.injector.Inject(EHErrorLocation.CreateReceiver);
-                long startSeq = 0L;
-                if (eventPosition.SequenceNumber.HasValue)
-                {
-                    startSeq = eventPosition.SequenceNumber.Value;
-                }
-                else if (offset != null)
-                {
-                    startSeq = (long.Parse(offset) / 100L);
-                }
+                long startSeq = CalculateStartSeq(eventPosition);
                 return new InjectorPartitionReceiverMock(partitionId, startSeq, this.token, this.csb.OperationTimeout,
                     receiverOptions, this.injector);
             }
