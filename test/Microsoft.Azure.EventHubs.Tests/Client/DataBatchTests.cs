@@ -42,6 +42,16 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
         }
 
         /// <summary>
+        /// Single message close to 1MB should work.
+        /// </summary>
+        [Fact]
+        [DisplayTestMethodName]
+        async Task AllowFirstMessageInBatch()
+        {
+            await SendWithEventDataBatch(maxPayloadSize: 900 * 1024 , minimumNumberOfMessagesToSend: 1);
+        }
+
+        /// <summary>
         /// Utilizes EventDataBatch to send messages as the messages are batched up to max batch size.
         /// This unit test sends with partition key.
         /// </summary>
