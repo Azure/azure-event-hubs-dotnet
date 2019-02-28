@@ -42,6 +42,16 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
         }
 
         /// <summary>
+        /// Single message close to 1MB should work.
+        /// </summary>
+        [Fact]
+        [DisplayTestMethodName]
+        async Task AllowFirstMessageInBatch()
+        {
+            await SendWithEventDataBatch(maxPayloadSize: 900 * 1024 , minimumNumberOfMessagesToSend: 1);
+        }
+
+        /// <summary>
         /// Utilizes EventDataBatch to send messages as the messages are batched up to max batch size.
         /// This unit test sends with partition key.
         /// </summary>
@@ -115,24 +125,11 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
                 var receiverTasks = new List<Task<List<EventData>>>();
                 foreach (var receiver in receivers)
                 {
-                    receiverTasks.Add(ReceiveAllMessages(receiver));
+                    receiverTasks.Add(ReceiveAllMessagesAsync(receiver));
                 }
 
                 // Create initial batcher.
                 EventDataBatch batcher = null;
-
-                // Exercise both CreateBatch overloads.
-                if (partitionKey != null)
-                {
-                    batcher = this.EventHubClient.CreateBatch(new BatchOptions()
-                    {
-                        PartitionKey = partitionKey
-                    });
-                }
-                else
-                {
-                    batcher = this.EventHubClient.CreateBatch();
-                }
 
                 // We will send a thousand messages where each message is 1K.
                 var totalSent = 0;
@@ -140,37 +137,41 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
                 TestUtility.Log("Starting to send.");
                 do
                 {
+                    if (batcher == null)
+                    {
+                        // Exercise both CreateBatch overloads.
+                        if (partitionKey != null)
+                        {
+                            batcher = this.EventHubClient.CreateBatch(new BatchOptions()
+                            {
+                                PartitionKey = partitionKey
+                            });
+                        }
+                        else
+                        {
+                            batcher = this.EventHubClient.CreateBatch();
+                        }
+                    }
+
                     // Send random body size.
                     var ed = new EventData(new byte[rnd.Next(0, maxPayloadSize)]);
-                    if (!batcher.TryAdd(ed))
+                    if (!batcher.TryAdd(ed) || totalSent + batcher.Count >= minimumNumberOfMessagesToSend)
                     {
                         await this.EventHubClient.SendAsync(batcher);
-
                         totalSent += batcher.Count;
                         TestUtility.Log($"Sent {batcher.Count} messages in the batch.");
-
-                        // Create new batcher.
-                        // Exercise CreateBatch with partition key only where PartitionKey might be null.
-                        batcher = this.EventHubClient.CreateBatch(new BatchOptions()
-                        {
-                            PartitionKey = partitionKey
-                        });
+                        batcher = null;
                     }
                 } while (totalSent < minimumNumberOfMessagesToSend);
-
-                // Send the rest of the batch if any.
-                if (batcher.Count > 0)
-                {
-                    await this.EventHubClient.SendAsync(batcher);
-                    totalSent += batcher.Count;
-                    TestUtility.Log($"Sent {batcher.Count} messages in the batch.");
-                }
 
                 TestUtility.Log($"{totalSent} messages sent in total.");
 
                 var pReceived = await Task.WhenAll(receiverTasks);
                 var totalReceived = pReceived.Sum(p => p.Count);
                 TestUtility.Log($"{totalReceived} messages received in total.");
+
+                // Sent at least a message?
+                Assert.True(totalSent > 0, $"Client was not able to send any messages.");
 
                 // All messages received?
                 Assert.True(totalReceived == totalSent, $"Sent {totalSent}, but received {totalReceived} messages.");
