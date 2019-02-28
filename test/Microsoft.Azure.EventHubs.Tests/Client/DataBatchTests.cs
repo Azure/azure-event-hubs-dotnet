@@ -131,50 +131,38 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
                 // Create initial batcher.
                 EventDataBatch batcher = null;
 
-                // Exercise both CreateBatch overloads.
-                if (partitionKey != null)
-                {
-                    batcher = this.EventHubClient.CreateBatch(new BatchOptions()
-                    {
-                        PartitionKey = partitionKey
-                    });
-                }
-                else
-                {
-                    batcher = this.EventHubClient.CreateBatch();
-                }
-
                 // We will send a thousand messages where each message is 1K.
                 var totalSent = 0;
                 var rnd = new Random();
                 TestUtility.Log("Starting to send.");
                 do
                 {
+                    if (batcher == null)
+                    {
+                        // Exercise both CreateBatch overloads.
+                        if (partitionKey != null)
+                        {
+                            batcher = this.EventHubClient.CreateBatch(new BatchOptions()
+                            {
+                                PartitionKey = partitionKey
+                            });
+                        }
+                        else
+                        {
+                            batcher = this.EventHubClient.CreateBatch();
+                        }
+                    }
+
                     // Send random body size.
                     var ed = new EventData(new byte[rnd.Next(0, maxPayloadSize)]);
-                    if (!batcher.TryAdd(ed))
+                    if (!batcher.TryAdd(ed) || totalSent + batcher.Count >= minimumNumberOfMessagesToSend)
                     {
                         await this.EventHubClient.SendAsync(batcher);
-
                         totalSent += batcher.Count;
                         TestUtility.Log($"Sent {batcher.Count} messages in the batch.");
-
-                        // Create new batcher.
-                        // Exercise CreateBatch with partition key only where PartitionKey might be null.
-                        batcher = this.EventHubClient.CreateBatch(new BatchOptions()
-                        {
-                            PartitionKey = partitionKey
-                        });
+                        batcher = null;
                     }
                 } while (totalSent < minimumNumberOfMessagesToSend);
-
-                // Send the rest of the batch if any.
-                if (batcher.Count > 0)
-                {
-                    await this.EventHubClient.SendAsync(batcher);
-                    totalSent += batcher.Count;
-                    TestUtility.Log($"Sent {batcher.Count} messages in the batch.");
-                }
 
                 TestUtility.Log($"{totalSent} messages sent in total.");
 
