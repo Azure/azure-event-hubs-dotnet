@@ -50,7 +50,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
                     EventPosition.FromOffset(partitionOffsets[partitionId]));
 
                 receivers.Add(receiver);
-                receiveTasks.Add(partitionId, ReceiveAllMessages(receiver));
+                receiveTasks.Add(partitionId, ReceiveAllMessagesAsync(receiver));
             }
 
             int totalReceived = 0;
