@@ -91,7 +91,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
         }
 
         // Receives all messages on the given receiver.
-        protected async Task<List<EventData>> ReceiveAllMessages(PartitionReceiver receiver)
+        protected async Task<List<EventData>> ReceiveAllMessagesAsync(PartitionReceiver receiver)
         {
             List<EventData> messages = new List<EventData>();
 

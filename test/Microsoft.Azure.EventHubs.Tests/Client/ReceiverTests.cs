@@ -151,14 +151,14 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
 
             try
             {
-                var receivedMessages = await receiver.ReceiveAsync(100);
+                var receivedMessages =  await ReceiveAllMessagesAsync(receiver);
 
                 // We should have received only 1 message from this call.
                 Assert.True(receivedMessages.Count() == 2, $"Didn't receive 2 messages. Received {receivedMessages.Count()} messages(s).");
 
                 // Next receive on this partition shouldn't return any more messages.
-                receivedMessages = await receiver.ReceiveAsync(100, TimeSpan.FromSeconds(15));
-                Assert.True(receivedMessages == null, $"Received messages at the end.");
+                var expectNull = await receiver.ReceiveAsync(100, TimeSpan.FromSeconds(15));
+                Assert.True(expectNull == null, $"Received messages at the end.");
             }
             finally
             {

@@ -125,7 +125,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
                 var receiverTasks = new List<Task<List<EventData>>>();
                 foreach (var receiver in receivers)
                 {
-                    receiverTasks.Add(ReceiveAllMessages(receiver));
+                    receiverTasks.Add(ReceiveAllMessagesAsync(receiver));
                 }
 
                 // Create initial batcher.
