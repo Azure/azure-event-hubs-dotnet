@@ -182,6 +182,9 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
                 var totalReceived = pReceived.Sum(p => p.Count);
                 TestUtility.Log($"{totalReceived} messages received in total.");
 
+                // Sent at least a message?
+                Assert.True(totalSent > 0, $"Client was not able to send any messages.");
+
                 // All messages received?
                 Assert.True(totalReceived == totalSent, $"Sent {totalSent}, but received {totalReceived} messages.");
 
