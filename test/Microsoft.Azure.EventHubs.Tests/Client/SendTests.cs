@@ -186,7 +186,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Client
 
             // Receive all messages from target partition.
             var receiver = this.EventHubClient.CreateReceiver(PartitionReceiver.DefaultConsumerGroupName, targetPartition, EventPosition.FromOffset(partitions[targetPartition]));
-            var messages = await ReceiveAllMessages(receiver);
+            var messages = await ReceiveAllMessagesAsync(receiver);
 
             // Validate 2 messages received.
             Assert.True(messages.Count == 2, $"Received {messages.Count} messages instead of 2.");

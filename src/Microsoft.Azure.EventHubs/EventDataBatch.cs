@@ -65,7 +65,7 @@ namespace Microsoft.Azure.EventHubs
 
             this.ThrowIfDisposed();
             long size = GetEventSizeForBatch(eventData);
-            if (this.currentSize + size > this.maxSize)
+            if (this.eventDataList.Count > 0 && this.currentSize + size > this.maxSize)
             {
                 return false;
             }
