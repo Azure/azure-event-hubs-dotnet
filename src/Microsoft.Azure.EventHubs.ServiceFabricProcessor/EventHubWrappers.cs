@@ -19,6 +19,11 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         public interface IPartitionReceiver
         {
             /// <summary>
+            /// 
+            /// </summary>
+            int PrefetchCount { get; set; }
+
+            /// <summary>
             /// </summary>
             /// <param name="maxEventCount"></param>
             /// <param name="waitTime"></param>
@@ -52,11 +57,10 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             /// <param name="consumerGroupName"></param>
             /// <param name="partitionId"></param>
             /// <param name="eventPosition"></param>
-            /// <param name="offset">Only used by mocks</param>
             /// <param name="epoch"></param>
             /// <param name="receiverOptions"></param>
             /// <returns></returns>
-            IPartitionReceiver CreateEpochReceiver(string consumerGroupName, string partitionId, EventPosition eventPosition, string offset, long epoch, ReceiverOptions receiverOptions);
+            IPartitionReceiver CreateEpochReceiver(string consumerGroupName, string partitionId, EventPosition eventPosition, long epoch, ReceiverOptions receiverOptions);
 
             /// <summary>
             /// </summary>
@@ -72,8 +76,9 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             /// <summary>
             /// </summary>
             /// <param name="connectionString"></param>
+            /// <param name="receiveTimeout"></param>
             /// <returns></returns>
-            IEventHubClient CreateFromConnectionString(string connectionString);
+            IEventHubClient Create(string connectionString, TimeSpan receiveTimeout);
         }
 
         internal class PartitionReceiverWrapper : IPartitionReceiver
@@ -84,6 +89,15 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             {
                 this.inner = receiver;
                 this.MaxBatchSize = 10; // TODO get this from somewhere real
+            }
+
+            public int PrefetchCount
+            {
+                get => this.inner.PrefetchCount;
+                set
+                {
+                    this.inner.PrefetchCount = value;
+                }
             }
 
             public Task<IEnumerable<EventData>> ReceiveAsync(int maxEventCount, TimeSpan waitTime)
@@ -118,7 +132,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 return this.inner.GetRuntimeInformationAsync();
             }
 
-            public IPartitionReceiver CreateEpochReceiver(string consumerGroupName, string partitionId, EventPosition eventPosition, string offset, long epoch, ReceiverOptions receiverOptions)
+            public IPartitionReceiver CreateEpochReceiver(string consumerGroupName, string partitionId, EventPosition eventPosition, long epoch, ReceiverOptions receiverOptions)
             {
                 return new PartitionReceiverWrapper(this.inner.CreateEpochReceiver(consumerGroupName, partitionId, eventPosition, epoch, receiverOptions));
             }
@@ -131,9 +145,11 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
 
         internal class EventHubClientFactory : IEventHubClientFactory
         {
-            public IEventHubClient CreateFromConnectionString(string connectionString)
+            public IEventHubClient Create(string connectionString, TimeSpan receiveTimeout)
             {
-                return new EventHubClientWrapper(EventHubClient.CreateFromConnectionString(connectionString));
+                EventHubsConnectionStringBuilder csb = new EventHubsConnectionStringBuilder(connectionString);
+                csb.OperationTimeout = receiveTimeout;
+                return new EventHubClientWrapper(EventHubClient.Create(csb));
             }
         }
     }
