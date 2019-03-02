@@ -3,7 +3,7 @@
   <PropertyGroup>
     <Description>This is the next generation Azure Event Hubs .NET Standard Service Fabric Processor library, which integrates Event Hub event consumption with Service Fabric. For more information about Event Hubs, see https://azure.microsoft.com/en-us/services/event-hubs/</Description>
     <AssemblyTitle>Microsoft.Azure.EventHubs.ServiceFabricProcessor</AssemblyTitle>
-    <VersionPrefix>0.5.2-PREVIEW</VersionPrefix>
+    <VersionPrefix>0.5.3-PREVIEW</VersionPrefix>
     <Authors>Microsoft</Authors>
     <TargetFramework>netstandard2.0</TargetFramework>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
@@ -23,9 +23,9 @@
     <GenerateAssemblyProductAttribute>false</GenerateAssemblyProductAttribute>
     <DebugType>full</DebugType>
     <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\Microsoft.Azure.EventHubs.Processor.xml</DocumentationFile>
-    <Version>0.5.2</Version>
-    <AssemblyVersion>0.5.2.0</AssemblyVersion>
-    <FileVersion>0.5.2.0</FileVersion>
+    <Version>0.5.3</Version>
+    <AssemblyVersion>0.5.3.0</AssemblyVersion>
+    <FileVersion>0.5.3.0</FileVersion>
     <DelaySign>true</DelaySign>
     <Copyright>© Microsoft Corporation. All rights reserved.</Copyright>
   </PropertyGroup>
