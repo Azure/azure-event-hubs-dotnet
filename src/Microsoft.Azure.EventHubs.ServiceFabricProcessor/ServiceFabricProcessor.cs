@@ -107,6 +107,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
 
             this.EventHubClientFactory = new EventHubWrappers.EventHubClientFactory();
             this.TestMode = false;
+            this.MockMode = null;
         }
 
         /// <summary>
@@ -118,6 +119,11 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         /// For testing purposes. Do not change after calling RunAsync.
         /// </summary>
         public bool TestMode { get; set; }
+
+        /// <summary>
+        /// For testing purposes. Do not change after calling RunAsync.
+        /// </summary>
+        public IFabricPartitionLister MockMode { get; set; }
 
         /// <summary>
         /// Starts processing of events.
@@ -165,6 +171,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         {
             EventHubWrappers.IEventHubClient ehclient = null;
             EventHubWrappers.IPartitionReceiver receiver = null;
+            bool processorOpened = false;
 
             try
             {
@@ -178,7 +185,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 //
                 Exception lastException = null;
                 EventProcessorEventSource.Current.Message("Creating event hub client");
-                lastException = RetryWrapper(() => { ehclient = this.EventHubClientFactory.CreateFromConnectionString(this.ehConnectionString.ToString()); });
+                lastException = RetryWrapper(() => { ehclient = this.EventHubClientFactory.Create(this.ehConnectionString.ToString(), this.options.ReceiveTimeout); });
                 if (ehclient == null)
                 {
                     EventProcessorEventSource.Current.Message("Out of retries event hub client");
@@ -219,7 +226,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 this.partitionContext = new PartitionContext(this.linkedCancellationToken, this.hubPartitionId, this.ehConnectionString.EntityPath, this.consumerGroupName, this.checkpointManager);
 
                 //
-                // Start up checkpoint manager.
+                // Start up checkpoint manager and get checkpoint, if any.
                 //
                 await CheckpointStartup(this.linkedCancellationToken);
 
@@ -243,13 +250,14 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 // Create receiver.
                 //
                 EventProcessorEventSource.Current.Message("Creating receiver");
-                lastException = RetryWrapper(() => { receiver = ehclient.CreateEpochReceiver(this.consumerGroupName, this.hubPartitionId, initialPosition, this.initialOffset,
+                lastException = RetryWrapper(() => { receiver = ehclient.CreateEpochReceiver(this.consumerGroupName, this.hubPartitionId, initialPosition,
                     Constants.FixedReceiverEpoch, this.options.ClientReceiverOptions); });
                 if (receiver == null)
                 {
                     EventProcessorEventSource.Current.Message("Out of retries creating receiver");
                     throw new Exception("Out of retries creating event hub receiver", lastException);
                 }
+                receiver.PrefetchCount = this.options.PrefetchCount;
 
                 //
                 // Call Open on user's event processor instance.
@@ -257,6 +265,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 //
                 EventProcessorEventSource.Current.Message("Creating event processor");
                 await this.userEventProcessor.OpenAsync(this.linkedCancellationToken, this.partitionContext);
+                processorOpened = true;
                 EventProcessorEventSource.Current.Message("Event processor created and opened OK");
 
                 //
@@ -277,18 +286,39 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
             }
             finally
             {
-                if (this.partitionContext != null)
+                if (processorOpened)
                 {
-                    await this.userEventProcessor.CloseAsync(this.partitionContext, this.linkedCancellationToken.IsCancellationRequested ? CloseReason.Cancelled : CloseReason.Failure);
+                    try
+                    {
+                        await this.userEventProcessor.CloseAsync(this.partitionContext, this.linkedCancellationToken.IsCancellationRequested ? CloseReason.Cancelled : CloseReason.Failure);
+                    }
+                    catch (Exception e)
+                    {
+                        EventProcessorEventSource.Current.Message($"IEventProcessor.CloseAsync threw {e}, continuing cleanup");
+                    }
                 }
                 if (receiver != null)
                 {
-                    receiver.SetReceiveHandler(null);
-                    await receiver.CloseAsync();
+                    try
+                    {
+                        receiver.SetReceiveHandler(null);
+                        await receiver.CloseAsync();
+                    }
+                    catch (Exception e)
+                    {
+                        EventProcessorEventSource.Current.Message($"Receiver close threw {e}, continuing cleanup");
+                    }
                 }
                 if (ehclient != null)
                 {
-                    await ehclient.CloseAsync();
+                    try
+                    {
+                        await ehclient.CloseAsync();
+                    }
+                    catch (Exception e)
+                    {
+                        EventProcessorEventSource.Current.Message($"EventHubClient close threw {e}, continuing cleanup");
+                    }
                 }
                 if (this.internalFatalException != null)
                 {
@@ -316,6 +346,22 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                         throw e;
                     }
                     lastException = e;
+                }
+                catch (AggregateException ae)
+                {
+                    if (ae.InnerException is EventHubsException)
+                    {
+                        EventHubsException ehe = (EventHubsException)ae.InnerException;
+                        if (!ehe.IsTransient)
+                        {
+                            throw ehe;
+                        }
+                        lastException = ehe;
+                    }
+                    else
+                    {
+                        throw ae;
+                    }
                 }
             }
 
@@ -345,13 +391,20 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                     this.partitionContext.SetOffsetAndSequenceNumber(last);
                     if (this.options.EnableReceiverRuntimeMetric)
                     {
-                        // TODO: requires client change to support
-                        // this.partitionContext.RuntimeInformation.Update(last);
+                        this.partitionContext.RuntimeInformation.Update(last);
                     }
                 }
             }
 
-            await this.userEventProcessor.ProcessEventsAsync(this.linkedCancellationToken, this.partitionContext, effectiveEvents);
+            try
+            {
+                await this.userEventProcessor.ProcessEventsAsync(this.linkedCancellationToken, this.partitionContext, effectiveEvents);
+            }
+            catch (Exception e)
+            {
+                EventProcessorEventSource.Current.Message($"Processing exception on {this.hubPartitionId}: {e}");
+                SafeProcessError(this.partitionContext, e);
+            }
 
             foreach (EventData ev in effectiveEvents)
             {
@@ -362,7 +415,7 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         Task IPartitionReceiveHandler.ProcessErrorAsync(Exception error)
         {
             EventProcessorEventSource.Current.Message($"RECEIVE EXCEPTION on {this.hubPartitionId}: {error}");
-            this.userEventProcessor.ProcessErrorAsync(this.partitionContext, error);
+            SafeProcessError(this.partitionContext, error);
             if (error is EventHubsException)
             {
                 if (!(error as EventHubsException).IsTransient)
@@ -379,6 +432,21 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
                 this.internalCanceller.Cancel();
             }
             return Task.CompletedTask;
+        }
+
+        private void SafeProcessError(PartitionContext context, Exception error)
+        {
+            try
+            {
+                this.userEventProcessor.ProcessErrorAsync(context, error).Wait();
+            }
+            catch (Exception e)
+            {
+                // The user's error notification method has thrown.
+                // Recursively notifying could easily cause an infinite loop, until the stack runs out.
+                // So do not notify, just log.
+                EventProcessorEventSource.Current.Message($"Error thrown by ProcessErrorASync: {e}");
+            }
         }
 
         private async Task CheckpointStartup(CancellationToken cancellationToken)
@@ -410,26 +478,15 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
         {
             if (this.fabricPartitionOrdinal == -1)
             {
-                using (FabricClient fabricClient = new FabricClient())
-                {
-                    ServicePartitionList partitionList =
-                        await fabricClient.QueryManager.GetPartitionListAsync(this.serviceFabricServiceName);
+                IFabricPartitionLister lister = this.MockMode ?? new ServiceFabricPartitionLister();
 
-                    // Set the number of partitions
-                    this.servicePartitionCount = partitionList.Count;
+                this.servicePartitionCount = await lister.GetServiceFabricPartitionCount(this.serviceFabricServiceName);
 
-                    // Which partition is this one?
-                    for (int a = 0; a < partitionList.Count; a++)
-                    {
-                        if (partitionList[a].PartitionInformation.Id == this.serviceFabricPartitionId)
-                        {
-                            this.fabricPartitionOrdinal = a;
-                            break;
-                        }
-                    }
+                this.fabricPartitionOrdinal = await lister.GetServiceFabricPartitionOrdinal(this.serviceFabricPartitionId);
 
-                    EventProcessorEventSource.Current.Message($"Total partitions {this.servicePartitionCount}");
-                }
+                EventProcessorEventSource.Current.Message($"Total partitions {this.servicePartitionCount}");
+                EventProcessorEventSource.Current.Message($"Partition ordinal {this.fabricPartitionOrdinal}");
+                // TODO check that ordinal is not -1
             }
         }
 
