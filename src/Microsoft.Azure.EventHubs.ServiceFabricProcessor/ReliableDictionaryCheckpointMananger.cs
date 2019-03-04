@@ -22,8 +22,8 @@ namespace Microsoft.Azure.EventHubs.ServiceFabricProcessor
 
         public async Task<bool> CheckpointStoreExistsAsync(CancellationToken cancellationToken)
         {
-            ConditionalValue<IReliableDictionary<string, Checkpoint>> tryStore = await 
-                this.reliableStateManager.TryGetAsync<IReliableDictionary<string, Checkpoint>>(Constants.CheckpointDictionaryName);
+            ConditionalValue<IReliableDictionary<string, Dictionary<string, object>>> tryStore = await 
+                this.reliableStateManager.TryGetAsync<IReliableDictionary<string, Dictionary<string, object>>>(Constants.CheckpointDictionaryName);
             EventProcessorEventSource.Current.Message($"CheckpointStoreExistsAsync = {tryStore.HasValue}");
             return tryStore.HasValue;
         }
