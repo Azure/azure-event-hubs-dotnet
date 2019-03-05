@@ -15,7 +15,8 @@ namespace Microsoft.Azure.EventHubs.Processor
     {
         readonly EventProcessorHost host;
 
-        internal PartitionContext(EventProcessorHost host, string partitionId, string eventHubPath, string consumerGroupName, CancellationToken cancellationToken)
+        /// Creates a new <see cref="PartitionContext"/> object.
+        public PartitionContext(EventProcessorHost host, string partitionId, string eventHubPath, string consumerGroupName, CancellationToken cancellationToken)
         {
             this.host = host;
             this.PartitionId = partitionId;
