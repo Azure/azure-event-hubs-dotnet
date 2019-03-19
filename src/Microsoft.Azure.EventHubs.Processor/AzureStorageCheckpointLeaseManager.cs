@@ -20,7 +20,8 @@ namespace Microsoft.Azure.EventHubs.Processor
         TimeSpan leaseDuration;
         TimeSpan leaseRenewInterval;
 
-        static readonly TimeSpan storageMaximumExecutionTime = TimeSpan.FromMinutes(2);
+        static readonly TimeSpan storageMaximumExecutionTime = TimeSpan.FromMinutes(1);
+        static readonly TimeSpan storageServerWaitTime = TimeSpan.FromSeconds(30);
         readonly CloudStorageAccount cloudStorageAccount;
         readonly string leaseContainerName;
         readonly string storageBlobPrefix;
@@ -92,7 +93,8 @@ namespace Microsoft.Azure.EventHubs.Processor
             var storageClient = this.cloudStorageAccount.CreateCloudBlobClient();
             storageClient.DefaultRequestOptions = new BlobRequestOptions
             {
-                MaximumExecutionTime = AzureStorageCheckpointLeaseManager.storageMaximumExecutionTime
+                MaximumExecutionTime = AzureStorageCheckpointLeaseManager.storageMaximumExecutionTime,
+                ServerTimeout = AzureStorageCheckpointLeaseManager.storageServerWaitTime
             };
 
             this.eventHubContainer = storageClient.GetContainerReference(this.leaseContainerName);

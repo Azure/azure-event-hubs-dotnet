@@ -437,7 +437,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                 }
                 catch (Exception e)
                 {
-                    // TaskCancelledException is expected furing host unregister.
+                    // TaskCancelledException is expected during host unregister.
                     if (e is TaskCanceledException)
                     {
                         continue;
