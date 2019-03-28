@@ -964,16 +964,19 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
                 TestUtility.StorageConnectionString,
                 Guid.NewGuid().ToString());
 
-            var runResult = await RunGenericScenario(eventProcessorHost);
-            Assert.False(runResult.ReceivedEvents.Any(kvp => kvp.Value.Count != 1), "First host: One of the partitions didn't return exactly 1 event");
+            // Calling register for the first time should succeed.
+            TestUtility.Log("Registering EventProcessorHost for the first time.");
+            await eventProcessorHost.RegisterEventProcessorAsync<SecondTestEventProcessor>();
 
-            // Allow sometime so that leases can expire.
-            await Task.Delay(60);
+            // Unregister event processor should succed
+            TestUtility.Log("Registering EventProcessorHost for the first time.");
+            await eventProcessorHost.UnregisterEventProcessorAsync();
 
-            runResult = await RunGenericScenario(eventProcessorHost);
-            Assert.False(runResult.ReceivedEvents.Any(kvp => kvp.Value.Count != 1), "Second host: One of the partitions didn't return exactly 1 event");
+            var epo = await GetOptionsAsync();
+
+            // Run a generic scenario with TestEventProcessor instead
+            await RunGenericScenario(eventProcessorHost, epo);
         }
-
 
         [Fact]
         [DisplayTestMethodName]
@@ -989,18 +992,14 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
                 TestUtility.StorageConnectionString,
                 Guid.NewGuid().ToString());
 
-            // Calling register for the first time should succeed.
-            TestUtility.Log("Registering EventProcessorHost for the first time.");
-            await eventProcessorHost.RegisterEventProcessorAsync<SecondTestEventProcessor>();
+            var runResult = await RunGenericScenario(eventProcessorHost);
+            Assert.False(runResult.ReceivedEvents.Any(kvp => kvp.Value.Count != 1), "First host: One of the partitions didn't return exactly 1 event");
 
-            // Unregister event processor should succed
-            TestUtility.Log("Registering EventProcessorHost for the first time.");
-            await eventProcessorHost.UnregisterEventProcessorAsync();
+            // Allow sometime so that leases can expire.
+            await Task.Delay(60);
 
-            var epo = await GetOptionsAsync();
-
-            // Run a generic scenario with TestEventProcessor instead
-            await RunGenericScenario(eventProcessorHost, epo);
+            runResult = await RunGenericScenario(eventProcessorHost);
+            Assert.False(runResult.ReceivedEvents.Any(kvp => kvp.Value.Count != 1), "Second host: One of the partitions didn't return exactly 1 event");
         }
 
         async Task<Dictionary<string, Tuple<string, DateTime>>> DiscoverEndOfStream()
