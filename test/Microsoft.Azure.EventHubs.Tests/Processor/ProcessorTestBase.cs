@@ -955,7 +955,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
 
         [Fact]
         [DisplayTestMethodName]
-        async Task ReRegisterEventProcessor()
+        async Task ReRegister()
         {
             var eventProcessorHost = new EventProcessorHost(
                 null, // Entity path will be picked from connection string.
@@ -980,9 +980,14 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
 
         [Fact]
         [DisplayTestMethodName]
-        async Task ReRegisterSameHostName()
+        async Task ReRegisterAfterLeaseExpiry()
         {
             var hostName = Guid.NewGuid().ToString();
+
+            var processorOptions = new EventProcessorOptions
+            {
+                InitialOffsetProvider = pId => EventPosition.FromEnd()
+            };
 
             var eventProcessorHost = new EventProcessorHost(
                 hostName,
@@ -992,7 +997,7 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
                 TestUtility.StorageConnectionString,
                 Guid.NewGuid().ToString());
 
-            var runResult = await RunGenericScenario(eventProcessorHost);
+            var runResult = await RunGenericScenario(eventProcessorHost, processorOptions);
             Assert.False(runResult.ReceivedEvents.Any(kvp => kvp.Value.Count != 1), "First host: One of the partitions didn't return exactly 1 event");
 
             // Allow sometime so that leases can expire.
