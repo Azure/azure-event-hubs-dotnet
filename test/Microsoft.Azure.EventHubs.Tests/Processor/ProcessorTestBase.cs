@@ -964,6 +964,31 @@ namespace Microsoft.Azure.EventHubs.Tests.Processor
                 TestUtility.StorageConnectionString,
                 Guid.NewGuid().ToString());
 
+            var runResult = await RunGenericScenario(eventProcessorHost);
+            Assert.False(runResult.ReceivedEvents.Any(kvp => kvp.Value.Count != 1), "First host: One of the partitions didn't return exactly 1 event");
+
+            // Allow sometime so that leases can expire.
+            await Task.Delay(60);
+
+            runResult = await RunGenericScenario(eventProcessorHost);
+            Assert.False(runResult.ReceivedEvents.Any(kvp => kvp.Value.Count != 1), "Second host: One of the partitions didn't return exactly 1 event");
+        }
+
+
+        [Fact]
+        [DisplayTestMethodName]
+        async Task ReRegisterSameHostName()
+        {
+            var hostName = Guid.NewGuid().ToString();
+
+            var eventProcessorHost = new EventProcessorHost(
+                hostName,
+                null, // Entity path will be picked from connection string.
+                PartitionReceiver.DefaultConsumerGroupName,
+                TestUtility.EventHubsConnectionString,
+                TestUtility.StorageConnectionString,
+                Guid.NewGuid().ToString());
+
             // Calling register for the first time should succeed.
             TestUtility.Log("Registering EventProcessorHost for the first time.");
             await eventProcessorHost.RegisterEventProcessorAsync<SecondTestEventProcessor>();
