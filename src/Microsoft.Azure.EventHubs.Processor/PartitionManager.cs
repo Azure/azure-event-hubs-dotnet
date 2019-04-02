@@ -296,7 +296,7 @@ namespace Microsoft.Azure.EventHubs.Processor
 
                     // Check any expired leases that we can grab here.
                     var checkLeaseTasks = new List<Task>();
-                    foreach (var possibleLease in allLeases.Values.Where(lease => lease.Owner != this.host.HostName))
+                    foreach (var possibleLease in allLeases.Values)
                     {
                         var subjectLease = possibleLease;
 
