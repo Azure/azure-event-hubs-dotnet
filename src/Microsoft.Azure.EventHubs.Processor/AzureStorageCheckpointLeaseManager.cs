@@ -15,7 +15,7 @@ namespace Microsoft.Azure.EventHubs.Processor
     class AzureStorageCheckpointLeaseManager : ICheckpointManager, ILeaseManager
     {
         static string MetaDataOwnerName = "OWNINGHOST";
-            
+
         EventProcessorHost host;
         TimeSpan leaseDuration;
         TimeSpan leaseRenewInterval;
@@ -139,7 +139,7 @@ namespace Microsoft.Azure.EventHubs.Processor
 
         public async Task UpdateCheckpointAsync(Lease lease, Checkpoint checkpoint)
         {
-            AzureBlobLease newLease = new AzureBlobLease((AzureBlobLease) lease)
+            AzureBlobLease newLease = new AzureBlobLease((AzureBlobLease)lease)
             {
                 Offset = checkpoint.Offset,
                 SequenceNumber = checkpoint.SequenceNumber
@@ -157,6 +157,9 @@ namespace Microsoft.Azure.EventHubs.Processor
         // Lease operations.
         //
         public TimeSpan LeaseRenewInterval => this.leaseRenewInterval;
+
+        // post 60 sec we take infinite lease
+        public bool IsInfiniteLease => this.LeaseDuration > TimeSpan.FromSeconds(60);
 
         public TimeSpan LeaseDuration => this.leaseDuration;
 
@@ -348,20 +351,29 @@ namespace Microsoft.Azure.EventHubs.Processor
                     }
 
                     ProcessorEventSource.Log.AzureStorageManagerInfo(this.host.HostName, lease.PartitionId, "Need to ChangeLease");
-                    renewLease = true;
-                    newToken = await leaseBlob.ChangeLeaseAsync(
-                        newLeaseId,
-                        AccessCondition.GenerateLeaseCondition(lease.Token),
-                        null,
-                        this.operationContext).ConfigureAwait(false);
+                    if (IsInfiniteLease)
+                    {
+                        TimeSpan? breakReleaseTime = TimeSpan.FromSeconds(3);
+                        await leaseBlob.BreakLeaseAsync(breakReleaseTime);
+                        newToken = await leaseBlob.AcquireLeaseAsync(null /* infinite lease */, newLeaseId);
+                    }
+                    else
+                    {
+                        renewLease = true;
+                        newToken = await leaseBlob.ChangeLeaseAsync(
+                            newLeaseId,
+                            AccessCondition.GenerateLeaseCondition(lease.Token),
+                            null,
+                            this.operationContext).ConfigureAwait(false);
+                    }
                 }
                 else
                 {
                     ProcessorEventSource.Log.AzureStorageManagerInfo(this.host.HostName, lease.PartitionId, "Need to AcquireLease");
                     newToken = await leaseBlob.AcquireLeaseAsync(
-                        leaseDuration, 
-                        newLeaseId, 
-                        null, 
+                        this.GetLeaseDurationForBlob(),
+                        newLeaseId,
+                        null,
                         null,
                         this.operationContext).ConfigureAwait(false);
                 }
@@ -401,6 +413,10 @@ namespace Microsoft.Azure.EventHubs.Processor
 
         public Task<bool> RenewLeaseAsync(Lease lease)
         {
+            if (IsInfiniteLease)
+            {
+                return Task.FromResult<bool>(true);
+            }
             return RenewLeaseCoreAsync((AzureBlobLease)lease);
         }
 
@@ -548,6 +564,14 @@ namespace Microsoft.Azure.EventHubs.Processor
         CloudBlockBlob GetBlockBlobReference(string partitionId)
         {
             return this.consumerGroupDirectory.GetBlockBlobReference(partitionId);
+        }
+
+        TimeSpan? GetLeaseDurationForBlob()
+        {
+            TimeSpan? effectiveLeaseDuration = null;
+            if (!IsInfiniteLease)
+                effectiveLeaseDuration = this.LeaseDuration;
+            return effectiveLeaseDuration;
         }
     }
 }
