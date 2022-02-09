@@ -4,7 +4,9 @@
 
 # Microsoft Azure Event Hubs Client for .NET
 
-> Please note, newer packages [Azure.Messaging.EventHubs](https://www.nuget.org/packages/Azure.Messaging.EventHubs) and [Azure.Messaging.EventHubs.Processor](https://www.nuget.org/packages/Azure.Messaging.EventHubs.Processor) for [Azure Event Hubs](https://azure.microsoft.com/services/event-hubs/) are available as of February 2020. While the packages `Microsoft.Azure.EventHubs` and `Microsoft.Azure.EventHubs.Processor` will continue to receive critical bug fixes, we strongly encourage you to upgrade. Read the [migration guide](https://aka.ms/azsdk/net/migrate/eh) for more details.
+> Please note, newer packages [Azure.Messaging.EventHubs](https://www.nuget.org/packages/Azure.Messaging.EventHubs) and [Azure.Messaging.EventHubs.Processor](https://www.nuget.org/packages/Azure.Messaging.EventHubs.Processor) for [Azure Event Hubs](https://azure.microsoft.com/services/event-hubs/) are available as of February 2020. While the packages `Microsoft.Azure.EventHubs` and `Microsoft.Azure.EventHubs.Processor` will continue to receive critical bug fixes, we strongly encourage you to upgrade. Read the [migration guide](https://aka.ms/azsdk/net/migrate/eh) for more details. 
+
+> `Microsoft.Azure.EventHubs.ServiceFabricProcessor` package, which has never advanced beyond preview is deprecated and won't be receiving any changes.
 
 Azure Event Hubs is a highly scalable publish-subscribe service that can ingest millions of events per second and stream them into multiple applications. This lets you process and analyze the massive amounts of data produced by your connected devices and applications. Once Event Hubs has collected the data, you can retrieve, transform and store it by using any real-time analytics provider or with batching/storage adapters. 
 
