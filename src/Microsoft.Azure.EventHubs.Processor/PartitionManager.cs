@@ -213,7 +213,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                 int ourLeaseCount = 0;
 
                 try
-                { 
+                {
                     try
                     {
                         downloadedLeases = await leaseManager.GetAllLeasesAsync();
@@ -258,8 +258,8 @@ namespace Microsoft.Azure.EventHubs.Processor
                                         // Just log here, expired leases will be picked by same or another host anyway.
                                         ProcessorEventSource.Log.PartitionPumpError(
                                             this.host.HostName,
-                                            capturedLease.PartitionId, 
-                                            "Failed to renew lease.", 
+                                            capturedLease.PartitionId,
+                                            "Failed to renew lease.",
                                             renewResult.Exception?.Message);
 
                                         this.host.EventProcessorOptions.NotifyOfException(
@@ -277,7 +277,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                                     }
                                 }, cancellationToken));
                             }
-                            else if (!await subjectLease.IsExpired().ConfigureAwait(false))
+                            else if (!await IsExpired(subjectLease).ConfigureAwait(false))
                             {
                                 leasesOwnedByOthers[subjectLease.PartitionId] = subjectLease;
                             }
@@ -304,14 +304,14 @@ namespace Microsoft.Azure.EventHubs.Processor
                         {
                             try
                             {
-                                if (await subjectLease.IsExpired().ConfigureAwait(false))
+                                if (await IsExpired(possibleLease).ConfigureAwait(false))
                                 {
                                     // Get fresh content of lease subject to acquire.
                                     var downloadedLease = await leaseManager.GetLeaseAsync(subjectLease.PartitionId).ConfigureAwait(false);
                                     allLeases[subjectLease.PartitionId] = downloadedLease;
 
                                     // Check expired once more here incase another host have already leased this since we populated the list.
-                                    if (await downloadedLease.IsExpired().ConfigureAwait(false))
+                                    if (await IsExpired(downloadedLease).ConfigureAwait(false))
                                     {
                                         ProcessorEventSource.Log.PartitionPumpInfo(this.host.HostName, downloadedLease.PartitionId, "Trying to acquire lease.");
                                         if (await leaseManager.AcquireLeaseAsync(downloadedLease).ConfigureAwait(false))
@@ -363,7 +363,7 @@ namespace Microsoft.Azure.EventHubs.Processor
                                 // Don't attempt to steal if lease is already expired.
                                 // Expired leases are picked up by other hosts quickly.
                                 // Don't attempt to steal if owner has changed from the calculation time to refresh time.
-                                if (!await downloadedLease.IsExpired().ConfigureAwait(false)
+                                if (!await IsExpired(downloadedLease).ConfigureAwait(false)
                                     && downloadedLease.Owner == stealThisLease.Owner)
                                 {
                                     ProcessorEventSource.Log.PartitionPumpStealLeaseStart(this.host.HostName, downloadedLease.PartitionId);
@@ -488,7 +488,7 @@ namespace Microsoft.Azure.EventHubs.Processor
         {
             // Refresh lease content and do last minute check to reduce partition moves.
             var refreshedLease = await this.host.LeaseManager.GetLeaseAsync(partitionId);
-            if (refreshedLease.Owner != this.host.HostName || await refreshedLease.IsExpired().ConfigureAwait(false))
+            if (refreshedLease.Owner != this.host.HostName || await IsExpired(refreshedLease).ConfigureAwait(false))
             {
                 // Partition moved to some other node after lease acquisition.
                 // Return w/o creating the pump.
@@ -585,6 +585,21 @@ namespace Microsoft.Azure.EventHubs.Processor
             ProcessorEventSource.Log.EventProcessorHostInfo(this.host.HostName, $"Total hosts in list: {counts.Count()}");
 
             return counts.ToDictionary(e => e.Owner, e => e.Count);
+        }
+
+        private Task<bool> IsExpired(Lease possibleLease)
+        {
+            // use modifiedtime to figure out lease timeout since we take infinite lease for > 60 secs
+            if (this.host.PartitionManagerOptions.LeaseDuration > TimeSpan.FromSeconds(60))
+            {
+                DateTime lastModifiedTime = ((AzureBlobLease)possibleLease).Blob.Properties.LastModified.Value.DateTime;
+                if (DateTime.UtcNow - lastModifiedTime > this.host.PartitionManagerOptions.LeaseDuration)
+                {
+                    return Task.FromResult<bool>(true);
+                }
+                return Task.FromResult<bool>(false);
+            }
+            return possibleLease.IsExpired();
         }
     }
 }
